@@ -75,10 +75,10 @@ export const MainLayout: React.FC = () => {
         <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Typography variant="h5" color="primary" sx={{ letterSpacing: '0.5px', fontWeight: 700 }}>
-              MIP
+              SM
             </Typography>
             <Typography variant="h6" sx={{ display: { xs: 'none', sm: 'block' }, fontWeight: 500 }}>
-              Manufacturing Intelligence Platform
+              Smart Manufacturing
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
