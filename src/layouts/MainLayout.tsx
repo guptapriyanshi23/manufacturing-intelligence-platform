@@ -61,7 +61,7 @@ export const MainLayout: React.FC = () => {
 
   useEffect(() => {
     fetchNodes();
-  }, [location.pathname]);
+  }, []); // Run only once on mount
 
   const handleSelectNode = (node: HierarchyNode) => {
     setSelectedNode(node);
