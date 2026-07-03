@@ -1,0 +1,77 @@
+import React from 'react';
+import { Card, CardContent, Typography, Box, useTheme } from '@mui/material';
+import { ArrowUpward, ArrowDownward } from '@mui/icons-material';
+
+interface MetricCardProps {
+  title: string;
+  value: string | number;
+  unit?: string;
+  trend?: number; // percentage trend e.g. 1.2 or -0.5
+  icon?: React.ReactNode;
+}
+
+export const MetricCard: React.FC<MetricCardProps> = ({ title, value, unit, trend, icon }) => {
+  const theme = useTheme();
+  const isPositive = trend ? trend >= 0 : true;
+
+  return (
+    <Card
+      sx={{
+        height: '100%',
+        minWidth: 200,
+        position: 'relative',
+        overflow: 'hidden',
+        background: `linear-gradient(135deg, ${theme.palette.background.paper} 0%, rgba(17, 24, 39, 0.8) 100%)`,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '4px',
+          height: '100%',
+          backgroundColor: trend ? (isPositive ? theme.palette.secondary.main : theme.palette.error.main) : theme.palette.primary.main,
+        },
+      }}
+    >
+      <CardContent>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+          <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 600 }}>
+            {title}
+          </Typography>
+          {icon && <Box sx={{ opacity: 0.8, color: theme.palette.primary.main }}>{icon}</Box>}
+        </Box>
+
+        <Box sx={{ display: 'flex', alignItems: 'baseline' }}>
+          <Typography variant="h3" component="div" sx={{ fontWeight: 700 }}>
+            {value}
+          </Typography>
+          {unit && (
+            <Typography variant="body1" color="text.secondary" sx={{ ml: 0.5, fontWeight: 500 }}>
+              {unit}
+            </Typography>
+          )}
+        </Box>
+
+        {trend !== undefined && (
+          <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+            {isPositive ? (
+              <ArrowUpward fontSize="small" sx={{ color: theme.palette.secondary.main, mr: 0.5 }} />
+            ) : (
+              <ArrowDownward fontSize="small" sx={{ color: theme.palette.error.main, mr: 0.5 }} />
+            )}
+            <Typography
+              variant="body2"
+              sx={{ color: isPositive ? theme.palette.secondary.main : theme.palette.error.main, fontWeight: 600 }}
+            >
+              {Math.abs(trend)}%
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+              vs last week
+            </Typography>
+          </Box>
+        )}
+      </CardContent>
+    </Card>
+  );
+};

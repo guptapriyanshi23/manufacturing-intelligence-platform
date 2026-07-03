@@ -1,0 +1,22 @@
+from typing import List, Dict
+from pydantic import BaseModel
+
+class MetricItem(BaseModel):
+    label: str
+    value: float
+    unit: str
+    trend: float  # Percentage change
+
+class PerformanceData(BaseModel):
+    timestamp: str
+    oee: float
+    availability: float
+    performance: float
+    quality: float
+
+class DashboardSummaryResponse(BaseModel):
+    oee: MetricItem
+    availability: MetricItem
+    performance: MetricItem
+    quality: MetricItem
+    weekly_chart: List[PerformanceData]
