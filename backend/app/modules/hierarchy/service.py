@@ -1,17 +1,29 @@
 from typing import List, Optional, Dict, Any
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from backend.app.models.hierarchy import HierarchyNode, PlantMetadata, AssetMetadata, SensorMetadata
 from backend.app.modules.hierarchy.schemas import HierarchyNodeCreate, HierarchyNodeUpdate
 
 def get_node_by_id(db: Session, node_id: int) -> Optional[HierarchyNode]:
-    return db.query(HierarchyNode).filter(HierarchyNode.id == node_id).first()
+    return db.query(HierarchyNode).options(
+        joinedload(HierarchyNode.plant_metadata),
+        joinedload(HierarchyNode.asset_metadata),
+        joinedload(HierarchyNode.sensor_metadata)
+    ).filter(HierarchyNode.id == node_id).first()
 
 def get_flat_nodes(db: Session) -> List[HierarchyNode]:
-    return db.query(HierarchyNode).order_by(HierarchyNode.sort_order, HierarchyNode.id).all()
+    return db.query(HierarchyNode).options(
+        joinedload(HierarchyNode.plant_metadata),
+        joinedload(HierarchyNode.asset_metadata),
+        joinedload(HierarchyNode.sensor_metadata)
+    ).order_by(HierarchyNode.sort_order, HierarchyNode.id).all()
 
 def get_hierarchy_tree(db: Session) -> List[HierarchyNode]:
-    # Fetch all nodes from database
-    nodes = db.query(HierarchyNode).order_by(HierarchyNode.sort_order, HierarchyNode.id).all()
+    # Fetch all nodes from database with metadata preloaded to solve N+1 queries
+    nodes = db.query(HierarchyNode).options(
+        joinedload(HierarchyNode.plant_metadata),
+        joinedload(HierarchyNode.asset_metadata),
+        joinedload(HierarchyNode.sensor_metadata)
+    ).order_by(HierarchyNode.sort_order, HierarchyNode.id).all()
     
     # Map nodes by their ID for easy tree construction
     nodes_map: Dict[int, HierarchyNode] = {}
