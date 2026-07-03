@@ -6,6 +6,8 @@ import {
   AppBar,
   Toolbar,
   Typography,
+  Tabs,
+  Tab,
   List,
   ListItemButton,
   ListItemIcon,
@@ -43,6 +45,7 @@ export const MainLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [selectedNode, setSelectedNode] = useState<HierarchyNode | null>(null);
+  const activeTabIndex = navItems.findIndex((item) => item.path === location.pathname);
   const [nodes, setNodes] = useState<HierarchyNode[]>([]);
   const [loadingNodes, setLoadingNodes] = useState(true);
 
@@ -70,9 +73,9 @@ export const MainLayout: React.FC = () => {
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
-      {/* Top Header */}
-      <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
-        <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
+      {/* Top Header & Navigation */}
+      <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, backgroundColor: 'rgba(12, 15, 29, 0.88)' }}>
+        <Toolbar sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Typography variant="h5" color="primary" sx={{ letterSpacing: '0.5px', fontWeight: 700 }}>
               SM
@@ -93,9 +96,37 @@ export const MainLayout: React.FC = () => {
             </IconButton>
           </Box>
         </Toolbar>
+        <Box sx={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)', px: 2, py: 0.5, display: 'flex', justifyContent: 'center' }}>
+          <Tabs
+            value={activeTabIndex >= 0 ? activeTabIndex : false}
+            onChange={(_, newIndex) => {
+              const item = navItems[newIndex];
+              if (item) navigate(item.path);
+            }}
+            textColor="inherit"
+            TabIndicatorProps={{ style: { height: 4, borderRadius: 4, backgroundColor: '#06b6d4' } }}
+            aria-label="main navigation tabs"
+            sx={{
+              minHeight: 48,
+              '& .MuiTabs-flexContainer': {
+                justifyContent: 'center',
+              },
+              '& .MuiTab-root': {
+                textTransform: 'none',
+                fontWeight: 600,
+                minHeight: 48,
+                minWidth: 120,
+                px: 2,
+              },
+            }}
+          >
+            {navItems.map((item) => (
+              <Tab key={item.path} label={item.label} icon={item.icon} iconPosition="start" />
+            ))}
+          </Tabs>
+        </Box>
       </AppBar>
 
-      {/* Sidebar Navigation */}
       <Drawer
         variant="permanent"
         sx={{
@@ -106,36 +137,6 @@ export const MainLayout: React.FC = () => {
       >
         <Toolbar />
         <Box sx={{ overflow: 'auto', display: 'flex', flexDirection: 'column', height: '100%', py: 2 }}>
-          {/* Main Navigation links */}
-          <List sx={{ px: 1 }}>
-            {navItems.map((item) => {
-              const isActive = location.pathname === item.path;
-              return (
-                <ListItemButton
-                  key={item.path}
-                  onClick={() => navigate(item.path)}
-                  selected={isActive}
-                  sx={{
-                    borderRadius: 1,
-                    mb: 0.5,
-                    color: isActive ? 'primary.main' : 'text.secondary',
-                    '&.Mui-selected': {
-                      backgroundColor: 'rgba(6, 182, 212, 0.08)',
-                      color: 'primary.main',
-                      fontWeight: 600,
-                    },
-                  }}
-                >
-                  <ListItemIcon sx={{ color: 'inherit', minWidth: 40 }}>{item.icon}</ListItemIcon>
-                  <ListItemText primary={<Typography sx={{ fontWeight: isActive ? 600 : 400 }}>{item.label}</Typography>} />
-                </ListItemButton>
-              );
-            })}
-          </List>
-
-          <Divider sx={{ my: 2, borderColor: 'rgba(255, 255, 255, 0.05)' }} />
-
-          {/* Hierarchy section */}
           <Box sx={{ px: 2, mb: 1 }}>
             <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>
               Plant Hierarchy (ISA-95)
@@ -157,8 +158,7 @@ export const MainLayout: React.FC = () => {
         </Box>
       </Drawer>
 
-      {/* Main Content Area */}
-      <Box component="main" sx={{ flexGrow: 1, p: 3, pt: 10 }}>
+      <Box component="main" sx={{ flexGrow: 1, p: 3, pt: 14 }}>
         <Outlet />
       </Box>
     </Box>
