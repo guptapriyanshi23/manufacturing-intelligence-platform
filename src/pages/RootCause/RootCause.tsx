@@ -1,27 +1,67 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Grid, Card, CardContent, Typography, LinearProgress, CircularProgress, Paper, Button } from '@mui/material';
-import { Troubleshoot as TroubleshootingIcon, CheckCircle as SolveIcon } from '@mui/icons-material';
+import React, { useState, useEffect, useRef } from 'react';
+import { Box, Grid, Card, CardContent, Typography, LinearProgress, CircularProgress, Paper, Button, TextField } from '@mui/material';
+import { Troubleshoot as TroubleshootingIcon, CheckCircle as SolveIcon, PhotoCameraOutlined } from '@mui/icons-material';
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
-import { api } from '../../api/client';
+// import { api } from '../../api/client';
+
+const demoRcaData = {
+  event_id: '101',
+  asset_name: 'Compressor 1',
+  anomaly_type: 'Pressure Spike',
+  detected_at: new Date().toISOString(),
+  possible_causes: [
+    { name: 'Valve Failure', category: 'mechanical', probability: 0.78, description: 'Pressure control valve may be sticking or leaking.' },
+    { name: 'Sensor Drift', category: 'sensor', probability: 0.56, description: 'Pressure sensor output is trending outside expected range.' },
+    { name: 'Fluid Contamination', category: 'fluid', probability: 0.38, description: 'Impurities in the fluid can cause pressure spikes.' },
+  ],
+  recommendation: 'Inspect the pressure control valve and test the sensor alignment before running the compressor again.',
+};
 
 export const RootCause: React.FC = () => {
-  const [rcaData, setRcaData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [rcaData, setRcaData] = useState<any>(demoRcaData);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [rootCauseDescription, setRootCauseDescription] = useState('');
+  const [actionTaken, setActionTaken] = useState('');
+  const [submitMessage, setSubmitMessage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  useEffect(() => {
-    // Fetch mock diagnostics for event 101
-    api.rootCause.get('101')
-      .then((res) => {
-        setRcaData(res);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message || 'Failed to fetch RCA diagnostics');
-        setLoading(false);
-      });
-  }, []);
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    setSelectedFile(file);
+    setSubmitMessage(null);
+  };
+
+  const handleUploadSubmit = () => {
+    if (!selectedFile && !rootCauseDescription && !actionTaken) {
+      setSubmitMessage('Complete at least one field before submitting.');
+      return;
+    }
+
+    setSubmitMessage('Fault details captured locally.');
+    setSelectedFile(null);
+    setRootCauseDescription('');
+    setActionTaken('');
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Uncomment and connect backend when ready
+  // useEffect(() => {
+  //   api.rootCause.get('101')
+  //     .then((res) => {
+  //       setRcaData(res);
+  //       setLoading(false);
+  //     })
+  //     .catch((err) => {
+  //       setError(err.message || 'Failed to fetch RCA diagnostics');
+  //       setLoading(false);
+  //     });
+  // }, []);
 
   if (loading) {
     return (
@@ -47,85 +87,88 @@ export const RootCause: React.FC = () => {
       />
 
       <Grid container spacing={3}>
-        {/* Incident Summary */}
-        <Grid size={{ xs: 12, md: 5 }}>
-          <Card sx={{ height: '100%' }}>
+        {/* Fault photo upload and RCA submission */}
+        <Grid item xs={12}>
+          <Card sx={{ border: '1px solid rgba(148, 163, 184, 0.3)', backgroundColor: 'rgba(15, 23, 42, 0.55)' }}>
             <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <TroubleshootingIcon color="primary" />
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  Anomaly Details
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">Event ID</Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 600 }}>{rcaData.event_id}</Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">Asset Location</Typography>
-                  <Typography variant="body1">{rcaData.asset_name}</Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">Detected Event</Typography>
-                  <Typography variant="body1" color="error.main" sx={{ fontWeight: 600 }}>{rcaData.anomaly_type}</Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">Timestamp</Typography>
-                  <Typography variant="body2">{new Date(rcaData.detected_at).toLocaleString()}</Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Possible Causes Bar Chart Mockup */}
-        <Grid size={{ xs: 12, md: 7 }}>
-          <Paper sx={{ p: 3, height: '100%', background: 'rgba(17, 24, 39, 0.6)', backdropFilter: 'blur(10px)' }}>
-            <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
-              Likely Failure Factors
-            </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              {rcaData.possible_causes.map((cause: any, idx: number) => (
-                <Box key={idx}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {cause.name} ({cause.category.toUpperCase()})
+              <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
+                Fault Evidence & RCA Submission
+              </Typography>
+              <Grid sx={{ minWidth: '70vw' }}>
+                <Grid item xs={12} md={4} sx={{ display: 'flex', 
+                  flexDirection: 'row', gap: 2, mb: 3 }}>
+                  <Box
+                    onClick={() => fileInputRef.current?.click()}
+                    sx={{
+                      minHeight: 240,
+                      border: '2px dashed rgba(148, 163, 184, 0.6)',
+                      borderRadius: 2,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      textAlign: 'center',
+                      p: 3,
+                      cursor: 'pointer',
+                      '&:hover': {
+                        borderColor: 'rgba(56, 189, 248, 0.8)',
+                        backgroundColor: 'rgba(56, 189, 248, 0.04)',
+                      },
+                    }}
+                  >
+                    <PhotoCameraOutlined sx={{ fontSize: 40, mb: 1, color: 'text.secondary' }} />
+                    <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+                      Click to upload a photo of the fault
                     </Typography>
-                    <Typography variant="body2" color="primary.main" sx={{ fontWeight: 600 }}>
-                      {Math.round(cause.probability * 100)}%
+                    <Typography variant="body2" color="text.secondary">
+                      PNG, JPG or JPEG up to 5MB
                     </Typography>
+                    {selectedFile && (
+                      <Typography variant="caption" sx={{ mt: 2, color: 'primary.main' }}>
+                        {selectedFile.name}
+                      </Typography>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/png, image/jpeg"
+                      onChange={handleFileChange}
+                      hidden
+                    />
                   </Box>
-                  <LinearProgress
-                    variant="determinate"
-                    value={cause.probability * 100}
-                    color={cause.probability > 0.5 ? 'error' : 'warning'}
-                    sx={{ height: 8, borderRadius: 4 }}
-                  />
-                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                    {cause.description}
-                  </Typography>
-                </Box>
-              ))}
-            </Box>
-          </Paper>
-        </Grid>
 
-        {/* Actionable Recommendations */}
-        <Grid size={12}>
-          <Card sx={{ border: '1px solid rgba(16, 185, 129, 0.2)', backgroundColor: 'rgba(16, 185, 129, 0.02)' }}>
-            <CardContent sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: 'center', gap: 3 }}>
-              <Box>
-                <Typography variant="h6" color="secondary.main" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1, fontWeight: 600 }}>
-                  <SolveIcon /> Recommended Action Plan
-                </Typography>
-                <Typography variant="body1">
-                  {rcaData.recommendation}
-                </Typography>
-              </Box>
-              <Button variant="contained" color="secondary" size="large">
-                Acknowledge & Start Maintenance
-              </Button>
+                  <TextField
+                    label="Root cause description"
+                    placeholder="Describe the likely root cause here"
+                    multiline
+                    rows={9}
+                    fullWidth
+                    value={rootCauseDescription}
+                    onChange={(event) => setRootCauseDescription(event.target.value)}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={8} sx={{ display: 'flex', 
+                  flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                  <TextField
+                    label="Action taken"
+                    placeholder="Enter action taken to resolve the issue"
+                    fullWidth
+                    value={actionTaken}
+                    onChange={(event) => setActionTaken(event.target.value)}
+                  />
+
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    size="large"
+                    onClick={handleUploadSubmit}
+                    sx={{ minWidth: 180 }}
+                  >
+                    Submit & close
+                  </Button>
+                </Grid>
+              </Grid>
             </CardContent>
           </Card>
         </Grid>
