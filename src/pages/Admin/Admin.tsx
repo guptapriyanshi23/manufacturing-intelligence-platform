@@ -109,7 +109,7 @@ export const Admin: React.FC = () => {
     resolver: zodResolver(schema) as any,
     defaultValues: {
       parent_id: null,
-      node_type: 'enterprise',
+      node_type: 'site',
       name: '',
       display_name: '',
       description: '',
@@ -259,7 +259,7 @@ export const Admin: React.FC = () => {
     setSearchParams({});
     reset({
       parent_id: null,
-      node_type: 'enterprise',
+      node_type: 'site',
       name: '',
       display_name: '',
       description: '',
@@ -393,7 +393,7 @@ export const Admin: React.FC = () => {
                             error={!!errors.node_type}
                             helperText={errors.node_type?.message}
                           >
-                            {LEVELS.map(lvl => (
+                            {LEVELS.filter(lvl => lvl !== 'enterprise').map(lvl => (
                               <MenuItem key={lvl} value={lvl}>{lvl.toUpperCase()}</MenuItem>
                             ))}
                           </TextField>
