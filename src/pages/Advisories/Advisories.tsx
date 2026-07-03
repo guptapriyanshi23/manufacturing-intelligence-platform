@@ -1,96 +1,151 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Grid, Card, CardContent, Typography, Button, Chip, CircularProgress } from '@mui/material';
-import { Lightbulb as IdeaIcon, Check as AcceptIcon } from '@mui/icons-material';
+import React from 'react';
+import {
+  Box,
+  Button,
+  Chip,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Typography,
+} from '@mui/material';
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
 import { StatusChip } from '../../components/Forms/StatusChip';
-import { api } from '../../api/client';
+
+const advisoryRows = [
+  {
+    id: 1,
+    tag: 'Bearing temp',
+    asset: 'ID Fan #2',
+    severity: 3,
+    status: 'acknowledged',
+    action: 'Bearing greased and re-aligned during shift changeover',
+  },
+  {
+    id: 2,
+    tag: 'Spindle vibration',
+    asset: 'CNC-04 (VMC)',
+    severity: 2,
+    status: 'open',
+    action: '—',
+  },
+  {
+    id: 3,
+    tag: 'Hydraulic pressure',
+    asset: 'Press Line 3',
+    severity: 4,
+    status: 'resolved',
+    action: 'Seal replaced',
+  },
+  {
+    id: 4,
+    tag: 'Motor current',
+    asset: 'ID Fan #2',
+    severity: 5,
+    status: 'resolved',
+    action: 'Logged, monitoring',
+  },
+  {
+    id: 5,
+    tag: 'Feed force',
+    asset: 'CNC-07 (HMC)',
+    severity: 1,
+    status: 'open',
+    action: '—',
+  },
+];
+
+const severityStyles = {
+  1: { backgroundColor: 'rgba(244, 63, 94, 0.12)', color: 'error.main' },
+  2: { backgroundColor: 'rgba(245, 158, 11, 0.12)', color: 'warning.main' },
+  3: { backgroundColor: 'rgba(250, 204, 21, 0.12)', color: 'warning.dark' },
+  4: { backgroundColor: 'rgba(14, 165, 233, 0.12)', color: 'info.main' },
+  5: { backgroundColor: 'rgba(34, 197, 94, 0.12)', color: 'success.main' },
+};
 
 export const Advisories: React.FC = () => {
-  const [advisories, setAdvisories] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    api.advisories.list()
-      .then((res) => {
-        setAdvisories(res);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message || 'Failed to fetch advisories');
-        setLoading(false);
-      });
-  }, []);
-
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <CircularProgress color="primary" />
-      </Box>
-    );
-  }
-
   return (
     <PageContainer>
       <PageHeader
-        title="Optimization Advisories"
-        subtitle="AI/Machine learning model suggestions to improve machinery health and utility efficiency."
+        title="Advisories"
+        subtitle="Active system advisories for equipment health, severity tracking, and remediation actions."
       />
 
-      <Grid container spacing={3}>
-        {error ? (
-          <Grid size={12}>
-            <Typography color="error">{error}</Typography>
-          </Grid>
-        ) : (
-          advisories.map((advisory) => (
-            <Grid size={{ xs: 12, md: 6 }} key={advisory.id}>
-              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Chip
-                      label={advisory.category.toUpperCase().replace('_', ' ')}
-                      size="small"
-                      color={advisory.category === 'energy' ? 'success' : 'info'}
-                      variant="outlined"
-                      sx={{ fontWeight: 600 }}
-                    />
-                    <StatusChip label={advisory.priority.toUpperCase()} status={advisory.priority} />
-                  </Box>
+         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" 
+          alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
+        
+            <Button variant="contained" color="primary">
+              All
+            </Button>
+            <Button variant="outlined" color="primary">
+              Open
+            </Button>
+            <Button variant="outlined" color="primary">
+              Severity 1-2
+            </Button>
+        </Stack>
 
-                  <Typography variant="h5" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1, fontWeight: 600 }}>
-                    <IdeaIcon sx={{ color: 'warning.main' }} /> {advisory.title}
-                  </Typography>
-
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                    {advisory.description}
-                  </Typography>
-
-                  <Box sx={{ p: 2, borderRadius: 1, backgroundColor: 'rgba(6, 182, 212, 0.04)', border: '1px solid rgba(6, 182, 212, 0.1)' }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                      Estimated Financial Impact
-                    </Typography>
-                    <Typography variant="body1" sx={{ color: 'primary.main', fontWeight: 600 }}>
-                      {advisory.impact}
-                    </Typography>
-                  </Box>
-                </CardContent>
-
-                <Box sx={{ p: 2, pt: 0, display: 'flex', justifyContent: 'flex-end', gap: 1.5 }}>
-                  <Button size="small" variant="text" color="inherit">
-                    Dismiss
-                  </Button>
-                  <Button size="small" variant="contained" color="primary" startIcon={<AcceptIcon />}>
-                    Accept Action
-                  </Button>
-                </Box>
-              </Card>
-            </Grid>
-          ))
-        )}
-      </Grid>
+      <TableContainer component={Paper} sx={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', 
+        boxShadow: 'none', borderRadius: 3, border: '1px solid rgba(255, 255, 255, 0.08)' , mt: 4 }}>
+        <Table sx={{ minWidth: 720 }}>
+          <TableHead>
+            <TableRow>
+              <TableCell sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                Tag
+              </TableCell>
+              <TableCell sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                Asset
+              </TableCell>
+              <TableCell sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                Severity
+              </TableCell>
+              <TableCell sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                Status
+              </TableCell>
+              <TableCell sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                Action taken
+              </TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {advisoryRows.map((row) => (
+              <TableRow key={row.id} hover sx={{ '&:last-child td': { borderBottom: 0 } }}>
+                <TableCell sx={{ color: 'text.primary', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  {row.tag}
+                </TableCell>
+                <TableCell sx={{ color: 'text.secondary', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  {row.asset}
+                </TableCell>
+                <TableCell sx={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  <Chip
+                    label={row.severity}
+                    size="small"
+                    sx={{
+                      ...severityStyles[row.severity],
+                      fontWeight: 700,
+                      minWidth: 32,
+                      justifyContent: 'center',
+                    }}
+                  />
+                </TableCell>
+                <TableCell sx={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  <StatusChip label={row.status.toUpperCase()} status={row.status} />
+                </TableCell>
+                <TableCell sx={{ color: 'text.secondary', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  {row.action}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
     </PageContainer>
   );
 };
+
 export default Advisories;
