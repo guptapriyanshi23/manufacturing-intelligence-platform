@@ -11,7 +11,7 @@ export const mockHierarchyData: HierarchyNode[] = [
       {
         id: 2,
         parent_id: 1,
-        node_type: 'plant',
+        node_type: 'site',
         name: 'detroit_automotive_plant',
         display_name: 'Detroit Assembly Plant',
         sort_order: 1,
@@ -95,7 +95,7 @@ export const mockHierarchyData: HierarchyNode[] = [
       {
         id: 8,
         parent_id: 1,
-        node_type: 'plant',
+        node_type: 'site',
         name: 'munich_battery_giga',
         display_name: 'Munich Battery Gigafactory',
         sort_order: 2,

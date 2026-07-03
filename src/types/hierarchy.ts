@@ -1,4 +1,4 @@
-export type NodeType = 'enterprise' | 'plant' | 'asset' | 'sensor';
+export type NodeType = 'enterprise' | 'site' | 'area' | 'line' | 'station' | 'asset' | 'component' | 'sensor';
 
 export interface PlantMetadata {
   use_case?: string;
@@ -24,6 +24,7 @@ export interface HierarchyNode {
   node_type: NodeType;
   name: string;
   display_name: string;
+  description?: string;
   sort_order: number;
   created_at?: string;
   updated_at?: string;
@@ -38,6 +39,7 @@ export interface HierarchyNodeCreateInput {
   node_type: NodeType;
   name: string;
   display_name: string;
+  description?: string;
   sort_order: number;
   plant_metadata?: PlantMetadata;
   asset_metadata?: AssetMetadata;

@@ -34,7 +34,7 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 
 export const api = {
   hierarchy: {
-    list: () => request<HierarchyNode[]>('/hierarchy'),
+    list: (flat?: boolean) => request<HierarchyNode[]>(flat ? '/hierarchy?flat=true' : '/hierarchy'),
     get: (id: number) => request<HierarchyNode>(`/hierarchy/${id}`),
     create: (data: HierarchyNodeCreateInput) =>
       request<HierarchyNode>('/hierarchy', {

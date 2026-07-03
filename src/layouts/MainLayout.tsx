@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
@@ -12,8 +12,10 @@ import {
   ListItemText,
   Divider,
   Chip,
-  IconButton
+  IconButton,
+  CircularProgress
 } from '@mui/material';
+import { api } from '../api/client';
 import {
   Dashboard as DashboardIcon,
   Warning as AlertsIcon,
@@ -24,7 +26,6 @@ import {
   Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { TreeView } from '../components/Tree/TreeView';
-import { mockHierarchyData } from '../modules/hierarchy/mockData';
 import type { HierarchyNode } from '../types/hierarchy';
 
 const drawerWidth = 280;
@@ -42,10 +43,28 @@ export const MainLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [selectedNode, setSelectedNode] = useState<HierarchyNode | null>(null);
+  const [nodes, setNodes] = useState<HierarchyNode[]>([]);
+  const [loadingNodes, setLoadingNodes] = useState(true);
+
+  const fetchNodes = () => {
+    setLoadingNodes(true);
+    api.hierarchy.list()
+      .then((res) => {
+        setNodes(res);
+        setLoadingNodes(false);
+      })
+      .catch(() => {
+        setNodes([]);
+        setLoadingNodes(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchNodes();
+  }, [location.pathname]);
 
   const handleSelectNode = (node: HierarchyNode) => {
     setSelectedNode(node);
-    // Optionally redirect to Admin edit page or dashboard with query param
     navigate(`/admin?selectedNodeId=${node.id}`);
   };
 
@@ -123,11 +142,17 @@ export const MainLayout: React.FC = () => {
             </Typography>
           </Box>
           <Box sx={{ flexGrow: 1, overflowY: 'auto', px: 1 }}>
-            <TreeView
-              nodes={mockHierarchyData}
-              onSelectNode={handleSelectNode}
-              selectedNodeId={selectedNode?.id}
-            />
+            {loadingNodes ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                <CircularProgress size={24} />
+              </Box>
+            ) : (
+              <TreeView
+                nodes={nodes}
+                onSelectNode={handleSelectNode}
+                selectedNodeId={selectedNode?.id}
+              />
+            )}
           </Box>
         </Box>
       </Drawer>

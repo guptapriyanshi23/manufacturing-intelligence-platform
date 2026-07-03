@@ -13,8 +13,12 @@ import {
   ExpandMore,
   Business as EnterpriseIcon,
   Factory as PlantIcon,
+  Sensors as SensorIcon,
+  Domain as AreaIcon,
+  LinearScale as LineIcon,
+  DeveloperBoard as StationIcon,
   PrecisionManufacturing as AssetIcon,
-  Sensors as SensorIcon
+  SettingsInputComponent as ComponentIcon
 } from '@mui/icons-material';
 import type { HierarchyNode, NodeType } from '../../types/hierarchy';
 
@@ -28,10 +32,18 @@ const getNodeIcon = (type: NodeType) => {
   switch (type) {
     case 'enterprise':
       return <EnterpriseIcon sx={{ color: '#fbbf24' }} />; // Gold
-    case 'plant':
+    case 'site':
       return <PlantIcon sx={{ color: '#06b6d4' }} />;      // Cyan
+    case 'area':
+      return <AreaIcon sx={{ color: '#a855f7' }} />;       // Purple
+    case 'line':
+      return <LineIcon sx={{ color: '#10b981' }} />;       // Emerald Green
+    case 'station':
+      return <StationIcon sx={{ color: '#0ea5e9' }} />;    // Sky Blue
     case 'asset':
-      return <AssetIcon sx={{ color: '#818cf8' }} />;      // Indigo
+      return <AssetIcon sx={{ color: '#6366f1' }} />;      // Indigo
+    case 'component':
+      return <ComponentIcon sx={{ color: '#94a3b8' }} />;  // Slate Gray
     case 'sensor':
       return <SensorIcon sx={{ color: '#f59e0b' }} />;     // Amber
     default:

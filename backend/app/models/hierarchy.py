@@ -8,9 +8,10 @@ class HierarchyNode(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     parent_id = Column(Integer, ForeignKey("hierarchy_nodes.id", ondelete="CASCADE"), nullable=True)
-    node_type = Column(String, nullable=False)  # 'enterprise', 'plant', 'asset', 'sensor'
+    node_type = Column(String, nullable=False)  # 'enterprise', 'site', 'plant', 'asset', 'sensor'
     name = Column(String, nullable=False)
     display_name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
     sort_order = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)

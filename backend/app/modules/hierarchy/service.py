@@ -6,6 +6,9 @@ from backend.app.modules.hierarchy.schemas import HierarchyNodeCreate, Hierarchy
 def get_node_by_id(db: Session, node_id: int) -> Optional[HierarchyNode]:
     return db.query(HierarchyNode).filter(HierarchyNode.id == node_id).first()
 
+def get_flat_nodes(db: Session) -> List[HierarchyNode]:
+    return db.query(HierarchyNode).order_by(HierarchyNode.sort_order, HierarchyNode.id).all()
+
 def get_hierarchy_tree(db: Session) -> List[HierarchyNode]:
     # Fetch all nodes from database
     nodes = db.query(HierarchyNode).order_by(HierarchyNode.sort_order, HierarchyNode.id).all()
@@ -39,6 +42,7 @@ def create_node(db: Session, node_in: HierarchyNodeCreate) -> HierarchyNode:
         node_type=node_in.node_type,
         name=node_in.name,
         display_name=node_in.display_name,
+        description=node_in.description,
         sort_order=node_in.sort_order
     )
     db.add(db_node)
@@ -82,7 +86,7 @@ def update_node(db: Session, node_id: int, node_in: HierarchyNodeUpdate) -> Opti
     # Update base fields if provided
     update_data = node_in.model_dump(exclude_unset=True)
     
-    for key in ["parent_id", "node_type", "name", "display_name", "sort_order"]:
+    for key in ["parent_id", "node_type", "name", "display_name", "description", "sort_order"]:
         if key in update_data:
             setattr(db_node, key, update_data[key])
             

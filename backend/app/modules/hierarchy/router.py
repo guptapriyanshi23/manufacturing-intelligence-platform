@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Any, Union
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from backend.app.core.database import get_db
@@ -12,12 +12,16 @@ from backend.app.modules.hierarchy import service
 
 router = APIRouter(prefix="/hierarchy", tags=["Hierarchy"])
 
-@router.get("", response_model=List[HierarchyNodeTreeResponse])
-def read_hierarchy(db: Session = Depends(get_db)):
+@router.get("", response_model=List[Union[HierarchyNodeTreeResponse, HierarchyNodeResponse]])
+def read_hierarchy(flat: bool = False, db: Session = Depends(get_db)):
     """
-    Get the complete ISA-95 node hierarchy structured as a nested tree.
+    Get the complete ISA-95 node hierarchy structured as a nested tree, or a flat list.
     """
-    return service.get_hierarchy_tree(db)
+    if flat:
+        nodes = service.get_flat_nodes(db)
+        return [HierarchyNodeResponse.model_validate(n) for n in nodes]
+    nodes = service.get_hierarchy_tree(db)
+    return [HierarchyNodeTreeResponse.model_validate(n) for n in nodes]
 
 @router.get("/{node_id}", response_model=HierarchyNodeResponse)
 def read_node(node_id: int, db: Session = Depends(get_db)):
