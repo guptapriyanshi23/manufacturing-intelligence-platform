@@ -82,12 +82,12 @@ export const MainLayout: React.FC = () => {
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Chip
+            {/* <Chip
               label="System status: Healthy"
               color="success"
               size="small"
               sx={{ fontWeight: 600 }}
-            />
+            /> */}
             <IconButton color="inherit" size="small">
               <RefreshIcon fontSize="small" />
             </IconButton>
