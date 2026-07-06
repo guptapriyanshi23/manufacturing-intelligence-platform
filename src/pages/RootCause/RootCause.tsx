@@ -89,7 +89,7 @@ export const RootCause: React.FC = () => {
       <Grid container spacing={3}>
         {/* Fault photo upload and RCA submission */}
         <Grid item xs={12}>
-          <Card sx={{ border: '1px solid rgba(148, 163, 184, 0.3)', backgroundColor: 'rgba(15, 23, 42, 0.55)' }}>
+          <Card sx={{ border: '1px solid #000000', backgroundColor: '#ffffff' }}>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
                 Fault Evidence & RCA Submission
@@ -101,7 +101,7 @@ export const RootCause: React.FC = () => {
                     onClick={() => fileInputRef.current?.click()}
                     sx={{
                       minHeight: 240,
-                      border: '2px dashed rgba(148, 163, 184, 0.6)',
+                      border: '2px dashed #000000',
                       borderRadius: 2,
                       display: 'flex',
                       flexDirection: 'column',

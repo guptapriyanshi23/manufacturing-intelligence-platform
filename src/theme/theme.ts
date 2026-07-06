@@ -2,42 +2,44 @@ import { createTheme } from '@mui/material/styles';
 
 const theme = createTheme({
   palette: {
-    mode: 'dark',
+    mode: 'light',
     primary: {
-      main: '#06b6d4', // Vibrant Cyan / Industry Blue
-      light: '#67e8f9',
-      dark: '#0891b2',
-      contrastText: '#0f172a',
-    },
-    secondary: {
-      main: '#10b981', // Emerald / Safe Green
-      light: '#34d399',
-      dark: '#059669',
+      main: '#000000', // Black
+      light: '#1e293b',
+      dark: '#000000',
       contrastText: '#ffffff',
     },
+    secondary: {
+      main: '#92d400', // Deloitte Green
+      light: '#a9dd33',
+      dark: '#71a400',
+      contrastText: '#000000',
+    },
     error: {
-      main: '#ef4444', // Red Alert
+      main: '#ef4444',
       light: '#f87171',
       dark: '#dc2626',
     },
     warning: {
-      main: '#f59e0b', // Amber Warning
+      main: '#f59e0b',
       light: '#fbbf24',
       dark: '#d97706',
     },
     info: {
-      main: '#3b82f6', // Info Blue
-      light: '#60a5fa',
-      dark: '#2563eb',
+      main: '#00a1de',
+      light: '#33b4e5',
+      dark: '#00709b',
+      contrastText: '#ffffff',
     },
     background: {
-      default: '#070a13', // Deep industrial space black
-      paper: '#111827',   // Dark gray card background
+      default: '#ffffff', // Pure White
+      paper: '#ffffff',   // Pure White
     },
     text: {
-      primary: '#f3f4f6',
-      secondary: '#9ca3af',
+      primary: '#000000', // Pure Black
+      secondary: '#000000', // Pure Black
     },
+    divider: '#000000', // Pure Black Divider
   },
   typography: {
     fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
@@ -84,17 +86,17 @@ const theme = createTheme({
     MuiCssBaseline: {
       styleOverrides: {
         body: {
-          backgroundColor: '#070a13',
+          backgroundColor: '#ffffff', // Pure White
           scrollbarWidth: 'thin',
           '&::-webkit-scrollbar': {
             width: '6px',
             height: '6px',
           },
           '&::-webkit-scrollbar-track': {
-            background: '#070a13',
+            background: '#ffffff',
           },
           '&::-webkit-scrollbar-thumb': {
-            backgroundColor: '#1f2937',
+            backgroundColor: '#000000', // Pure Black Scrollbar
             borderRadius: '3px',
           },
         },
@@ -109,7 +111,7 @@ const theme = createTheme({
           transition: 'all 0.2s ease-in-out',
           '&:hover': {
             transform: 'translateY(-1px)',
-            boxShadow: '0 4px 12px rgba(6, 182, 212, 0.15)',
+            boxShadow: '0 4px 12px rgba(146, 212, 0, 0.25)', // Deloitte Green glow
           },
         },
       },
@@ -118,25 +120,49 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           backgroundImage: 'none',
-          border: '1px solid rgba(255, 255, 255, 0.05)',
+          border: '1px solid #000000', // Pure Black Border
         },
       },
     },
     MuiDrawer: {
       styleOverrides: {
         paper: {
-          backgroundColor: '#0c0f1d',
-          borderRight: '1px solid rgba(255, 255, 255, 0.05)',
+          backgroundColor: '#000000', // Pure Black Sidebar
+          borderRight: '1px solid #000000',
+          color: '#ffffff',
+          '& .MuiTypography-root': {
+            color: '#ffffff',
+          },
+          '& .MuiListItemIcon-root': {
+            color: '#ffffff', // Pure White Icons
+          },
+          '& .MuiListItemButton-root': {
+            borderRadius: 6,
+            margin: '2px 8px',
+            '&:hover': {
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+            },
+            '&.Mui-selected': {
+              backgroundColor: 'rgba(146, 212, 0, 0.15)',
+              '& .MuiListItemIcon-root': {
+                color: '#92d400',
+              },
+              '& .MuiTypography-root': {
+                color: '#92d400',
+                fontWeight: 600,
+              },
+            },
+          },
         },
       },
     },
     MuiAppBar: {
       styleOverrides: {
         root: {
-          backgroundColor: 'rgba(12, 15, 29, 0.7)',
-          backdropFilter: 'blur(10px)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+          backgroundColor: '#ffffff', // Pure White App Bar
+          borderBottom: '1px solid #000000', // Pure Black Border
           boxShadow: 'none',
+          color: '#000000',
         },
       },
     },

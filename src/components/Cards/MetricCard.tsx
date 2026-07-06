@@ -21,8 +21,8 @@ export const MetricCard: React.FC<MetricCardProps> = ({ title, value, unit, tren
         minWidth: 200,
         position: 'relative',
         overflow: 'hidden',
-        background: `linear-gradient(135deg, ${theme.palette.background.paper} 0%, rgba(17, 24, 39, 0.8) 100%)`,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
+        background: theme.palette.background.paper,
+        borderColor: '#000000',
         '&::before': {
           content: '""',
           position: 'absolute',

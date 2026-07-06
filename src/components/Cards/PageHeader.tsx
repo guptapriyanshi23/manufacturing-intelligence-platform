@@ -32,7 +32,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, actions
         </Box>
         {actions && <Box sx={{ flexShrink: 0 }}>{actions}</Box>}
       </Box>
-      <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.05)' }} />
+      <Divider sx={{ borderColor: '#000000' }} />
     </Box>
   );
 };

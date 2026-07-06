@@ -122,13 +122,13 @@ export const Dashboard: React.FC = () => {
                   <stop offset="95%" stopColor={theme.palette.secondary.main} stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0, 0, 0, 0.1)" />
               <XAxis dataKey="timestamp" stroke={theme.palette.text.secondary} style={{ fontSize: 12 }} />
               <YAxis domain={[60, 100]} stroke={theme.palette.text.secondary} style={{ fontSize: 12 }} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#1f2937',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #000000',
                   borderRadius: 6,
                 }}
               />

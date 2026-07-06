@@ -90,24 +90,24 @@ export const Advisories: React.FC = () => {
             </Button>
         </Stack>
 
-      <TableContainer component={Paper} sx={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', 
-        boxShadow: 'none', borderRadius: 3, border: '1px solid rgba(255, 255, 255, 0.08)' , mt: 4 }}>
+      <TableContainer component={Paper} sx={{ backgroundColor: '#ffffff', 
+        boxShadow: 'none', borderRadius: 3, border: '1px solid #000000' , mt: 4 }}>
         <Table sx={{ minWidth: 720 }}>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <TableCell sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid #000000' }}>
                 Tag
               </TableCell>
-              <TableCell sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <TableCell sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid #000000' }}>
                 Asset
               </TableCell>
-              <TableCell sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <TableCell sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid #000000' }}>
                 Severity
               </TableCell>
-              <TableCell sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <TableCell sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid #000000' }}>
                 Status
               </TableCell>
-              <TableCell sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <TableCell sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid #000000' }}>
                 Action taken
               </TableCell>
             </TableRow>
@@ -115,28 +115,28 @@ export const Advisories: React.FC = () => {
           <TableBody>
             {advisoryRows.map((row) => (
               <TableRow key={row.id} hover sx={{ '&:last-child td': { borderBottom: 0 } }}>
-                <TableCell sx={{ color: 'text.primary', fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                <TableCell sx={{ color: 'text.primary', fontWeight: 600, borderBottom: '1px solid #000000' }}>
                   {row.tag}
                 </TableCell>
-                <TableCell sx={{ color: 'text.secondary', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                <TableCell sx={{ color: 'text.secondary', borderBottom: '1px solid #000000' }}>
                   {row.asset}
                 </TableCell>
-                <TableCell sx={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                <TableCell sx={{ borderBottom: '1px solid #000000' }}>
                   <Chip
                     label={row.severity}
                     size="small"
                     sx={{
-                      ...severityStyles[row.severity],
+                      ...severityStyles[row.severity as keyof typeof severityStyles],
                       fontWeight: 700,
                       minWidth: 32,
                       justifyContent: 'center',
                     }}
                   />
                 </TableCell>
-                <TableCell sx={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                <TableCell sx={{ borderBottom: '1px solid #000000' }}>
                   <StatusChip label={row.status.toUpperCase()} status={row.status} />
                 </TableCell>
-                <TableCell sx={{ color: 'text.secondary', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                <TableCell sx={{ color: 'text.secondary', borderBottom: '1px solid #000000' }}>
                   {row.action}
                 </TableCell>
               </TableRow>
