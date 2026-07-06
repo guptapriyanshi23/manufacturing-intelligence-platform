@@ -189,17 +189,8 @@ export const Alerts: React.FC = () => {
         }
       />
 
-      <Paper sx={{ background: 'rgba(17, 24, 39, 0.6)', backdropFilter: 'blur(10px)', overflow: 'hidden' }}>
-        <Box sx={{ width: '100%', p: 2 }}>
-          {/* {error && (
-            <Box sx={{ mb: 2, p: 2, borderRadius: 2, backgroundColor: 'rgba(220, 38, 38, 0.08)' }}>
-              <Typography color="error">{error}</Typography>
-            </Box>
-          )} */}
           <DataTable title="System Alerts Log" columns={columns} data={alerts} />
-        </Box>
-      </Paper>
-
+        
       <Drawer
         anchor="right"
         open={configOpen}
@@ -210,16 +201,23 @@ export const Alerts: React.FC = () => {
         sx={{ zIndex: (theme) => theme.zIndex.drawer + 3 }}
       >
         <Box sx={{ width: { xs: 320, sm: 380 }, p: 3, height: '100%', backgroundColor: 'background.paper' }}>
-          <Typography variant="h5" sx={{ mb: 1 }}>
+          {/* <Typography variant="h5" sx={{ mb: 1, color: 'secondary.main'}}>
             Alert Configuration
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
             Configure a rule for asset/sensor monitoring and threshold conditions.
-          </Typography>
+          </Typography> */}
+
+          <h2 style={{ color: '#000', fontWeight: 700, }}>
+            Alert Configuration
+          </h2>
+          {/* <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Configure a rule for asset/sensor monitoring and threshold conditions.
+          </Typography> */}
 
           <Stack spacing={3}>
             <TextField
-              label="Rule Name"
+              label="Alert Name"
               value={ruleName}
               onChange={(e) => setRuleName(e.target.value)}
               fullWidth

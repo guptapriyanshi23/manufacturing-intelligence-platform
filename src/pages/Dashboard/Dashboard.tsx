@@ -67,20 +67,20 @@ export const Dashboard: React.FC = () => {
       <Box sx={{ mb: 4 }}>
         <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
           <Grid container spacing={2}>
-            <Grid size={{ xs: 12, md: 8 }}>
+            <Grid size={{ xs: 12, md: 12 }}>
               <Typography variant="h4" sx={{ fontWeight: 700, mt: 1 }}>
                 {selectedNodeName} 
               </Typography>
               <Typography
                 variant="body2"
                 color="text.secondary"
-                sx={{ mt: 1, maxWidth: 720 }}
+                sx={{ mt: 1, }}
               >
                 Anomalous tags are shown by default, stacked one below the other. Use the dropdown to browse any
                 other parameter on this asset — anomaly or not.
               </Typography>
             </Grid>
-            <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'flex', justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
+            {/* <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'flex', justifyContent: { xs: 'flex-start', md: 'flex-end' } }}> */}
               {/* <Button
                 variant="outlined"
                 color="primary"
@@ -99,7 +99,7 @@ export const Dashboard: React.FC = () => {
                   }}
                 />
               </Button> */}
-            </Grid>
+            {/* </Grid> */}
           </Grid>
         </Paper>
       </Box>
@@ -315,20 +315,17 @@ export const Dashboard: React.FC = () => {
         <Grid size={{ xs: 12, lg: 4 }}>
           <Paper
             sx={{
-              p: 2,
+              // p: 2,
               borderRadius: 2,
               border: '1px solid',
               borderColor: 'divider',
-              // backgroundColor: '#DC2626',
-              // color: 'white',
+              overflow: 'hidden',
             }}
           >
             <Box
               sx={{
                 backgroundColor: '#B91C1C',
                 p: 2,
-                borderRadius: 1,
-                mb: 2,
               }}
             >
               <Typography
@@ -342,7 +339,8 @@ export const Dashboard: React.FC = () => {
               </Typography>
             </Box>
 
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+            <Box sx={{ p: 2 }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
               {selectedNodeName}
             </Typography>
 
@@ -374,10 +372,11 @@ export const Dashboard: React.FC = () => {
                   backgroundColor: '#111827',
                 },
               }}
-              onClick={() => navigate('/root-cause')}
+              onClick={() => navigate(`/root-cause?selectedNodeName=${encodeURIComponent(selectedNodeName)}`)}
             >
               Initiate RCA →
             </Button>
+            </Box>
           </Paper>
         </Grid>
       </Grid>

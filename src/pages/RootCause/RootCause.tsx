@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Box, Grid, Card, CardContent, Typography, LinearProgress, CircularProgress, Paper, Button, TextField } from '@mui/material';
-import { Troubleshoot as TroubleshootingIcon, CheckCircle as SolveIcon, PhotoCameraOutlined } from '@mui/icons-material';
+import React, { useState, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
+import { Box, Grid, Card, CardContent, Typography, Button, TextField, MenuItem, Select, FormControl, InputLabel } from '@mui/material';
+import { PhotoCameraOutlined } from '@mui/icons-material';
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
 // import { api } from '../../api/client';
@@ -19,28 +20,28 @@ const demoRcaData = {
 };
 
 export const RootCause: React.FC = () => {
-  const [rcaData, setRcaData] = useState<any>(demoRcaData);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const location = useLocation();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [rootCauseDescription, setRootCauseDescription] = useState('');
   const [actionTaken, setActionTaken] = useState('');
-  const [submitMessage, setSubmitMessage] = useState<string | null>(null);
+  const [status, setStatus] = useState('open');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const searchParams = new URLSearchParams(location.search);
+  const selectedNodeName = searchParams.get('selectedNodeName') || 'ID Fan #2 (Calciner Draft)';
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
     setSelectedFile(file);
-    setSubmitMessage(null);
   };
 
   const handleUploadSubmit = () => {
     if (!selectedFile && !rootCauseDescription && !actionTaken) {
-      setSubmitMessage('Complete at least one field before submitting.');
+      alert('Complete at least one field before submitting.');
       return;
     }
 
-    setSubmitMessage('Fault details captured locally.');
+    alert('Fault details captured locally.');
     setSelectedFile(null);
     setRootCauseDescription('');
     setActionTaken('');
@@ -63,40 +64,39 @@ export const RootCause: React.FC = () => {
   //     });
   // }, []);
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <CircularProgress color="primary" />
-      </Box>
-    );
-  }
-
-  if (error || !rcaData) {
-    return (
-      <Box sx={{ p: 4, textAlign: 'center' }}>
-        <Typography color="error">{error || 'Error loading root cause analysis details.'}</Typography>
-      </Box>
-    );
-  }
-
   return (
     <PageContainer>
       <PageHeader
         title="Root Cause Analysis (RCA)"
-        subtitle="AI-driven diagnostics mapping anomalies to likely failure factors."
+        subtitle="Reached from Dahboard - attach evidence, describe root cause and record the action taken."
       />
 
       <Grid container spacing={3}>
         {/* Fault photo upload and RCA submission */}
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <Card sx={{ border: '1px solid #000000', backgroundColor: '#ffffff' }}>
-            <CardContent>
-              <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
-                Fault Evidence & RCA Submission
+            <Box
+              sx={{
+                backgroundColor: 'secondary.main',
+                p: 2,
+              }}
+            >
+              <Typography
+                variant="h6"
+                sx={{
+                  color: 'white',
+                  fontWeight: 700,
+                }}
+              >
+                {selectedNodeName}
               </Typography>
-              <Grid sx={{ minWidth: '70vw' }}>
-                <Grid item xs={12} md={4} sx={{ display: 'flex', 
-                  flexDirection: 'row', gap: 2, mb: 3 }}>
+            </Box>
+            <CardContent>
+              <Grid container>
+                <Grid size={{ xs: 12, md: 12 }} sx={{
+                  display: 'flex',
+                  flexDirection: 'row', gap: 2, mb: 3
+                }}>
                   <Box
                     onClick={() => fileInputRef.current?.click()}
                     sx={{
@@ -148,8 +148,28 @@ export const RootCause: React.FC = () => {
                   />
                 </Grid>
 
-                <Grid item xs={12} md={8} sx={{ display: 'flex', 
-                  flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                <Grid size={{ xs: 12 }} sx={{
+                  display: 'flex',
+                  flexDirection: 'row', gap: 2, mb: 2
+                }}>
+                  <FormControl sx={{ minWidth: 500 }}>
+                    <InputLabel>Status</InputLabel>
+                    <Select
+                      value={status}
+                      label="Status"
+                      onChange={(event) => setStatus(event.target.value)}
+                    >
+                      <MenuItem value="open">Open</MenuItem>
+                      <MenuItem value="acknowledge">Acknowledge</MenuItem>
+                      <MenuItem value="resolved">Resolved</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 12 }} sx={{
+                  display: 'flex',
+                  flexDirection: 'row', alignItems: 'center', gap: 2
+                }}>
                   <TextField
                     label="Action taken"
                     placeholder="Enter action taken to resolve the issue"

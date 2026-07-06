@@ -81,8 +81,8 @@ export const Reports: React.FC = () => {
   return (
     <PageContainer>
       <PageHeader
-        title="Industrial Reports"
-        subtitle="Export shift summaries, asset diagnostic logs, and energy profiles."
+        title="Generate Reports"
+        subtitle="Generate Advisory summaries - for a single asset, a set of equipment or an entire process line."
       />
 
       <Grid container spacing={3}>

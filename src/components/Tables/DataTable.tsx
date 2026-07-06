@@ -31,7 +31,7 @@ export function DataTable<T extends { id: string | number }>({
   emptyMessage = 'No data available',
 }: DataTableProps<T>) {
   return (
-    <TableContainer component={Paper} sx={{ boxShadow: 'none' }}>
+    <TableContainer component={Paper} sx={{ boxShadow: 'none',  borderRadius: 3, border: '1px solid #000000' ,}}>
       {title && (
         <Box sx={{ p: 2 }}>
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
