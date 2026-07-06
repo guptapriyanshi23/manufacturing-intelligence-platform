@@ -5,6 +5,7 @@ from backend.app.core.database import engine, Base
 
 # Import models to ensure they are registered for auto-creation
 from backend.app.models import hierarchy  # noqa
+from backend.app.models import alerts  # noqa
 
 # Import routers from our business domain modules
 from backend.app.modules.hierarchy.router import router as hierarchy_router

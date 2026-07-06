@@ -56,6 +56,12 @@ export const api = {
   },
   dashboard: {
     getSummary: () => request<any>('/dashboard/summary'),
+    getTelemetry: (sensorIds: string[], hours: number = 24) => {
+      const params = new URLSearchParams();
+      sensorIds.forEach(id => params.append('sensor_ids', id));
+      params.append('hours', hours.toString());
+      return request<any[]>(`/dashboard/telemetry?${params.toString()}`);
+    },
   },
   rootCause: {
     get: (eventId: string) => request<any>(`/root-cause/${eventId}`),

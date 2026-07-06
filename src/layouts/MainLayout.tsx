@@ -64,7 +64,11 @@ export const MainLayout: React.FC = () => {
 
   const handleSelectNode = (node: HierarchyNode) => {
     setSelectedNode(node);
-    navigate(`/admin?selectedNodeId=${node.id}&selectedNodeName=${encodeURIComponent(node.display_name)}`);
+    if (location.pathname === '/admin') {
+      navigate(`/admin?selectedNodeId=${node.id}&selectedNodeName=${encodeURIComponent(node.display_name)}`);
+    } else {
+      navigate(`/dashboard?selectedNodeId=${node.id}`);
+    }
   };
 
   return (
@@ -79,7 +83,7 @@ export const MainLayout: React.FC = () => {
                 |
               </Typography>
               <Typography variant="h5" color="text.primary" sx={{ fontWeight: 700, letterSpacing: '0.5px' }}>
-                 Smart Manufacturing
+                 Asset Digital Twin
               </Typography>
             </Box>
           </Box>

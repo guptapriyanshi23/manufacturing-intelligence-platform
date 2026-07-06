@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 class AlertBase(BaseModel):
     node_id: int
+    sensor_id: Optional[str] = None
     severity: str  # 'critical', 'warning', 'info'
     message: str
     status: str  # 'active', 'acknowledged', 'resolved'
