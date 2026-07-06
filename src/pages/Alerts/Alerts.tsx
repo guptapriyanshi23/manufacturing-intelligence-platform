@@ -184,7 +184,7 @@ export const Alerts: React.FC = () => {
         subtitle="Critical warnings, system diagnostics, and failure states needing immediate attention."
         actions={
           <Button variant="contained" color="primary" onClick={handleOpenConfig}>
-            Add Alert
+            Add Alert Rule
           </Button>
         }
       />
