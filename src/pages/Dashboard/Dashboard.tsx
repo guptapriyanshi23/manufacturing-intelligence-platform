@@ -350,7 +350,7 @@ export const Dashboard: React.FC = () => {
                     backgroundColor: '#1e293b',
                   },
                 }}
-                onClick={() => navigate('/root-cause')}
+                onClick={() => navigate(`/root-cause?selectedNodeName=${encodeURIComponent(activeNode?.display_name || '')}`)}
               >
                 Initiate RCA →
               </Button>

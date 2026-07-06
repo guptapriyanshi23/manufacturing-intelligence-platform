@@ -1,74 +1,52 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Card, CardContent, Grid, Button, Typography, CircularProgress, MenuItem, Select, FormControl, InputLabel, TextField, Stack } from '@mui/material';
-import { Download as DownloadIcon, Assessment as ReportIcon } from '@mui/icons-material';
+import { Box, Card, CardContent, Grid, Button, Typography, CircularProgress, MenuItem, Select, FormControl, InputLabel, TextField } from '@mui/material';
+import { Download as DownloadIcon } from '@mui/icons-material';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
 import { MetricCard } from '../../components/Cards/MetricCard';
-import { DataTable } from '../../components/Tables/DataTable';
-import { StatusChip } from '../../components/Forms/StatusChip';
 import { api } from '../../api/client';
 
+const demoAdvisories = [
+  { id: 1, status: 'open',         severity: 'Critical' },
+  { id: 2, status: 'open',         severity: 'High'     },
+  { id: 3, status: 'acknowledged', severity: 'High'     },
+  { id: 4, status: 'acknowledged', severity: 'Medium'   },
+  { id: 5, status: 'acknowledged', severity: 'Medium'   },
+  { id: 6, status: 'resolved',     severity: 'Medium'   },
+  { id: 7, status: 'resolved',     severity: 'Low'      },
+  { id: 8, status: 'resolved',     severity: 'Low'      },
+  { id: 9, status: 'resolved',     severity: 'Low'      },
+  { id: 10, status: 'open',        severity: 'Low'      },
+  { id: 11, status: 'open',        severity: 'Low'      },
+  { id: 12, status: 'open',        severity: 'Info'     },
+];
+
+const severityColors: Record<string, string> = {
+  Critical: '#d32f2f',
+  High:     '#f57c00',
+  Medium:   '#fbc02d',
+  Low:      '#00bfa5',
+  Info:     '#9e9e9e',
+};
+
+// Ordered top-to-bottom matching the image: Critical at top, Info at bottom
+const severityChartData = ['Info', 'Low', 'Medium', 'High', 'Critical'].map((sev) => ({
+  severity: sev,
+  count: demoAdvisories.filter((a) => a.severity === sev).length,
+})).reverse(); // reverse so Critical renders at top in horizontal chart
+
 export const Reports: React.FC = () => {
-  const [reports, setReports] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [reportType, setReportType] = useState('oee_analysis');
+  const [loading, setLoading] = useState(false);
   const [scope, setScope] = useState('Individual equipment');
   const [fromDate, setFromDate] = useState<string | null>(null);
   const [toDate, setToDate] = useState<string | null>(null);
 
-  useEffect(() => {
-    api.reports.list()
-      .then((res) => {
-        setReports(res);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message || 'Failed to fetch reports');
-        setLoading(false);
-      });
-  }, []);
-
-  const columns = [
-    { id: 'id', label: 'Report ID' },
-    { id: 'name', label: 'Report Name' },
-    {
-      id: 'report_type',
-      label: 'Format Type',
-      render: (row: any) => row.report_type.toUpperCase().replace('_', ' '),
-    },
-    {
-      id: 'status',
-      label: 'Generation Status',
-      render: (row: any) => (
-        <StatusChip label={row.status.toUpperCase()} status={row.status === 'ready' ? 'resolved' : 'info'} />
-      ),
-    },
-    {
-      id: 'created_at',
-      label: 'Generated On',
-      render: (row: any) => new Date(row.created_at).toLocaleDateString(),
-    },
-    {
-      id: 'download_url',
-      label: 'Download Link',
-      render: (row: any) => (
-        <Button
-          size="small"
-          variant="outlined"
-          color="primary"
-          startIcon={<DownloadIcon />}
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            alert(`Initiating download for: ${row.name}`);
-          }}
-        >
-          Download
-        </Button>
-      ),
-    },
-  ];
+  const total        = demoAdvisories.length;
+  const openCount    = demoAdvisories.filter((a) => a.status === 'open').length;
+  const ackCount     = demoAdvisories.filter((a) => a.status === 'acknowledged').length;
+  const resolvedCount= demoAdvisories.filter((a) => a.status === 'resolved').length;
+  const pct          = (n: number) => `${Math.round((n / total) * 100)}%`;
 
   if (loading) {
     return (
@@ -113,7 +91,7 @@ export const Reports: React.FC = () => {
                     type="date"
                     size="small"
                     fullWidth
-                    InputLabelProps={{ shrink: true }}
+                    slotProps={{ inputLabel: { shrink: true } }}
                     value={fromDate || ''}
                     onChange={(e) => setFromDate(e.target.value || null)}
                   />
@@ -125,7 +103,7 @@ export const Reports: React.FC = () => {
                     type="date"
                     size="small"
                     fullWidth
-                    InputLabelProps={{ shrink: true }}
+                    slotProps={{ inputLabel: { shrink: true } }}
                     value={toDate || ''}
                     onChange={(e) => setToDate(e.target.value || null)}
                   />
@@ -141,27 +119,69 @@ export const Reports: React.FC = () => {
           </Button>
 
         {/* Metric summary row */}
-        <Grid size={{ xs: 12, md: 12 }} sx={{ mt: 3 }}>
+        <Grid size={{ xs: 12 }} sx={{ mt: 3 }}>
           <Grid container spacing={2}>
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <MetricCard title="Advisories" value={5} />
+              <MetricCard title="Advisories" value={total} />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <MetricCard title="Avg. severity" value={2.6} />
+              <MetricCard title="Open" value={`${openCount}  (${pct(openCount)})`} />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <MetricCard title="Resolved" value="40%" />
+              <MetricCard title="Acknowledged" value={`${ackCount}  (${pct(ackCount)})`} />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <MetricCard title="Open" value={2} />
+              <MetricCard title="Resolved" value={`${resolvedCount}  (${pct(resolvedCount)})`} />
             </Grid>
           </Grid>
         </Grid>
 
+        {/* Severity column chart */}
+        <Grid size={{ xs: 12 }} sx={{ mt: 1 }}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
+                Advisory Count by Severity
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Number of advisories raised per severity level
+              </Typography>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart
+                  layout="vertical"
+                  data={severityChartData}
+                  margin={{ top: 8, right: 48, left: 16, bottom: 8 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <XAxis
+                    type="number"
+                    allowDecimals={false}
+                    tick={{ fontSize: 13 }}
+                    tickCount={7}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="severity"
+                    width={90}
+                    tick={{ fontSize: 13 }}
+                  />
+                  <Tooltip formatter={(v) => [`${v}`, 'Count']} />
+                  <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={36}>
+                    <LabelList dataKey="count" position="right" style={{ fontSize: 13, fontWeight: 600 }} />
+                    {severityChartData.map((entry) => (
+                      <Cell key={entry.severity} fill={severityColors[entry.severity] ?? '#90a4ae'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </Grid>
+
         {/* Download action */}
-      <Button variant="contained" color="primary" startIcon={<DownloadIcon />}>
-                  Download PDF
-      </Button>
+        <Button variant="contained" color="primary" startIcon={<DownloadIcon />}>
+          Download PDF
+        </Button>
       </Grid>
     </PageContainer>
   );

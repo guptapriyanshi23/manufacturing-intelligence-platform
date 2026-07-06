@@ -138,7 +138,7 @@ export const RootCause: React.FC = () => {
                   label="Root cause description"
                   placeholder="Describe the likely root cause here"
                   multiline
-                  rows={3}
+                  rows={5}
                   fullWidth
                   value={rootCauseDescription}
                   onChange={(event) => setRootCauseDescription(event.target.value)}

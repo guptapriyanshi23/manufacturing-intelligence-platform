@@ -3,7 +3,11 @@ import {
   Box,
   Button,
   Chip,
+  FormControl,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   Table,
   TableBody,
@@ -13,6 +17,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material';
+import type { SelectChangeEvent } from '@mui/material/Select';
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
 import { StatusChip } from '../../components/Forms/StatusChip';
@@ -68,7 +73,37 @@ const severityStyles = {
   5: { backgroundColor: 'rgba(34, 197, 94, 0.12)', color: 'success.main' },
 };
 
+const statusOptions = ['open', 'acknowledged', 'resolved'] as const;
+const severityOptions = ['1', '2', '3', '4', '5'] as const;
+
+type StatusOption = (typeof statusOptions)[number];
+type SeverityOption = (typeof severityOptions)[number];
+
 export const Advisories: React.FC = () => {
+  const [statusFilter, setStatusFilter] = React.useState<StatusOption | ''>('');
+  const [severityFilter, setSeverityFilter] = React.useState<SeverityOption | ''>('');
+
+  const filteredRows = advisoryRows.filter((row) => {
+    const statusMatch = statusFilter ? row.status === statusFilter : true;
+    const severityMatch = severityFilter ? String(row.severity) === severityFilter : true;
+    return statusMatch && severityMatch;
+  });
+
+  const handleStatusChange = (event: SelectChangeEvent) => {
+    setStatusFilter(event.target.value as StatusOption | '');
+  };
+
+  const handleSeverityChange = (event: SelectChangeEvent) => {
+    setSeverityFilter(event.target.value as SeverityOption | '');
+  };
+
+  const isAllActive = !statusFilter && !severityFilter;
+
+  const handleResetFilters = () => {
+    setStatusFilter('');
+    setSeverityFilter('');
+  };
+
   return (
     <PageContainer>
       <PageHeader
@@ -76,21 +111,68 @@ export const Advisories: React.FC = () => {
         subtitle="Active system advisories for equipment health, severity tracking, and remediation actions."
       />
 
-         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" 
-          alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
-        
-            <Button variant="contained" color="primary">
-              All
-            </Button>
-            <Button variant="outlined" color="primary">
-              Open
-            </Button>
-            <Button variant="outlined" color="primary">
-              Severity 1-2
-            </Button>
-        </Stack>
+      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between"
+        alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2}>
+        <Button
+          variant={isAllActive ? 'contained' : 'outlined'}
+          color="primary"
+          onClick={handleResetFilters}
+        >
+          All
+        </Button>
 
-      <TableContainer component={Paper} sx={{ backgroundColor: '#ffffff', 
+        <FormControl sx={{ minWidth: 180 }} size="small">
+          <InputLabel id="status-filter-label">Status</InputLabel>
+          <Select
+            labelId="status-filter-label"
+            value={statusFilter}
+            label="Status"
+            onChange={handleStatusChange}
+            renderValue={(selected) => {
+              if (!selected) {
+                return 'Status';
+              }
+              return selected.charAt(0).toUpperCase() + selected.slice(1);
+            }}
+          >
+            <MenuItem value="">
+              <em>None</em>
+            </MenuItem>
+            {statusOptions.map((option) => (
+              <MenuItem key={option} value={option}>
+                {option.charAt(0).toUpperCase() + option.slice(1)}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <FormControl sx={{ minWidth: 180 }} size="small">
+          <InputLabel id="severity-filter-label">Severity</InputLabel>
+          <Select
+            labelId="severity-filter-label"
+            value={severityFilter}
+            label="Severity"
+            onChange={handleSeverityChange}
+            renderValue={(selected) => {
+              if (!selected) {
+                return 'Severity';
+              }
+              return selected;
+            }}
+          >
+            <MenuItem value="">
+              <em>None</em>
+            </MenuItem>
+            {severityOptions.map((option) => (
+              <MenuItem key={option} value={option}>
+                {option}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Stack>
+
+      <TableContainer component={Paper} sx={{ backgroundColor: '#ffffff',
         boxShadow: 'none',  border: '1px solid #000000' , mt: 4 }}>
         <Table sx={{ minWidth: 720 }}>
           <TableHead>
@@ -113,7 +195,7 @@ export const Advisories: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {advisoryRows.map((row) => (
+            {filteredRows.map((row) => (
               <TableRow key={row.id} hover sx={{ '&:last-child td': { borderBottom: 0 } }}>
                 <TableCell sx={{ color: 'text.primary', fontWeight: 600, borderBottom: '1px solid #000000' }}>
                   {row.tag}
@@ -141,6 +223,13 @@ export const Advisories: React.FC = () => {
                 </TableCell>
               </TableRow>
             ))}
+            {filteredRows.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
+                  No advisories match the current filter.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </TableContainer>
