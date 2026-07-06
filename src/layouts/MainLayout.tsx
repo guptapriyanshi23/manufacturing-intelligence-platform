@@ -64,7 +64,11 @@ export const MainLayout: React.FC = () => {
 
   const handleSelectNode = (node: HierarchyNode) => {
     setSelectedNode(node);
-    navigate(`/admin?selectedNodeId=${node.id}&selectedNodeName=${encodeURIComponent(node.display_name)}`);
+    if (location.pathname === '/admin') {
+      navigate(`/admin?selectedNodeId=${node.id}&selectedNodeName=${encodeURIComponent(node.display_name)}`);
+    } else {
+      navigate(`/dashboard?selectedNodeId=${node.id}`);
+    }
   };
 
   return (

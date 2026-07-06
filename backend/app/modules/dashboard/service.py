@@ -1,4 +1,45 @@
+from typing import List
+from datetime import datetime, timedelta, timezone
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 from backend.app.modules.dashboard.schemas import DashboardSummaryResponse, MetricItem, PerformanceData
+
+def get_sensor_telemetry(db: Session, sensor_ids: List[str], hours: int = 24):
+    start_time = datetime.now(timezone.utc) - timedelta(hours=hours)
+    if not sensor_ids:
+        return []
+    
+    # 1. Query sensor thresholds
+    thresh_query = text("""
+        SELECT sensor_id, alarm_limit, trip_limit 
+        FROM sensor_thresholds 
+        WHERE sensor_id IN :sensor_ids
+    """)
+    thresh_result = db.execute(thresh_query, {"sensor_ids": tuple(sensor_ids)}).fetchall()
+    thresholds_map = {row[0]: (row[1], row[2]) for row in thresh_result}
+
+    # 2. Query telemetry points
+    query = text("""
+        SELECT timestamp, sensor_id, sensor_name, value 
+        FROM sensor_telemetry 
+        WHERE sensor_id IN :sensor_ids AND timestamp >= :start_time
+        ORDER BY timestamp ASC
+    """)
+    result = db.execute(query, {"sensor_ids": tuple(sensor_ids), "start_time": start_time}).fetchall()
+    
+    output = []
+    for row in result:
+        sid = row[1]
+        alarm_lim, trip_lim = thresholds_map.get(sid, (None, None))
+        output.append({
+            "timestamp": row[0].isoformat() if row[0] else None,
+            "sensor_id": sid,
+            "sensor_name": row[2],
+            "value": row[3],
+            "alarm_limit": alarm_lim,
+            "trip_limit": trip_lim
+        })
+    return output
 
 def get_dashboard_summary() -> DashboardSummaryResponse:
     return DashboardSummaryResponse(
