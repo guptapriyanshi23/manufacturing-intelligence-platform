@@ -14,7 +14,8 @@ import {
   Select,
   MenuItem,
   ListItemText,
-  Button
+  Button,
+  Stack
 } from '@mui/material';
 import {
   LineChart,
@@ -50,6 +51,17 @@ export const Dashboard: React.FC = () => {
   const [descendantSensors, setDescendantSensors] = useState<HierarchyNode[]>([]);
   const [selectedSensorIds, setSelectedSensorIds] = useState<string[]>([]);
   const [telemetryPoints, setTelemetryPoints] = useState<TelemetryPoint[]>([]);
+  const [advisories, setAdvisories] = useState<any[]>([]);
+
+  const fetchAdvisories = () => {
+    api.advisories.list()
+      .then((res) => setAdvisories(res))
+      .catch((err) => console.error("Failed to load advisories:", err));
+  };
+
+  useEffect(() => {
+    fetchAdvisories();
+  }, []);
 
   // 1. Fetch flat hierarchy nodes
   useEffect(() => {
@@ -146,12 +158,43 @@ export const Dashboard: React.FC = () => {
   // Find label of currently selected root node
   const activeNode = flatNodes.find(n => n.id === Number(selectedNodeId)) || flatNodes[0];
 
+  const severityPriority: Record<string, number> = {
+    critical: 1,
+    warning: 2,
+    info: 3,
+  };
+
+  const openAdvisories = advisories
+    .filter((a) => a.status === 'open')
+    .sort((a, b) => {
+      const pA = severityPriority[a.severity] || 99;
+      const pB = severityPriority[b.severity] || 99;
+      return pA - pB;
+    });
+
+  const handleAcknowledge = async (advisoryId: number) => {
+    try {
+      await api.advisories.update(advisoryId, { status: 'acknowledged' });
+      navigate('/advisories');
+    } catch (error) {
+      console.error('Failed to acknowledge advisory:', error);
+    }
+  };
+
+  const handleInitiateRca = (advisory: any) => {
+    navigate(
+      `/root-cause?advisoryId=${advisory.id}&selectedNodeName=${encodeURIComponent(
+        advisory.asset
+      )}`
+    );
+  };
+
   return (
     <PageContainer>
       {/* Header Section */}
       <Box sx={{ mb: 4 }}>
         <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #000000' }}>
-          <Grid container spacing={2} alignItems="center">
+          <Grid container spacing={2} sx={{ alignItems: 'center' }}>
             <Grid size={{ xs: 12, md: 8 }}>
               <Typography variant="h4" sx={{ fontWeight: 700 }}>
                 {activeNode ? activeNode.display_name : 'Global Operations'} Dashboard
@@ -294,68 +337,88 @@ export const Dashboard: React.FC = () => {
             </Grid>
           </Grid>
 
-          {/* Right Column: Advisory Mockup */}
+          {/* Right Column: Dynamic Advisories */}
           <Grid size={{ xs: 12, lg: 4 }}>
-            <Paper sx={{ p: 0, borderRadius: 2, border: '1px solid #000000', overflow: 'hidden' }}>
-              <Box sx={{ backgroundColor: '#B91C1C', p: 2 }}>
-                <Typography variant="h6" sx={{ color: 'white', fontWeight: 700 }}>
-                  ADVISORY - S1 - CRITICAL
-                </Typography>
-              </Box>
+            {openAdvisories.length > 0 ? (
+              <Stack spacing={3}>
+                {openAdvisories.map((advisory) => (
+                  <Paper key={advisory.id} sx={{ p: 0, borderRadius: 2, border: '1px solid #000000', overflow: 'hidden' }}>
+                    <Box
+                      sx={{
+                        backgroundColor:
+                          advisory.severity === 'critical'
+                            ? '#B91C1C'
+                            : advisory.severity === 'warning'
+                            ? '#D97706'
+                            : '#2563EB',
+                        p: 2,
+                      }}
+                    >
+                      <Typography variant="h6" sx={{ color: 'white', fontWeight: 700, textTransform: 'uppercase' }}>
+                        ADVISORY - {advisory.severity}
+                      </Typography>
+                    </Box>
 
-              <Box sx={{ p: 2 }}>
-                <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-                {activeNode ? activeNode.display_name : 'Selected Asset'}
-              </Typography>
+                    <Box sx={{ p: 2 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                        {advisory.asset}
+                      </Typography>
 
-              <Typography variant="body2" sx={{ mb: 3, opacity: 0.95 }}>
-                Bearing Temperature - first detected 24 Jun, 04:12
-              </Typography>
+                      <Typography variant="body2" sx={{ mb: 3, opacity: 0.95, fontWeight: 500 }}>
+                        {advisory.tag} - first detected{' '}
+                        {new Date(advisory.first_detected).toLocaleDateString([], {
+                          day: '2-digit',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </Typography>
 
-              <Typography variant="body2" sx={{ mb: 2, lineHeight: 1.6 }}>
-                Bearing temperature has trended <strong>44% above</strong> the twin baseline over the last 6 hours —
-                consistent with advancing bearing wear. Severity has escalated <strong>S4 → S3 → S2 → S1</strong> as the
-                deviation sustained. The legacy 85°C alarm is only now starting to fire — the twin flagged this a full 6
-                hours earlier, well ahead of the 95°C trip limit.
-              </Typography>
+                      <Typography variant="body2" sx={{ mb: 3, lineHeight: 1.6 }}>
+                        {advisory.description}
+                      </Typography>
 
-              <Typography variant="body2" sx={{ mb: 3, opacity: 0.9 }}>
-                Bearing Vibration also flagged <strong>S4 - LOW</strong>
-              </Typography>
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        color="primary"
+                        onClick={() => handleAcknowledge(advisory.id)}
+                        sx={{
+                          fontWeight: 600,
+                          textTransform: 'none',
+                          py: 1.5,
+                          mb: 2,
+                        }}
+                      >
+                        Acknowledge
+                      </Button>
 
-              <Button
-                fullWidth
-                variant="contained"
-                color="primary"
-                sx={{
-                  fontWeight: 600,
-                  textTransform: 'none',
-                  py: 1.5,
-                  mb: 2,
-                }}
-              >
-                Acknowledge
-              </Button>
-
-              <Button
-                fullWidth
-                variant="contained"
-                sx={{
-                  backgroundColor: '#000000',
-                  color: 'white',
-                  fontWeight: 600,
-                  textTransform: 'none',
-                  py: 1.5,
-                  '&:hover': {
-                    backgroundColor: '#1e293b',
-                  },
-                }}
-                onClick={() => navigate(`/root-cause?selectedNodeName=${encodeURIComponent(activeNode?.display_name || '')}`)}
-              >
-                Initiate RCA →
-              </Button>
-              </Box>
-            </Paper>
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        sx={{
+                          backgroundColor: '#000000',
+                          color: 'white',
+                          fontWeight: 600,
+                          textTransform: 'none',
+                          py: 1.5,
+                          '&:hover': {
+                            backgroundColor: '#1e293b',
+                          },
+                        }}
+                        onClick={() => handleInitiateRca(advisory)}
+                      >
+                        Initiate RCA →
+                      </Button>
+                    </Box>
+                  </Paper>
+                ))}
+              </Stack>
+            ) : (
+              <Paper sx={{ p: 3, textAlign: 'center', border: '1px solid #000000' }}>
+                <Typography color="text.secondary">No active optimization or maintenance advisories.</Typography>
+              </Paper>
+            )}
           </Grid>
         </Grid>
       )}

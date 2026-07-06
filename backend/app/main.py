@@ -6,6 +6,7 @@ from backend.app.core.database import engine, Base
 # Import models to ensure they are registered for auto-creation
 from backend.app.models import hierarchy  # noqa
 from backend.app.models import alerts  # noqa
+from backend.app.models import advisories  # noqa
 
 # Import routers from our business domain modules
 from backend.app.modules.hierarchy.router import router as hierarchy_router
@@ -15,6 +16,9 @@ from backend.app.modules.rootcause.router import router as rootcause_router
 from backend.app.modules.advisories.router import router as advisories_router
 from backend.app.modules.reports.router import router as reports_router
 from backend.app.modules.admin.router import router as admin_router
+
+from fastapi.staticfiles import StaticFiles
+import os
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -31,6 +35,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Ensure upload directory exists and mount static files
+os.makedirs("backend/app/static/uploads", exist_ok=True)
+app.mount("/static", StaticFiles(directory="backend/app/static"), name="static")
 
 # Auto-create tables on startup (useful if migration has not run yet)
 @app.on_event("startup")

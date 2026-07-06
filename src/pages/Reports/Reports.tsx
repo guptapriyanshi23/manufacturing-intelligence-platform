@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Box, Card, CardContent, Grid, Button, Typography, CircularProgress, MenuItem, Select, FormControl, InputLabel, TextField } from '@mui/material';
 import { Download as DownloadIcon } from '@mui/icons-material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
 import { MetricCard } from '../../components/Cards/MetricCard';
-import { api } from '../../api/client';
 
 const demoAdvisories = [
   { id: 1, status: 'open',         severity: 'Critical' },
@@ -37,7 +36,7 @@ const severityChartData = ['Info', 'Low', 'Medium', 'High', 'Critical'].map((sev
 })).reverse(); // reverse so Critical renders at top in horizontal chart
 
 export const Reports: React.FC = () => {
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const [scope, setScope] = useState('Individual equipment');
   const [fromDate, setFromDate] = useState<string | null>(null);
   const [toDate, setToDate] = useState<string | null>(null);
@@ -68,7 +67,7 @@ export const Reports: React.FC = () => {
         <Grid size={{ xs: 12, md: 12 }}>
           <Card>
             <CardContent>
-              <Grid container spacing={2} alignItems="center">
+              <Grid container spacing={2} sx={{ alignItems: 'center' }}>
                 <Grid size={{ xs: 12, md: 4 }}>
                   <FormControl fullWidth size="small">
                     <InputLabel id="scope-label">Scope</InputLabel>

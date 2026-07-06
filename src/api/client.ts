@@ -68,6 +68,22 @@ export const api = {
   },
   advisories: {
     list: () => request<any[]>('/advisories'),
+    update: (id: number, data: any) =>
+      request<any>(`/advisories/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    uploadImage: (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return fetch('http://127.0.0.1:8000/api/v1/advisories/upload', {
+        method: 'POST',
+        body: formData,
+      }).then(res => {
+        if (!res.ok) throw new Error("Upload failed");
+        return res.json() as Promise<{ url: string }>;
+      });
+    },
   },
   reports: {
     list: () => request<any[]>('/reports'),

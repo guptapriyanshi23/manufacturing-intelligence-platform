@@ -9,9 +9,6 @@ import {
   List,
   ListItemButton,
   ListItemIcon,
-  ListItemText,
-  Divider,
-  IconButton,
   CircularProgress,
   Tooltip
 } from '@mui/material';
@@ -22,8 +19,7 @@ import {
   Troubleshoot as RootCauseIcon,
   Lightbulb as AdvisoriesIcon,
   Assessment as ReportsIcon,
-  Settings as AdminIcon,
-  Refresh as RefreshIcon
+  Settings as AdminIcon
 } from '@mui/icons-material';
 import { TreeView } from '../components/Tree/TreeView';
 import type { HierarchyNode } from '../types/hierarchy';
@@ -108,6 +104,7 @@ export const MainLayout: React.FC = () => {
                     sx={{
                       borderRadius: 1,
                       color: isActive ? 'primary.main' : 'secondary.light',
+                      justifyContent: 'center',
                       '&.Mui-selected': {
                         color: 'primary.main',
                         fontWeight: 600,
@@ -116,7 +113,7 @@ export const MainLayout: React.FC = () => {
                   >
 
                     <Tooltip title={item.label} placement="bottom" arrow >
-                      <ListItemIcon sx={{ color: 'inherit' }}>{item.icon}</ListItemIcon>
+                      <ListItemIcon sx={{ color: 'inherit', minWidth: 0 }}>{item.icon}</ListItemIcon>
                     </Tooltip>
                   </ListItemButton>
                 );
@@ -187,7 +184,7 @@ export const MainLayout: React.FC = () => {
             sx={{
               flexGrow: 1,
               overflowY: 'auto',
-              pl: 1,
+              pl: 0,
               pr: 0, // No right padding so scrollbar is flush against the edge
               '&::-webkit-scrollbar': {
                 width: '4px',

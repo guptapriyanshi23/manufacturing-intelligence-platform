@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Typography,
   CircularProgress,
-  Paper,
   Button,
   Drawer,
   Stack,
@@ -89,7 +87,6 @@ const demoAlerts = [
 export const Alerts: React.FC = () => {
   const [alerts, setAlerts] = useState<any[]>(demoAlerts);
   const [loading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
   const [ruleName, setRuleName] = useState('');
   const [selectedAsset, setSelectedAsset] = useState('compressor-1');
@@ -106,8 +103,8 @@ export const Alerts: React.FC = () => {
           setAlerts(res);
         }
       })
-      .catch((err) => {
-        setError('Using sample alerts; live alert feed unavailable.');
+      .catch(() => {
+        // Sample alerts already in state
       });
   }, []);
 

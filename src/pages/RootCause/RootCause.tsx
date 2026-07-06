@@ -1,78 +1,126 @@
-import React, { useState, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
-import { Box, Grid, Card, CardContent, Typography, Button, TextField, MenuItem, Select, FormControl, InputLabel } from '@mui/material';
+import React, { useState, useRef, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  Box,
+  Grid,
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  TextField,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+  Paper,
+  Stack,
+} from '@mui/material';
 import { PhotoCameraOutlined } from '@mui/icons-material';
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
-// import { api } from '../../api/client';
-
-const demoRcaData = {
-  event_id: '101',
-  asset_name: 'Compressor 1',
-  anomaly_type: 'Pressure Spike',
-  detected_at: new Date().toISOString(),
-  possible_causes: [
-    { name: 'Valve Failure', category: 'mechanical', probability: 0.78, description: 'Pressure control valve may be sticking or leaking.' },
-    { name: 'Sensor Drift', category: 'sensor', probability: 0.56, description: 'Pressure sensor output is trending outside expected range.' },
-    { name: 'Fluid Contamination', category: 'fluid', probability: 0.38, description: 'Impurities in the fluid can cause pressure spikes.' },
-  ],
-  recommendation: 'Inspect the pressure control valve and test the sensor alignment before running the compressor again.',
-};
+import { api } from '../../api/client';
 
 export const RootCause: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [rootCauseDescription, setRootCauseDescription] = useState('');
   const [actionTaken, setActionTaken] = useState('');
-  const [status, setStatus] = useState('open');
+  const [advisories, setAdvisories] = useState<any[]>([]);
+  const [selectedAdvisoryId, setSelectedAdvisoryId] = useState<number | ''>('');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const searchParams = new URLSearchParams(location.search);
-  const selectedNodeName = searchParams.get('selectedNodeName') || 'ID Fan #2 (Calciner Draft)';
+
+  useEffect(() => {
+    api.advisories.list()
+      .then((res) => {
+        setAdvisories(res);
+        const advId = searchParams.get('advisoryId');
+        if (advId) {
+          const found = res.find((a) => a.id === Number(advId));
+          if (found) {
+            setSelectedAdvisoryId(found.id);
+            setRootCauseDescription(found.root_cause_description || '');
+            setActionTaken(found.action_taken || '');
+          }
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load advisories for RCA:', err);
+      });
+  }, [location.search]);
+
+  const activeAdvisory = advisories.find((a) => a.id === selectedAdvisoryId);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
     setSelectedFile(file);
   };
 
-  const handleUploadSubmit = () => {
+  const handleAdvisorySelect = (event: any) => {
+    const id = event.target.value;
+    setSelectedAdvisoryId(id);
+    const found = advisories.find((a) => a.id === id);
+    if (found) {
+      setRootCauseDescription(found.root_cause_description || '');
+      setActionTaken(found.action_taken || '');
+    } else {
+      setRootCauseDescription('');
+      setActionTaken('');
+    }
+  };
+
+  const handleUploadSubmit = async () => {
+    if (!selectedAdvisoryId) {
+      alert('Please select an active advisory to update.');
+      return;
+    }
+
     if (!selectedFile && !rootCauseDescription && !actionTaken) {
       alert('Complete at least one field before submitting.');
       return;
     }
 
-    alert('Fault details captured locally.');
-    setSelectedFile(null);
-    setRootCauseDescription('');
-    setActionTaken('');
+    try {
+      let imagePath = activeAdvisory?.image_path || null;
+      if (selectedFile) {
+        const uploadRes = await api.advisories.uploadImage(selectedFile);
+        imagePath = uploadRes.url;
+      }
 
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      await api.advisories.update(Number(selectedAdvisoryId), {
+        status: 'resolved',
+        root_cause_description: rootCauseDescription,
+        action_taken: actionTaken,
+        image_path: imagePath,
+      });
+
+      alert('RCA details submitted successfully. Advisory status updated to Resolved.');
+      setSelectedFile(null);
+      setRootCauseDescription('');
+      setActionTaken('');
+      setSelectedAdvisoryId('');
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+
+      navigate('/advisories');
+    } catch (err) {
+      console.error('Failed to save RCA details:', err);
+      alert('Failed to save RCA details. Please try again.');
     }
   };
-
-  // Uncomment and connect backend when ready
-  // useEffect(() => {
-  //   api.rootCause.get('101')
-  //     .then((res) => {
-  //       setRcaData(res);
-  //       setLoading(false);
-  //     })
-  //     .catch((err) => {
-  //       setError(err.message || 'Failed to fetch RCA diagnostics');
-  //       setLoading(false);
-  //     });
-  // }, []);
 
   return (
     <PageContainer>
       <PageHeader
         title="Root Cause Analysis (RCA)"
-        subtitle="Reached from Dahboard - attach evidence, describe root cause and record the action taken."
+        subtitle="Attach evidence, describe root cause, and record the action taken to resolve system advisories."
       />
 
       <Grid container spacing={3}>
-        {/* Fault photo upload and RCA submission */}
         <Grid size={{ xs: 12 }}>
           <Card sx={{ border: '1px solid #000000', backgroundColor: '#ffffff' }}>
             <Box
@@ -88,11 +136,47 @@ export const RootCause: React.FC = () => {
                   fontWeight: 700,
                 }}
               >
-                {selectedNodeName}
+                {activeAdvisory ? `${activeAdvisory.asset} - ${activeAdvisory.tag}` : 'Select Advisory to Initiate RCA'}
               </Typography>
             </Box>
-            <CardContent>
-              <Grid container spacing={3}>
+            <CardContent sx={{ p: 3 }}>
+              <Stack spacing={3}>
+                <FormControl fullWidth size="small">
+                  <InputLabel id="advisory-select-label">Active Advisory Target</InputLabel>
+                  <Select
+                    labelId="advisory-select-label"
+                    value={selectedAdvisoryId}
+                    label="Active Advisory Target"
+                    onChange={handleAdvisorySelect}
+                  >
+                    <MenuItem value="">
+                      <em>None - Select an Advisory</em>
+                    </MenuItem>
+                    {advisories
+                      .filter((a) => a.status !== 'resolved' || a.id === selectedAdvisoryId)
+                      .map((a) => (
+                        <MenuItem key={a.id} value={a.id}>
+                          [{a.status.toUpperCase()}] {a.asset} - {a.tag} ({a.severity})
+                        </MenuItem>
+                      ))}
+                  </Select>
+                </FormControl>
+
+                {activeAdvisory && (
+                  <Paper variant="outlined" sx={{ p: 2, bgcolor: '#f8fafc', borderColor: '#e2e8f0' }}>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      Advisory Details
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      <strong>Description:</strong> {activeAdvisory.description}
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>First Detected:</strong>{' '}
+                      {new Date(activeAdvisory.first_detected).toLocaleString()}
+                    </Typography>
+                  </Paper>
+                )}
+
                 <Box
                   onClick={() => fileInputRef.current?.click()}
                   sx={{
@@ -121,8 +205,13 @@ export const RootCause: React.FC = () => {
                     PNG, JPG or JPEG up to 5MB
                   </Typography>
                   {selectedFile && (
-                    <Typography variant="caption" sx={{ mt: 2, color: 'primary.main' }}>
-                      {selectedFile.name}
+                    <Typography variant="caption" sx={{ mt: 2, color: 'primary.main', fontWeight: 600 }}>
+                      Selected: {selectedFile.name}
+                    </Typography>
+                  )}
+                  {activeAdvisory?.image_path && !selectedFile && (
+                    <Typography variant="caption" sx={{ mt: 2, color: 'success.main', fontWeight: 600 }}>
+                      Current file: {activeAdvisory.image_path}
                     </Typography>
                   )}
                   <input
@@ -144,37 +233,29 @@ export const RootCause: React.FC = () => {
                   onChange={(event) => setRootCauseDescription(event.target.value)}
                 />
 
-                  {/* <FormControl fullWidth>
-                    <InputLabel>Status</InputLabel>
-                    <Select
-                      value={status}
-                      label="Status"
-                      onChange={(event) => setStatus(event.target.value)}
-                    >
-                      <MenuItem value="open">Open</MenuItem>
-                      <MenuItem value="acknowledge">Acknowledge</MenuItem>
-                      <MenuItem value="resolved">Resolved</MenuItem>
-                    </Select>
-                  </FormControl> */}
+                <TextField
+                  label="Action taken"
+                  placeholder="Enter action taken to resolve the issue"
+                  fullWidth
+                  multiline
+                  rows={3}
+                  value={actionTaken}
+                  onChange={(event) => setActionTaken(event.target.value)}
+                />
 
-                  <TextField
-                    label="Action taken"
-                    placeholder="Enter action taken to resolve the issue"
-                    fullWidth
-                    multiline
-                    rows={3}
-                    value={actionTaken}
-                    onChange={(event) => setActionTaken(event.target.value)}
-                  />
-
-                  <Button variant="contained" color="primary"
+                <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+                  <Button
+                    variant="contained"
+                    color="primary"
                     size="large"
                     onClick={handleUploadSubmit}
                     sx={{ minWidth: 180 }}
+                    disabled={!selectedAdvisoryId}
                   >
-                    Submit & close
+                    Submit & Close
                   </Button>
-              </Grid>
+                </Box>
+              </Stack>
             </CardContent>
           </Card>
         </Grid>
@@ -182,4 +263,5 @@ export const RootCause: React.FC = () => {
     </PageContainer>
   );
 };
+
 export default RootCause;
