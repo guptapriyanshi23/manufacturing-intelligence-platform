@@ -1,51 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Card, CardContent, Grid, Button, Typography, CircularProgress, MenuItem, Select, FormControl, InputLabel, TextField } from '@mui/material';
 import { Download as DownloadIcon } from '@mui/icons-material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
 import { MetricCard } from '../../components/Cards/MetricCard';
-
-const demoAdvisories = [
-  { id: 1, status: 'open',         severity: 'Critical' },
-  { id: 2, status: 'open',         severity: 'High'     },
-  { id: 3, status: 'acknowledged', severity: 'High'     },
-  { id: 4, status: 'acknowledged', severity: 'Medium'   },
-  { id: 5, status: 'acknowledged', severity: 'Medium'   },
-  { id: 6, status: 'resolved',     severity: 'Medium'   },
-  { id: 7, status: 'resolved',     severity: 'Low'      },
-  { id: 8, status: 'resolved',     severity: 'Low'      },
-  { id: 9, status: 'resolved',     severity: 'Low'      },
-  { id: 10, status: 'open',        severity: 'Low'      },
-  { id: 11, status: 'open',        severity: 'Low'      },
-  { id: 12, status: 'open',        severity: 'Info'     },
-];
+import { api } from '../../api/client';
 
 const severityColors: Record<string, string> = {
-  Critical: '#d32f2f',
-  High:     '#f57c00',
-  Medium:   '#fbc02d',
-  Low:      '#00bfa5',
-  Info:     '#9e9e9e',
+  critical: '#d32f2f',
+  warning:  '#f57c00',
+  info:     '#9e9e9e',
 };
 
-// Ordered top-to-bottom matching the image: Critical at top, Info at bottom
-const severityChartData = ['Info', 'Low', 'Medium', 'High', 'Critical'].map((sev) => ({
-  severity: sev,
-  count: demoAdvisories.filter((a) => a.severity === sev).length,
-})).reverse(); // reverse so Critical renders at top in horizontal chart
-
 export const Reports: React.FC = () => {
-  const [loading] = useState(false);
+  const [advisories, setAdvisories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [scope, setScope] = useState('Individual equipment');
   const [fromDate, setFromDate] = useState<string | null>(null);
   const [toDate, setToDate] = useState<string | null>(null);
 
-  const total        = demoAdvisories.length;
-  const openCount    = demoAdvisories.filter((a) => a.status === 'open').length;
-  const ackCount     = demoAdvisories.filter((a) => a.status === 'acknowledged').length;
-  const resolvedCount= demoAdvisories.filter((a) => a.status === 'resolved').length;
-  const pct          = (n: number) => `${Math.round((n / total) * 100)}%`;
+  useEffect(() => {
+    api.advisories.list()
+      .then((res) => {
+        setAdvisories(res);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to load advisories in Reports:", err);
+        setLoading(false);
+      });
+  }, []);
+
+  const total = advisories.length;
+  const openCount = advisories.filter((a) => a.status === 'open').length;
+  const ackCount = advisories.filter((a) => a.status === 'acknowledged').length;
+  const resolvedCount = advisories.filter((a) => a.status === 'resolved').length;
+  const pct = (n: number) => total > 0 ? `${Math.round((n / total) * 100)}%` : '0%';
+
+  const severityChartData = ['info', 'warning', 'critical'].map((sev) => ({
+    severity: sev.toUpperCase(),
+    count: advisories.filter((a) => a.severity === sev).length,
+  })).reverse();
 
   if (loading) {
     return (
@@ -114,8 +110,8 @@ export const Reports: React.FC = () => {
 
         {/* Generate action */}
         <Button variant="contained" color="primary">
-            Generate report
-          </Button>
+          Generate report
+        </Button>
 
         {/* Metric summary row */}
         <Grid size={{ xs: 12 }} sx={{ mt: 3 }}>
@@ -168,7 +164,7 @@ export const Reports: React.FC = () => {
                   <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={36}>
                     <LabelList dataKey="count" position="right" style={{ fontSize: 13, fontWeight: 600 }} />
                     {severityChartData.map((entry) => (
-                      <Cell key={entry.severity} fill={severityColors[entry.severity] ?? '#90a4ae'} />
+                      <Cell key={entry.severity} fill={severityColors[entry.severity.toLowerCase()] ?? '#90a4ae'} />
                     ))}
                   </Bar>
                 </BarChart>

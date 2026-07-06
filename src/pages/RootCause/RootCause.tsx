@@ -73,12 +73,10 @@ export const RootCause: React.FC = () => {
 
   const handleUploadSubmit = async () => {
     if (!selectedAdvisoryId) {
-      alert('Please select an active advisory to update.');
       return;
     }
 
     if (!selectedFile && !rootCauseDescription && !actionTaken) {
-      alert('Complete at least one field before submitting.');
       return;
     }
 
@@ -96,7 +94,6 @@ export const RootCause: React.FC = () => {
         image_path: imagePath,
       });
 
-      alert('RCA details submitted successfully. Advisory status updated to Resolved.');
       setSelectedFile(null);
       setRootCauseDescription('');
       setActionTaken('');
@@ -109,7 +106,6 @@ export const RootCause: React.FC = () => {
       navigate('/advisories');
     } catch (err) {
       console.error('Failed to save RCA details:', err);
-      alert('Failed to save RCA details. Please try again.');
     }
   };
 
