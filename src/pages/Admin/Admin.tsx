@@ -432,7 +432,7 @@ export const Admin: React.FC = () => {
                           <TextField
                             {...field}
                             fullWidth
-                            label="System Name (snake_case)"
+                            label="Discrete Manufacturing"
                             size="small"
                             error={!!errors.name}
                             helperText={errors.name?.message}
