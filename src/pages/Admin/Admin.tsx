@@ -87,6 +87,7 @@ type FormValues = z.infer<typeof schema>;
 export const Admin: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedNodeId = searchParams.get('selectedNodeId');
+  const selectedNodeName = searchParams.get('selectedNodeName');
   const [loading, setLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [deleteSuccess, setDeleteSuccess] = useState(false);
@@ -274,54 +275,43 @@ export const Admin: React.FC = () => {
     setApiError(null);
   };
 
-  // Render cascade parent dropdowns up to the selected level - 1
   const renderParentDropdowns = () => {
     const levelIndex = LEVELS.indexOf(nodeType);
-    if (levelIndex <= 0) return null; // Enterprise has no parents
+    if (levelIndex <= 0) return null;
 
     const activeParentLevels = LEVELS.slice(0, levelIndex);
 
-    return (
-      <Box sx={{ p: 2, border: '1px solid rgba(255,255,255,0.05)', borderRadius: 1, backgroundColor: 'rgba(255,255,255,0.01)', mb: 2 }}>
-        <Typography variant="subtitle2" sx={{ mb: 2, color: 'text.secondary', fontWeight: 600 }}>
-          Select Hierarchy Parent Path
-        </Typography>
-        <Grid container spacing={2}>
-          {activeParentLevels.map((lvl, index) => {
-            // Options are filtered by the selected parent of the previous level (if index > 0)
-            let options = [];
-            if (index === 0) {
-              options = flatNodes.filter(n => n.node_type === lvl);
-            } else {
-              const prevLvl = activeParentLevels[index - 1];
-              const prevSelectedId = parentSelections[prevLvl];
-              options = flatNodes.filter(n => n.node_type === lvl && n.parent_id === prevSelectedId);
-            }
+    return activeParentLevels.map((lvl, index) => {
+      let options = [];
+      if (index === 0) {
+        options = flatNodes.filter(n => n.node_type === lvl);
+      } else {
+        const prevLvl = activeParentLevels[index - 1];
+        const prevSelectedId = parentSelections[prevLvl];
+        options = flatNodes.filter(n => n.node_type === lvl && n.parent_id === prevSelectedId);
+      }
 
-            const isDropdownDisabled = index > 0 && !parentSelections[activeParentLevels[index - 1]];
+      const isDropdownDisabled = index > 0 && !parentSelections[activeParentLevels[index - 1]];
 
-            return (
-              <Grid size={{ xs: 12, sm: activeParentLevels.length > 2 ? 4 : 6 }} key={lvl}>
-                <TextField
-                  select
-                  fullWidth
-                  label={LEVEL_LABELS[lvl]}
-                  size="small"
-                  disabled={isDropdownDisabled}
-                  value={parentSelections[lvl] || ''}
-                  onChange={(e) => handleParentSelect(lvl, e.target.value ? Number(e.target.value) : '')}
-                >
-                  <MenuItem value="">-- Select Parent --</MenuItem>
-                  {options.map(o => (
-                    <MenuItem key={o.id} value={o.id}>{o.display_name}</MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-            );
-          })}
+      return (
+        <Grid size={{ xs: 12, sm: 6 }} key={lvl}>
+          <TextField
+            select
+            fullWidth
+            label={LEVEL_LABELS[lvl]}
+            size="small"
+            disabled={isDropdownDisabled}
+            value={parentSelections[lvl] || ''}
+            onChange={(e) => handleParentSelect(lvl, e.target.value ? Number(e.target.value) : '')}
+          >
+            <MenuItem value="">-- Select Parent --</MenuItem>
+            {options.map(o => (
+              <MenuItem key={o.id} value={o.id}>{o.display_name}</MenuItem>
+            ))}
+          </TextField>
         </Grid>
-      </Box>
-    );
+      );
+    });
   };
 
   return (
@@ -344,11 +334,11 @@ export const Admin: React.FC = () => {
       />
 
       <Grid container spacing={3}>
-        <Grid size={{ xs: 12, md: 8 }}>
+        <Grid size={{ xs: 12, md: 12 }}>
           <Card>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                {selectedNodeId ? `Edit Node (ID: ${selectedNodeId})` : 'Create New Hierarchy Node'}
+                {selectedNodeId ? `Edit Node: ${selectedNodeName || selectedNodeId}` : 'Create New Hierarchy Node'}
               </Typography>
               <Divider sx={{ mb: 3 }} />
 
@@ -421,7 +411,7 @@ export const Admin: React.FC = () => {
                       />
                     </Grid>
 
-                    {/* Cascade Parent Dropdowns */}
+                    {/* Cascade Parent Dropdowns + Name field flow side by side */}
                     {renderParentDropdowns()}
 
                     <Grid size={{ xs: 12, sm: 6 }}>
@@ -441,7 +431,7 @@ export const Admin: React.FC = () => {
                       />
                     </Grid>
 
-                    <Grid size={{ xs: 12, sm: 6 }}>
+                    <Grid size={{ xs: 12, sm: 12 }}>
                       <Controller
                         name="display_name"
                         control={control}
@@ -477,141 +467,16 @@ export const Admin: React.FC = () => {
                       />
                     </Grid>
 
-                    {/* Metadata Sub-forms
-                    {nodeType === 'site' && (
-                      <Grid size={12}>
-                        <Box sx={{ mt: 2, p: 2, border: '1px dashed rgba(255,255,255,0.08)', borderRadius: 1 }}>
-                          <Typography variant="subtitle2" color="primary" sx={{ mb: 2, fontWeight: 600 }}>
-                            Site Specific Parameters
-                          </Typography>
-                          <Grid container spacing={2}>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                              <Controller
-                                name="plant_metadata.use_case"
-                                control={control}
-                                render={({ field }) => <TextField {...field} fullWidth size="small" label="Operations Use Case" />}
-                              />
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                              <Controller
-                                name="plant_metadata.location"
-                                control={control}
-                                render={({ field }) => <TextField {...field} fullWidth size="small" label="Geographical Location" />}
-                              />
-                            </Grid>
-                            <Grid size={12}>
-                              <Controller
-                                name="plant_metadata.description"
-                                control={control}
-                                render={({ field }) => <TextField {...field} fullWidth size="small" multiline rows={2} label="Facility Description" />}
-                              />
-                            </Grid>
-                          </Grid>
-                        </Box>
-                      </Grid>
-                    )}
-
-                    {nodeType === 'asset' && (
-                      <Grid size={12}>
-                        <Box sx={{ mt: 2, p: 2, border: '1px dashed rgba(255,255,255,0.08)', borderRadius: 1 }}>
-                          <Typography variant="subtitle2" color="primary" sx={{ mb: 2, fontWeight: 600 }}>
-                            Asset Specific Parameters
-                          </Typography>
-                          <Grid container spacing={2}>
-                            <Grid size={{ xs: 12, sm: 4 }}>
-                              <Controller
-                                name="asset_metadata.asset_id"
-                                control={control}
-                                render={({ field }) => <TextField {...field} required fullWidth size="small" label="Unique Asset ID" />}
-                              />
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 4 }}>
-                              <Controller
-                                name="asset_metadata.manufacturer"
-                                control={control}
-                                render={({ field }) => <TextField {...field} fullWidth size="small" label="OEM Manufacturer" />}
-                              />
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 4 }}>
-                              <Controller
-                                name="asset_metadata.model"
-                                control={control}
-                                render={({ field }) => <TextField {...field} fullWidth size="small" label="Model Specification" />}
-                              />
-                            </Grid>
-                          </Grid>
-                        </Box>
-                      </Grid>
-                    )}
-
-                    {nodeType === 'sensor' && (
-                      <Grid size={12}>
-                        <Box sx={{ mt: 2, p: 2, border: '1px dashed rgba(255,255,255,0.08)', borderRadius: 1 }}>
-                          <Typography variant="subtitle2" color="primary" sx={{ mb: 2, fontWeight: 600 }}>
-                            Sensor Specific Parameters
-                          </Typography>
-                          <Grid container spacing={2}>
-                            <Grid size={{ xs: 12, sm: 4 }}>
-                              <Controller
-                                name="sensor_metadata.sensor_id"
-                                control={control}
-                                render={({ field }) => <TextField {...field} required fullWidth size="small" label="Unique Sensor ID" />}
-                              />
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 4 }}>
-                              <Controller
-                                name="sensor_metadata.unit"
-                                control={control}
-                                render={({ field }) => <TextField {...field} fullWidth size="small" label="Measurement Unit" />}
-                              />
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 4 }}>
-                              <Controller
-                                name="sensor_metadata.sampling_rate"
-                                control={control}
-                                render={({ field }) => (
-                                  <TextField
-                                    {...field}
-                                    type="number"
-                                    fullWidth
-                                    size="small"
-                                    label="Sampling Rate (Hz)"
-                                    value={field.value || ''}
-                                    onChange={(e) => field.onChange(Number(e.target.value))}
-                                  />
-                                )}
-                              />
-                            </Grid>
-                          </Grid>
-                        </Box>
-                      </Grid>
-                    )} */}
-
-                    <Grid size={12} sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
                       <Button type="submit" variant="contained" color="primary" startIcon={<SaveIcon />}>
                         Save Node Configuration
                       </Button>
-                    </Grid>
                   </Grid>
                 </form>
               )}
             </CardContent>
           </Card>
         </Grid>
-
-        <Grid size={{ xs: 12, md: 4 }}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                Admin Operations
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                Select a level to configure. The system will dynamically show dropdowns up to the selected level - 1, letting you choose the exact hierarchical parent path for your new node.
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
+        
       </Grid>
     </PageContainer>
   );
