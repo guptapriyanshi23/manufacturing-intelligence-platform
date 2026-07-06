@@ -45,7 +45,8 @@ export const Dashboard: React.FC = () => {
   const searchParams = new URLSearchParams(location.search);
   const selectedNodeId = searchParams.get('selectedNodeId');
 
-  const [loading, setLoading] = useState(true);
+  const [hierarchyLoading, setHierarchyLoading] = useState(true);
+  const [telemetryLoading, setTelemetryLoading] = useState(false);
   const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
   const [descendantSensors, setDescendantSensors] = useState<HierarchyNode[]>([]);
   const [selectedSensorIds, setSelectedSensorIds] = useState<string[]>([]);
@@ -53,15 +54,15 @@ export const Dashboard: React.FC = () => {
 
   // 1. Fetch flat hierarchy nodes
   useEffect(() => {
-    setLoading(true);
     api.hierarchy.list(true)
       .then((res) => {
         setFlatNodes(res);
-        setLoading(false);
       })
       .catch(() => {
         setFlatNodes([]);
-        setLoading(false);
+      })
+      .finally(() => {
+        setHierarchyLoading(false);
       });
   }, []);
 
@@ -113,15 +114,16 @@ export const Dashboard: React.FC = () => {
       return;
     }
 
-    setLoading(true);
+    setTelemetryLoading(true);
     api.dashboard.getTelemetry(selectedSensorIds, 24)
       .then((points) => {
         setTelemetryPoints(points);
-        setLoading(false);
       })
       .catch(() => {
         setTelemetryPoints([]);
-        setLoading(false);
+      })
+      .finally(() => {
+        setTelemetryLoading(false);
       });
   }, [selectedSensorIds]);
 
@@ -192,7 +194,7 @@ export const Dashboard: React.FC = () => {
         </Paper>
       </Box>
 
-      {loading && telemetryPoints.length === 0 ? (
+      {hierarchyLoading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
           <CircularProgress size={40} color="secondary" />
         </Box>
@@ -208,6 +210,12 @@ export const Dashboard: React.FC = () => {
                       No sensors defined under the selected hierarchy level. Select a level with configured sensor metadata.
                     </Typography>
                   </Paper>
+                </Grid>
+              ) : telemetryLoading ? (
+                <Grid size={12}>
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
+                    <CircularProgress size={40} color="secondary" />
+                  </Box>
                 </Grid>
               ) : (
                 descendantSensors
