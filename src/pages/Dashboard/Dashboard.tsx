@@ -296,14 +296,15 @@ export const Dashboard: React.FC = () => {
 
           {/* Right Column: Advisory Mockup */}
           <Grid size={{ xs: 12, lg: 4 }}>
-            <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #000000' }}>
-              <Box sx={{ backgroundColor: '#B91C1C', p: 2, borderRadius: 1, mb: 2 }}>
+            <Paper sx={{ p: 0, borderRadius: 2, border: '1px solid #000000', overflow: 'hidden' }}>
+              <Box sx={{ backgroundColor: '#B91C1C', p: 2 }}>
                 <Typography variant="h6" sx={{ color: 'white', fontWeight: 700 }}>
                   ADVISORY - S1 - CRITICAL
                 </Typography>
               </Box>
 
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+              <Box sx={{ p: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
                 {activeNode ? activeNode.display_name : 'Selected Asset'}
               </Typography>
 
@@ -325,6 +326,20 @@ export const Dashboard: React.FC = () => {
               <Button
                 fullWidth
                 variant="contained"
+                color="primary"
+                sx={{
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  py: 1.5,
+                  mb: 2,
+                }}
+              >
+                Acknowledge
+              </Button>
+
+              <Button
+                fullWidth
+                variant="contained"
                 sx={{
                   backgroundColor: '#000000',
                   color: 'white',
@@ -339,6 +354,7 @@ export const Dashboard: React.FC = () => {
               >
                 Initiate RCA →
               </Button>
+              </Box>
             </Paper>
           </Grid>
         </Grid>

@@ -92,67 +92,59 @@ export const RootCause: React.FC = () => {
               </Typography>
             </Box>
             <CardContent>
-              <Grid container>
-                <Grid size={{ xs: 12, md: 12 }} sx={{
-                  display: 'flex',
-                  flexDirection: 'row', gap: 2, mb: 3
-                }}>
-                  <Box
-                    onClick={() => fileInputRef.current?.click()}
-                    sx={{
-                      minHeight: 240,
-                      border: '2px dashed #000000',
-                      borderRadius: 2,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      textAlign: 'center',
-                      p: 3,
-                      cursor: 'pointer',
-                      '&:hover': {
-                        borderColor: 'rgba(56, 189, 248, 0.8)',
-                        backgroundColor: 'rgba(56, 189, 248, 0.04)',
-                      },
-                    }}
-                  >
-                    <PhotoCameraOutlined sx={{ fontSize: 40, mb: 1, color: 'text.secondary' }} />
-                    <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
-                      Click to upload a photo of the fault
+              <Grid container spacing={3}>
+                <Box
+                  onClick={() => fileInputRef.current?.click()}
+                  sx={{
+                    width: '100%',
+                    minHeight: 180,
+                    border: '1px dashed #7b7a7a',
+                    borderRadius: 2,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    textAlign: 'center',
+                    p: 3,
+                    cursor: 'pointer',
+                    '&:hover': {
+                      borderColor: 'rgb(21, 137, 8)',
+                      backgroundColor: 'rgba(62, 248, 56, 0.04)',
+                    },
+                  }}
+                >
+                  <PhotoCameraOutlined sx={{ fontSize: 40, mb: 1, color: 'text.secondary' }} />
+                  <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+                    Click to upload a photo of the fault
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    PNG, JPG or JPEG up to 5MB
+                  </Typography>
+                  {selectedFile && (
+                    <Typography variant="caption" sx={{ mt: 2, color: 'primary.main' }}>
+                      {selectedFile.name}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      PNG, JPG or JPEG up to 5MB
-                    </Typography>
-                    {selectedFile && (
-                      <Typography variant="caption" sx={{ mt: 2, color: 'primary.main' }}>
-                        {selectedFile.name}
-                      </Typography>
-                    )}
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/png, image/jpeg"
-                      onChange={handleFileChange}
-                      hidden
-                    />
-                  </Box>
-
-                  <TextField
-                    label="Root cause description"
-                    placeholder="Describe the likely root cause here"
-                    multiline
-                    rows={9}
-                    fullWidth
-                    value={rootCauseDescription}
-                    onChange={(event) => setRootCauseDescription(event.target.value)}
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png, image/jpeg"
+                    onChange={handleFileChange}
+                    hidden
                   />
-                </Grid>
+                </Box>
 
-                <Grid size={{ xs: 12 }} sx={{
-                  display: 'flex',
-                  flexDirection: 'row', gap: 2, mb: 2
-                }}>
-                  <FormControl sx={{ minWidth: 500 }}>
+                <TextField
+                  label="Root cause description"
+                  placeholder="Describe the likely root cause here"
+                  multiline
+                  rows={3}
+                  fullWidth
+                  value={rootCauseDescription}
+                  onChange={(event) => setRootCauseDescription(event.target.value)}
+                />
+
+                  {/* <FormControl fullWidth>
                     <InputLabel>Status</InputLabel>
                     <Select
                       value={status}
@@ -163,17 +155,14 @@ export const RootCause: React.FC = () => {
                       <MenuItem value="acknowledge">Acknowledge</MenuItem>
                       <MenuItem value="resolved">Resolved</MenuItem>
                     </Select>
-                  </FormControl>
-                </Grid>
+                  </FormControl> */}
 
-                <Grid size={{ xs: 12, md: 12 }} sx={{
-                  display: 'flex',
-                  flexDirection: 'row', alignItems: 'center', gap: 2
-                }}>
                   <TextField
                     label="Action taken"
                     placeholder="Enter action taken to resolve the issue"
                     fullWidth
+                    multiline
+                    rows={3}
                     value={actionTaken}
                     onChange={(event) => setActionTaken(event.target.value)}
                   />
@@ -185,7 +174,6 @@ export const RootCause: React.FC = () => {
                   >
                     Submit & close
                   </Button>
-                </Grid>
               </Grid>
             </CardContent>
           </Card>

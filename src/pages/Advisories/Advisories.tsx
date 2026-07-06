@@ -91,7 +91,7 @@ export const Advisories: React.FC = () => {
         </Stack>
 
       <TableContainer component={Paper} sx={{ backgroundColor: '#ffffff', 
-        boxShadow: 'none', borderRadius: 3, border: '1px solid #000000' , mt: 4 }}>
+        boxShadow: 'none',  border: '1px solid #000000' , mt: 4 }}>
         <Table sx={{ minWidth: 720 }}>
           <TableHead>
             <TableRow>

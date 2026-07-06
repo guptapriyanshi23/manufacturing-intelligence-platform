@@ -12,7 +12,8 @@ import {
   ListItemText,
   Divider,
   IconButton,
-  CircularProgress
+  CircularProgress,
+  Tooltip
 } from '@mui/material';
 import { api } from '../api/client';
 import {
@@ -87,16 +88,43 @@ export const MainLayout: React.FC = () => {
               </Typography>
             </Box>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            {/* <Chip
-              label="System status: Healthy"
-              color="success"
-              size="small"
-              sx={{ fontWeight: 600 }}
-            /> */}
-            <IconButton color="inherit" size="small">
+          <Box sx={{ display: 'flex', alignItems: 'center', }}>
+            <List sx={{ px: 1, display: 'flex', }}>
+              {navItems.map((item) => {
+                const isActive = location.pathname === item.path;
+                const handleNavClick = () => {
+                  // Preserve query params for Dashboard navigation
+                  if (item.path === '/dashboard') {
+                    navigate(`${item.path}${location.search}`);
+                  } else {
+                    navigate(item.path);
+                  }
+                };
+                return (
+                  <ListItemButton
+                    key={item.path}
+                    onClick={handleNavClick}
+                    selected={isActive}
+                    sx={{
+                      borderRadius: 1,
+                      color: isActive ? 'primary.main' : 'secondary.light',
+                      '&.Mui-selected': {
+                        color: 'primary.main',
+                        fontWeight: 600,
+                      },
+                    }}
+                  >
+
+                    <Tooltip title={item.label} placement="bottom" arrow >
+                      <ListItemIcon sx={{ color: 'inherit' }}>{item.icon}</ListItemIcon>
+                    </Tooltip>
+                  </ListItemButton>
+                );
+              })}
+            </List>
+            {/* <IconButton color="inherit" size="small">
               <RefreshIcon fontSize="small" />
-            </IconButton>
+            </IconButton> */}
           </Box>
         </Toolbar>
       </AppBar>
@@ -111,9 +139,9 @@ export const MainLayout: React.FC = () => {
         }}
       >
         <Toolbar />
-        <Box sx={{ overflow: 'auto', display: 'flex', flexDirection: 'column', height: '100%', py: 2 }}>
+        <Box sx={{ overflow: 'auto', display: 'flex', flexDirection: 'column', height: '100%', }}>
           {/* Main Navigation links */}
-          <List sx={{ px: 1 }}>
+          {/* <List sx={{ px: 1 }}>
             {navItems.map((item) => {
               const isActive = location.pathname === item.path;
               const handleNavClick = () => {
@@ -145,12 +173,12 @@ export const MainLayout: React.FC = () => {
                 </ListItemButton>
               );
             })}
-          </List>
+          </List> */}
 
-          <Divider sx={{ my: 2, borderColor: 'rgba(255, 255, 255, 0.05)' }} />
+          {/* <Divider sx={{ my: 1, borderColor: 'rgba(255, 255, 255, 0.05)' }} /> */}
 
           {/* Hierarchy section */}
-          <Box sx={{ px: 2, mb: 1 }}>
+          <Box sx={{ px: 2, my: 1 }}>
             <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>
               Plant Hierarchy (ISA-95)
             </Typography>
