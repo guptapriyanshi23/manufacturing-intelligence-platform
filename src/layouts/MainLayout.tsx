@@ -83,7 +83,7 @@ export const MainLayout: React.FC = () => {
                 |
               </Typography>
               <Typography variant="h5" color="text.primary" sx={{ fontWeight: 700, letterSpacing: '0.5px' }}>
-                 Asset Digital Twin
+                AssetWize
               </Typography>
             </Box>
           </Box>

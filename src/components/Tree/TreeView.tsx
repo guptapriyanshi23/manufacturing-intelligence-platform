@@ -94,9 +94,13 @@ const TreeNode: React.FC<{
             },
           }}
         >
-          <ListItemIcon sx={{ minWidth: 32 }}>
-            {getNodeIcon(node.node_type, theme)}
-          </ListItemIcon>
+          {hasChildren ? (
+            <Box onClick={handleToggle} sx={{ display: 'flex', alignItems: 'center', mr: 1, p: 0.5 }}>
+              {open ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
+            </Box>
+          ) : (
+            <Box sx={{ width: 28 }} />
+          )}
           <ListItemText
             primary={
               <Typography
@@ -111,11 +115,6 @@ const TreeNode: React.FC<{
               </Typography>
             }
           />
-          {hasChildren && (
-            <Box onClick={handleToggle} sx={{ display: 'flex', alignItems: 'center', p: 0.5 }}>
-              {open ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
-            </Box>
-          )}
         </ListItemButton>
       </Tooltip>
 
