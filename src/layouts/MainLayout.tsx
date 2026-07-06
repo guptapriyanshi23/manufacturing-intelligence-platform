@@ -183,7 +183,27 @@ export const MainLayout: React.FC = () => {
               Plant Hierarchy (ISA-95)
             </Typography>
           </Box>
-          <Box sx={{ flexGrow: 1, overflowY: 'auto', px: 1 }}>
+          <Box
+            sx={{
+              flexGrow: 1,
+              overflowY: 'auto',
+              pl: 1,
+              pr: 0, // No right padding so scrollbar is flush against the edge
+              '&::-webkit-scrollbar': {
+                width: '4px',
+              },
+              '&::-webkit-scrollbar-track': {
+                background: 'transparent',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                background: '#bdbdbd', // thin gray line
+                borderRadius: '0px', // rectangular scrollbar
+              },
+              '&::-webkit-scrollbar-thumb:hover': {
+                background: '#9e9e9e',
+              },
+            }}
+          >
             {loadingNodes ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
                 <CircularProgress size={24} />
