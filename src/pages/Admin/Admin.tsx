@@ -35,14 +35,14 @@ const LEVELS: NodeType[] = [
 ];
 
 const LEVEL_LABELS: Record<NodeType, string> = {
-  enterprise: 'Enterprise (e.g. Henkel, BMW)',
-  site: 'Site / Plant (e.g. Holthausen, Kruševac)',
-  area: 'Area / Shop / Department (e.g. Liquid Area, Body Shop)',
-  line: 'Line / Unit / Cell (e.g. Process Unit, Robot Cell)',
-  station: 'Station / Subsystem (e.g. Filling Station, Welding Station)',
-  asset: 'Asset / Equipment (e.g. Pump, Robot)',
-  component: 'Component (e.g. Motor, Servo)',
-  sensor: 'Sensor / Tag (e.g. Temp, Vibration)'
+  enterprise: 'Enterprise',
+  site: 'Site / Plant',
+  area: 'Area / Shop / Department',
+  line: 'Line / Unit / Cell',
+  station: 'Station / Subsystem',
+  asset: 'Asset / Equipment',
+  component: 'Component',
+  sensor: 'Sensor / Tag'
 };
 
 // Form validation schema
@@ -94,7 +94,7 @@ export const Admin: React.FC = () => {
 
   // Flat list of nodes from backend
   const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
-  
+
   // Dynamic parent selections state
   const [parentSelections, setParentSelections] = useState<Record<string, number | ''>>({});
 
@@ -182,15 +182,15 @@ export const Admin: React.FC = () => {
   const handleParentSelect = (level: NodeType, id: number | '') => {
     const levelIndex = LEVELS.indexOf(level);
     const updatedSelections = { ...parentSelections };
-    
+
     // Set selection for target level
     updatedSelections[level] = id;
-    
+
     // Reset all sub-levels selections
     for (let i = levelIndex + 1; i < LEVELS.length; i++) {
       updatedSelections[LEVELS[i]] = '';
     }
-    
+
     setParentSelections(updatedSelections);
 
     // parent_id will be set to the lowest chosen parent ID in the chain
@@ -240,7 +240,7 @@ export const Admin: React.FC = () => {
   const handleDelete = async () => {
     if (!selectedNodeId) return;
     if (!confirm('Are you sure you want to delete this hierarchy node? All nested children and metadata will be permanently deleted.')) return;
-    
+
     setLoading(true);
     setDeleteSuccess(false);
     setApiError(null);
@@ -377,7 +377,7 @@ export const Admin: React.FC = () => {
               ) : (
                 <form onSubmit={handleSubmit(onSubmit as any)}>
                   <Grid container spacing={2}>
-                    
+
                     {/* Level Selector */}
                     <Grid size={{ xs: 12, sm: 6 }}>
                       <Controller
@@ -394,7 +394,7 @@ export const Admin: React.FC = () => {
                             helperText={errors.node_type?.message}
                           >
                             {LEVELS.filter(lvl => lvl !== 'enterprise').map(lvl => (
-                              <MenuItem key={lvl} value={lvl}>{lvl.toUpperCase()}</MenuItem>
+                              <MenuItem key={lvl} value={lvl}>{LEVEL_LABELS[lvl]}</MenuItem>
                             ))}
                           </TextField>
                         )}
