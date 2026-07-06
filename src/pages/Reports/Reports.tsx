@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Card, CardContent, Grid, Button, Typography, CircularProgress, MenuItem, Select, FormControl, InputLabel } from '@mui/material';
+import { Box, Card, CardContent, Grid, Button, Typography, CircularProgress, MenuItem, Select, FormControl, InputLabel, TextField, Stack } from '@mui/material';
 import { Download as DownloadIcon, Assessment as ReportIcon } from '@mui/icons-material';
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
+import { MetricCard } from '../../components/Cards/MetricCard';
 import { DataTable } from '../../components/Tables/DataTable';
 import { StatusChip } from '../../components/Forms/StatusChip';
 import { api } from '../../api/client';
@@ -12,6 +13,9 @@ export const Reports: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reportType, setReportType] = useState('oee_analysis');
+  const [scope, setScope] = useState('Individual equipment');
+  const [fromDate, setFromDate] = useState<string | null>(null);
+  const [toDate, setToDate] = useState<string | null>(null);
 
   useEffect(() => {
     api.reports.list()
@@ -82,52 +86,82 @@ export const Reports: React.FC = () => {
       />
 
       <Grid container spacing={3}>
-        {/* Report configuration panel */}
-        <Grid size={{ xs: 12, md: 4 }}>
+        {/* Top filter / generate row */}
+        <Grid size={{ xs: 12, md: 12 }}>
           <Card>
-            <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 600 }}>
-                <ReportIcon color="primary" /> Generate Report
-              </Typography>
+            <CardContent>
+              <Grid container spacing={2} alignItems="center">
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel id="scope-label">Scope</InputLabel>
+                    <Select
+                      labelId="scope-label"
+                      value={scope}
+                      label="Scope"
+                      onChange={(e) => setScope(e.target.value as string)}
+                    >
+                      <MenuItem value="Individual equipment">Individual equipment</MenuItem>
+                      <MenuItem value="Production line">Production line</MenuItem>
+                      <MenuItem value="Plant">Plant</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
 
-              <FormControl fullWidth size="small">
-                <InputLabel id="report-type-label">Select Template</InputLabel>
-                <Select
-                  labelId="report-type-label"
-                  value={reportType}
-                  label="Select Template"
-                  onChange={(e) => setReportType(e.target.value)}
-                >
-                  <MenuItem value="oee_analysis">OEE Shift Analysis</MenuItem>
-                  <MenuItem value="maintenance_log">Machinery Maintenance Logs</MenuItem>
-                  <MenuItem value="shift_summary">General Shift Summary</MenuItem>
-                </Select>
-              </FormControl>
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <TextField
+                    label="From"
+                    type="date"
+                    size="small"
+                    fullWidth
+                    InputLabelProps={{ shrink: true }}
+                    value={fromDate || ''}
+                    onChange={(e) => setFromDate(e.target.value || null)}
+                  />
+                </Grid>
 
-              <Button
-                variant="contained"
-                color="primary"
-                fullWidth
-                onClick={() => alert(`Starting compilation for: ${reportType.toUpperCase()}`)}
-              >
-                Compile Report
-              </Button>
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <TextField
+                    label="To"
+                    type="date"
+                    size="small"
+                    fullWidth
+                    InputLabelProps={{ shrink: true }}
+                    value={toDate || ''}
+                    onChange={(e) => setToDate(e.target.value || null)}
+                  />
+                </Grid>
+              </Grid>
             </CardContent>
           </Card>
         </Grid>
 
-        {/* Generated Reports list */}
-        <Grid size={{ xs: 12, md: 8 }}>
-          <Card sx={{ p: 1 }}>
-            {error ? (
-              <Box sx={{ p: 4, textAlign: 'center' }}>
-                <Typography color="error">{error}</Typography>
-              </Box>
-            ) : (
-              <DataTable title="Recently Compiled Reports" columns={columns} data={reports} />
-            )}
-          </Card>
+        {/* Generate action */}
+        <Button variant="contained" color="primary">
+            Generate report
+          </Button>
+
+        {/* Metric summary row */}
+        <Grid size={{ xs: 12, md: 12 }} sx={{ mt: 3 }}>
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <MetricCard title="Advisories" value={5} />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <MetricCard title="Avg. severity" value={2.6} />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <MetricCard title="Resolved" value="40%" />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <MetricCard title="Open" value={2} />
+            </Grid>
+          </Grid>
         </Grid>
+
+        {/* Download action */}
+      <Button variant="contained" color="primary" startIcon={<DownloadIcon />}>
+                  Download PDF
+      </Button>
       </Grid>
     </PageContainer>
   );
