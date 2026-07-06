@@ -477,7 +477,7 @@ export const Admin: React.FC = () => {
                       />
                     </Grid>
 
-                    {/* Metadata Sub-forms */}
+                    {/* Metadata Sub-forms
                     {nodeType === 'site' && (
                       <Grid size={12}>
                         <Box sx={{ mt: 2, p: 2, border: '1px dashed rgba(255,255,255,0.08)', borderRadius: 1 }}>
@@ -585,7 +585,7 @@ export const Admin: React.FC = () => {
                           </Grid>
                         </Box>
                       </Grid>
-                    )}
+                    )} */}
 
                     <Grid size={12} sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
                       <Button type="submit" variant="contained" color="primary" startIcon={<SaveIcon />}>
