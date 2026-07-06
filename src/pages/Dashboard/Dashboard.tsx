@@ -1,161 +1,388 @@
-import React, { useState, useEffect } from 'react';
-import { Grid, Typography, Paper, Box, CircularProgress, useTheme } from '@mui/material';
+import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  Speed as OeeIcon,
-  Timer as AvailabilityIcon,
-  SettingsSuggest as PerformanceIcon,
-  Grade as QualityIcon
-} from '@mui/icons-material';
+  Grid,
+  Typography,
+  Paper,
+  Box,
+  useTheme,
+  Button,
+  Chip
+} from '@mui/material';
 import {
-  AreaChart,
-  Area,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
-  Legend
+  Legend,
+  ResponsiveContainer
 } from 'recharts';
 import { PageContainer } from '../../components/Cards/PageContainer';
-import { PageHeader } from '../../components/Cards/PageHeader';
-import { MetricCard } from '../../components/Cards/MetricCard';
-import { api } from '../../api/client';
+
+// Demo data for charts
+const generateDemoChartData = () => {
+  const now = new Date();
+  return Array.from({ length: 12 }, (_, i) => ({
+    timestamp: new Date(now.getTime() - (11 - i) * 60 * 60 * 1000).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
+    actual: 65 + Math.random() * 20,
+    predicted: 70 + Math.random() * 15,
+    alarmLimit: 85,
+    tripLimit: 95,
+  }));
+};
+
+const generateBearingVibrationData = () => {
+  const now = new Date();
+  return Array.from({ length: 12 }, (_, i) => ({
+    timestamp: new Date(now.getTime() - (11 - i) * 60 * 60 * 1000).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
+    actual: 4.5 + Math.random() * 2,
+    predicted: 4.8 + Math.random() * 1.5,
+    alarmLimit: 8,
+    tripLimit: 10,
+  }));
+};
 
 export const Dashboard: React.FC = () => {
   const theme = useTheme();
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  useEffect(() => {
-    api.dashboard.getSummary()
-      .then((res) => {
-        setData(res);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message || 'Failed to fetch dashboard data');
-        setLoading(false);
-      });
-  }, []);
+  const searchParams = new URLSearchParams(location.search);
+  const selectedNodeName = searchParams.get('selectedNodeName') || 'ID Fan #2 (Calciner Draft)';
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <CircularProgress color="primary" />
-      </Box>
-    );
-  }
-
-  if (error || !data) {
-    return (
-      <Box sx={{ p: 4, textAlign: 'center' }}>
-        <Typography color="error" variant="h5">
-          {error || 'Error loading dashboard summary'}
-        </Typography>
-      </Box>
-    );
-  }
+  const bearingTempData = generateDemoChartData();
+  const bearingVibrationData = generateBearingVibrationData();
 
   return (
     <PageContainer>
-      <PageHeader
-        title="Production Dashboard"
-        subtitle="Real-time Overall Equipment Effectiveness (OEE) metrics and performance trends."
-      />
+      {/* Header Section */}
+      <Box sx={{ mb: 4 }}>
+        <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, md: 8 }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, mt: 1 }}>
+                {selectedNodeName} 
+              </Typography>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 1, maxWidth: 720 }}
+              >
+                Anomalous tags are shown by default, stacked one below the other. Use the dropdown to browse any
+                other parameter on this asset — anomaly or not.
+              </Typography>
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'flex', justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
+              {/* <Button
+                variant="outlined"
+                color="primary"
+                size="small"
+                sx={{ textTransform: 'none', fontWeight: 600 }}
+              >
+                + Browse other parameters
+                <Chip
+                  label="23"
+                  size="small"
+                  sx={{
+                    ml: 1,
+                    height: 22,
+                    backgroundColor: 'primary.main',
+                    color: 'white',
+                  }}
+                />
+              </Button> */}
+            </Grid>
+          </Grid>
+        </Paper>
+      </Box>
 
-      {/* KPI Cards row */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <MetricCard
-            title="Overall OEE"
-            value={data.oee.value}
-            unit={data.oee.unit}
-            trend={data.oee.trend}
-            icon={<OeeIcon />}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <MetricCard
-            title="Availability"
-            value={data.availability.value}
-            unit={data.availability.unit}
-            trend={data.availability.trend}
-            icon={<AvailabilityIcon />}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <MetricCard
-            title="Performance"
-            value={data.performance.value}
-            unit={data.performance.unit}
-            trend={data.performance.trend}
-            icon={<PerformanceIcon />}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <MetricCard
-            title="Quality Rate"
-            value={data.quality.value}
-            unit={data.quality.unit}
-            trend={data.quality.trend}
-            icon={<QualityIcon />}
-          />
-        </Grid>
-      </Grid>
-
-      {/* Recharts Performance Area Chart */}
-      <Paper sx={{ p: 3, background: 'rgba(17, 24, 39, 0.6)', backdropFilter: 'blur(10px)' }}>
-        <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
-          OEE Performance Trend (Weekly View)
-        </Typography>
-        <Box sx={{ width: '100%', height: 350 }}>
-          <ResponsiveContainer>
-            <AreaChart data={data.weekly_chart} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorOee" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={theme.palette.primary.main} stopOpacity={0.4}/>
-                  <stop offset="95%" stopColor={theme.palette.primary.main} stopOpacity={0}/>
-                </linearGradient>
-                <linearGradient id="colorAvailability" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={theme.palette.secondary.main} stopOpacity={0.2}/>
-                  <stop offset="95%" stopColor={theme.palette.secondary.main} stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0, 0, 0, 0.1)" />
-              <XAxis dataKey="timestamp" stroke={theme.palette.text.secondary} style={{ fontSize: 12 }} />
-              <YAxis domain={[60, 100]} stroke={theme.palette.text.secondary} style={{ fontSize: 12 }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#ffffff',
-                  border: '1px solid #000000',
-                  borderRadius: 6,
+      {/* Main Charts and Advisory Section */}
+      <Grid container spacing={3}>
+        {/* Charts Column */}
+        <Grid size={{ xs: 12, lg: 8 }}>
+          {/* Bearing Temperature Chart */}
+          <Paper sx={{ p: 2, mb: 3, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                Bearing Temperature
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, }}>
+              <Chip
+                label="S1 - CRITICAL"
+                sx={{
+                  backgroundColor: 'error.main',
+                  color: 'white',
+                  fontWeight: 600,
+                  fontSize: '0.75rem',
                 }}
               />
-              <Legend verticalAlign="top" height={36}/>
-              <Area
-                name="Overall OEE"
-                type="monotone"
-                dataKey="oee"
-                stroke={theme.palette.primary.main}
-                fillOpacity={1}
-                fill="url(#colorOee)"
-                strokeWidth={2}
+            </Box>
+            </Box>
+
+            {/* Severity Indicators */}
+            <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center' }}>
+              {['#10B981', '#F59E0B', '#EF4444', '#DC2626', '#991B1B', '#7F1D1D'].map((color, i) => (
+                <Box
+                  key={i}
+                  sx={{
+                    width: 12,
+                    height: 12,
+                    borderRadius: '50%',
+                    backgroundColor: color,
+                    border: '1px solid rgba(0,0,0,0.1)',
+                  }}
+                />
+              ))}
+              <Typography variant="caption" color="text.secondary">
+              severity at each check-in, most recent —
+            </Typography>
+            </Box>
+
+            <Box sx={{ width: '100%', height: 300 }}>
+              <ResponsiveContainer>
+                <LineChart data={bearingTempData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.1)" />
+                  <XAxis
+                    dataKey="timestamp"
+                    stroke={theme.palette.text.secondary}
+                    style={{ fontSize: 12 }}
+                  />
+                  <YAxis
+                    domain={[40, 110]}
+                    stroke={theme.palette.text.secondary}
+                    style={{ fontSize: 12 }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #000000',
+                      borderRadius: 6,
+                      padding: '8px 12px',
+                    }}
+                  />
+                  <Legend verticalAlign="top" height={36} />
+                  <Line
+                    name="Actual"
+                    type="monotone"
+                    dataKey="actual"
+                    stroke="#E67E22"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  <Line
+                    name="Predicted (twin)"
+                    type="monotone"
+                    dataKey="predicted"
+                    stroke="#3498DB"
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    dot={false}
+                  />
+                  <Line
+                    name="Alarm Limit"
+                    type="monotone"
+                    dataKey="alarmLimit"
+                    stroke="#F39C12"
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    dot={false}
+                  />
+                  <Line
+                    name="Trip Limit"
+                    type="monotone"
+                    dataKey="tripLimit"
+                    stroke="#E74C3C"
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </Box>
+          </Paper>
+
+          {/* Bearing Vibration Chart */}
+          <Paper sx={{ p: 2, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                Bearing Vibration
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2,}}>
+              <Chip
+                label="S4 - LOW"
+                sx={{
+                  backgroundColor: 'info.main',
+                  color: 'white',
+                  fontWeight: 600,
+                  fontSize: '0.75rem',
+                }}
               />
-              <Area
-                name="Availability"
-                type="monotone"
-                dataKey="availability"
-                stroke={theme.palette.secondary.main}
-                fillOpacity={1}
-                fill="url(#colorAvailability)"
-                strokeWidth={2}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </Box>
-      </Paper>
+            </Box>
+            </Box>
+
+            {/* Severity Indicators */}
+            <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center' }}>
+              {['#6C7F8F', '#5CB85C', '#5CB85C', '#5CB85C', '#5CB85C', '#5CB85C'].map((color, i) => (
+                <Box
+                  key={i}
+                  sx={{
+                    width: 12,
+                    height: 12,
+                    borderRadius: '50%',
+                    backgroundColor: color,
+                    border: '1px solid rgba(0,0,0,0.1)',
+                  }}
+                />
+              ))}
+               <Typography variant="caption" color="text.secondary" >
+              severity at each check-in, most recent —
+            </Typography>
+            </Box>
+
+            <Box sx={{ width: '100%', height: 300 }}>
+              <ResponsiveContainer>
+                <LineChart data={bearingVibrationData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.1)" />
+                  <XAxis
+                    dataKey="timestamp"
+                    stroke={theme.palette.text.secondary}
+                    style={{ fontSize: 12 }}
+                  />
+                  <YAxis
+                    domain={[0, 12]}
+                    stroke={theme.palette.text.secondary}
+                    style={{ fontSize: 12 }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #000000',
+                      borderRadius: 6,
+                      padding: '8px 12px',
+                    }}
+                  />
+                  <Legend verticalAlign="top" height={36} />
+                  <Line
+                    name="Actual"
+                    type="monotone"
+                    dataKey="actual"
+                    stroke="#F39C12"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  <Line
+                    name="Predicted (twin)"
+                    type="monotone"
+                    dataKey="predicted"
+                    stroke="#3498DB"
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    dot={false}
+                  />
+                  <Line
+                    name="Alarm Limit"
+                    type="monotone"
+                    dataKey="alarmLimit"
+                    stroke="#F39C12"
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    dot={false}
+                  />
+                  <Line
+                    name="Trip Limit"
+                    type="monotone"
+                    dataKey="tripLimit"
+                    stroke="#E74C3C"
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </Box>
+          </Paper>
+        </Grid>
+
+        {/* Advisory Column */}
+        <Grid size={{ xs: 12, lg: 4 }}>
+          <Paper
+            sx={{
+              p: 2,
+              borderRadius: 2,
+              border: '1px solid',
+              borderColor: 'divider',
+              // backgroundColor: '#DC2626',
+              // color: 'white',
+            }}
+          >
+            <Box
+              sx={{
+                backgroundColor: '#B91C1C',
+                p: 2,
+                borderRadius: 1,
+                mb: 2,
+              }}
+            >
+              <Typography
+                variant="h6"
+                sx={{
+                  color: 'white',
+                  fontWeight: 700,
+                }}
+              >
+                ADVISORY - S1 - CRITICAL
+              </Typography>
+            </Box>
+
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+              {selectedNodeName}
+            </Typography>
+
+            <Typography variant="body2" sx={{ mb: 3, opacity: 0.95 }}>
+              Bearing Temperature - first detected 24 Jun, 04:12
+            </Typography>
+
+            <Typography variant="body2" sx={{ mb: 2, lineHeight: 1.6 }}>
+              Bearing temperature has trended <strong>44% above</strong> the twin baseline over the last 6 hours —
+              consistent with advancing bearing wear. Severity has escalated <strong>S4 → S3 → S2 → S1</strong> as the
+              deviation sustained. The legacy 85°C alarm is only now starting to fire — the twin flagged this a full 6
+              hours earlier, well ahead of the 95°C trip limit.
+            </Typography>
+
+            <Typography variant="body2" sx={{ mb: 3, opacity: 0.9 }}>
+              Bearing Vibration also flagged <strong>S4 - LOW</strong>
+            </Typography>
+
+            <Button
+              fullWidth
+              variant="contained"
+              sx={{
+                backgroundColor: '#1F2937',
+                color: 'white',
+                fontWeight: 600,
+                textTransform: 'none',
+                py: 1.5,
+                '&:hover': {
+                  backgroundColor: '#111827',
+                },
+              }}
+              onClick={() => navigate('/root-cause')}
+            >
+              Initiate RCA →
+            </Button>
+          </Paper>
+        </Grid>
+      </Grid>
     </PageContainer>
   );
 };
+
 export default Dashboard;

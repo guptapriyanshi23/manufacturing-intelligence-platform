@@ -14,11 +14,11 @@ export const router = createBrowserRouter([
     children: [
       {
         path: '',
-        element: <Dashboard />,
+        element: <Alerts />,
       },
       {
-        path: 'alerts',
-        element: <Alerts />,
+        path: 'dashboard',
+        element: <Dashboard />,
       },
       {
         path: 'root-cause',

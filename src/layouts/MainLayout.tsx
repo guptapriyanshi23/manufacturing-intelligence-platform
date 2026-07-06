@@ -30,8 +30,8 @@ import type { HierarchyNode } from '../types/hierarchy';
 const drawerWidth = 280;
 
 const navItems = [
-  { path: '/', label: 'Dashboard', icon: <DashboardIcon /> },
-  { path: '/alerts', label: 'Alerts', icon: <AlertsIcon /> },
+  { path: '/', label: 'Alerts', icon: <AlertsIcon /> },
+  { path: '/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
   { path: '/root-cause', label: 'Root Cause', icon: <RootCauseIcon /> },
   { path: '/advisories', label: 'Advisories', icon: <AdvisoriesIcon /> },
   { path: '/reports', label: 'Reports', icon: <ReportsIcon /> },
@@ -64,7 +64,7 @@ export const MainLayout: React.FC = () => {
 
   const handleSelectNode = (node: HierarchyNode) => {
     setSelectedNode(node);
-    navigate(`/admin?selectedNodeId=${node.id}`);
+    navigate(`/admin?selectedNodeId=${node.id}&selectedNodeName=${encodeURIComponent(node.display_name)}`);
   };
 
   return (
@@ -112,10 +112,18 @@ export const MainLayout: React.FC = () => {
           <List sx={{ px: 1 }}>
             {navItems.map((item) => {
               const isActive = location.pathname === item.path;
+              const handleNavClick = () => {
+                // Preserve query params for Dashboard navigation
+                if (item.path === '/dashboard') {
+                  navigate(`${item.path}${location.search}`);
+                } else {
+                  navigate(item.path);
+                }
+              };
               return (
                 <ListItemButton
                   key={item.path}
-                  onClick={() => navigate(item.path)}
+                  onClick={handleNavClick}
                   selected={isActive}
                   sx={{
                     borderRadius: 1,
