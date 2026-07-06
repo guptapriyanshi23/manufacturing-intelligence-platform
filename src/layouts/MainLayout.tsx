@@ -11,7 +11,6 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
-  Chip,
   IconButton,
   CircularProgress
 } from '@mui/material';
@@ -73,13 +72,16 @@ export const MainLayout: React.FC = () => {
       {/* Top Header */}
       <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
         <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="h5" color="primary" sx={{ letterSpacing: '0.5px', fontWeight: 700 }}>
-              SM
-            </Typography>
-            <Typography variant="h6" sx={{ display: { xs: 'none', sm: 'block' }, fontWeight: 500 }}>
-              Smart Manufacturing
-            </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box component="img" src="/deloitte_logo_black.svg" alt="Deloitte Logo" sx={{ height: 20, width: 'auto' }} />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="h6" color="text.primary" sx={{ fontWeight: 100, letterSpacing: '0.5px' }}>
+                |
+              </Typography>
+              <Typography variant="h5" color="text.primary" sx={{ fontWeight: 700, letterSpacing: '0.5px' }}>
+                 Smart Manufacturing
+              </Typography>
+            </Box>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             {/* <Chip

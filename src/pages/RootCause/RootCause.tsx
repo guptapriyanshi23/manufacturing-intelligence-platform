@@ -158,9 +158,7 @@ export const RootCause: React.FC = () => {
                     onChange={(event) => setActionTaken(event.target.value)}
                   />
 
-                  <Button
-                    variant="contained"
-                    color="secondary"
+                  <Button variant="contained" color="primary"
                     size="large"
                     onClick={handleUploadSubmit}
                     sx={{ minWidth: 180 }}

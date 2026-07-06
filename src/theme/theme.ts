@@ -4,16 +4,16 @@ const theme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#000000', // Black
-      light: '#1e293b',
-      dark: '#000000',
+      main: '#459734', // Deloitte Green
+      light: '#6aa558',
+      dark: '#316e28',
       contrastText: '#ffffff',
     },
     secondary: {
-      main: '#92d400', // Deloitte Green
-      light: '#a9dd33',
-      dark: '#71a400',
-      contrastText: '#000000',
+      main: '#1e293b',
+      light: '#334155',
+      dark: '#0f172a',
+      contrastText: '#ffffff',
     },
     error: {
       main: '#ef4444',
@@ -111,7 +111,7 @@ const theme = createTheme({
           transition: 'all 0.2s ease-in-out',
           '&:hover': {
             transform: 'translateY(-1px)',
-            boxShadow: '0 4px 12px rgba(146, 212, 0, 0.25)', // Deloitte Green glow
+            boxShadow: '0 4px 12px rgba(69, 151, 52, 0.25)', // Deloitte Green glow
           },
         },
       },
