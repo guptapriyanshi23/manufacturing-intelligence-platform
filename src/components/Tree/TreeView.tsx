@@ -49,7 +49,8 @@ const TreeNode: React.FC<{
           onClick={handleClick}
           selected={isSelected}
           sx={{
-            pl: depth * 1.5,
+            // pl: depth * 1.5,
+            pl: 1,
             py: 0,
             borderRadius: 1,
             mb: 0,
