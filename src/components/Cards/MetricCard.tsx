@@ -5,12 +5,13 @@ import { ArrowUpward, ArrowDownward } from '@mui/icons-material';
 interface MetricCardProps {
   title: string;
   value: string | number;
+  subValue?: string;
   unit?: string;
-  trend?: number; // percentage trend e.g. 1.2 or -0.5
+  trend?: number;
   icon?: React.ReactNode;
 }
 
-export const MetricCard: React.FC<MetricCardProps> = ({ title, value, unit, trend, icon }) => {
+export const MetricCard: React.FC<MetricCardProps> = ({ title, value, subValue, unit, trend, icon }) => {
   const theme = useTheme();
   const isPositive = trend ? trend >= 0 : true;
 
@@ -42,12 +43,17 @@ export const MetricCard: React.FC<MetricCardProps> = ({ title, value, unit, tren
           {icon && <Box sx={{ opacity: 0.8, color: theme.palette.primary.main }}>{icon}</Box>}
         </Box>
 
-        <Box sx={{ display: 'flex', alignItems: 'baseline' }}>
-          <Typography variant="h3" component="div" sx={{ fontWeight: 700 }}>
+        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+          <Typography variant="h2" component="div" sx={{ fontWeight: 700 }}>
             {value}
           </Typography>
+          {subValue && (
+            <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 400 }}>
+              {subValue}
+            </Typography>
+          )}
           {unit && (
-            <Typography variant="body1" color="text.secondary" sx={{ ml: 0.5, fontWeight: 500 }}>
+            <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
               {unit}
             </Typography>
           )}

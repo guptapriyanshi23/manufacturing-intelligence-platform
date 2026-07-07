@@ -182,13 +182,13 @@ export const Reports: React.FC = () => {
               <MetricCard title="Advisories" value={total} />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <MetricCard title="Open" value={`${openCount}  (${pct(openCount)})`} />
+              <MetricCard title="Open" value={openCount} subValue={`(${pct(openCount)})`} />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <MetricCard title="Acknowledged" value={`${ackCount}  (${pct(ackCount)})`} />
+              <MetricCard title="Acknowledged" value={ackCount} subValue={`(${pct(ackCount)})`} />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              <MetricCard title="Resolved" value={`${resolvedCount}  (${pct(resolvedCount)})`} />
+              <MetricCard title="Resolved" value={resolvedCount} subValue={`(${pct(resolvedCount)})`} />
             </Grid>
           </Grid>
         </Grid>
