@@ -21,18 +21,18 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, actions
         }}
       >
         <Box>
-          <Typography variant="h1" color="text.primary">
+          <Typography variant="h2" color="text.primary" sx={{ fontWeight: 500 }}>
             {title}
           </Typography>
           {subtitle && (
-            <Typography variant="body1" color="text.secondary" sx={{ mt: 0.5 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
               {subtitle}
             </Typography>
           )}
         </Box>
         {actions && <Box sx={{ flexShrink: 0 }}>{actions}</Box>}
       </Box>
-      <Divider sx={{ borderColor: '#000000' }} />
+      <Divider sx={{ borderColor: 'secondary.light' }} />
     </Box>
   );
 };

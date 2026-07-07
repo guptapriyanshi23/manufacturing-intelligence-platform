@@ -198,7 +198,7 @@ export const RootCause: React.FC = () => {
                   }}
                 >
                   <PhotoCameraOutlined sx={{ fontSize: 40, mb: 1, color: 'text.secondary' }} />
-                  <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+                  <Typography variant="body1" sx={{ mb: 1 }}>
                     Click to upload a photo of the fault
                   </Typography>
                   <Typography variant="body2" color="text.secondary">

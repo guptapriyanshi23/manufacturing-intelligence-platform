@@ -95,7 +95,7 @@ export const Reports: React.FC = () => {
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <CircularProgress color="primary" />
+        <CircularProgress color="secondary" />
       </Box>
     );
   }

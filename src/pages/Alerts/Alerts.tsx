@@ -239,13 +239,13 @@ export const Alerts: React.FC = () => {
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
-          <CircularProgress color="primary" />
+          <CircularProgress color="secondary" />
         </Box>
       ) : (
         <TableContainer component={Paper} sx={{ border: '1px solid #ccc', boxShadow: 'none' }}>
           <Box sx={{ px: 2, py: 1.2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #ccc' }}>
             <Typography variant="body1" sx={{ fontWeight: 400 }}>
-              TOTAL ALERTS :&nbsp;
+              Total Alerts :&nbsp;
               <Typography component="span" variant="subtitle1" color="text.secondary" sx={{ fontWeight: 400 }}>
                 {filteredAlerts.length}
               </Typography>

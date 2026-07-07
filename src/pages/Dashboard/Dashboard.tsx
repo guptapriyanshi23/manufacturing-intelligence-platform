@@ -13,6 +13,7 @@ import { PageContainer } from '../../components/Cards/PageContainer';
 import { api } from '../../api/client';
 import type { HierarchyNode } from '../../types/hierarchy';
 import { getSeverityBgColor, getSeverityColor, getSeverityLevel } from '../../constants/severity';
+import { PageHeader } from '../../components/Cards/PageHeader';
 
 const TIME_RANGE_OPTIONS = [
   { value: 'last_1h', label: 'Last Hour' },
@@ -184,10 +185,10 @@ export const Dashboard: React.FC = () => {
             {TIME_RANGE_OPTIONS.map(o => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
           </Select>
         </FormControl>
-        
+
         <TextField label="From" type="datetime-local" size="small" value={from} onChange={(e) => onFromChange(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ minWidth: 200 }} />
         <TextField label="To" type="datetime-local" size="small" value={to} onChange={(e) => onToChange(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ minWidth: 200 }} />
-        
+
         <Button variant="contained" color="secondary" sx={{ fontWeight: 600, flexShrink: 0 }}>Apply</Button>
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -200,20 +201,24 @@ export const Dashboard: React.FC = () => {
   return (
     <PageContainer>
       {/* Header */}
+      <PageHeader
+        title="Dashboard"
+        subtitle="Anomalous tags are shown by default, stacked one below the other. Use the dropdown to browse any other parameter on this asset — anomaly or not."
+      />
       <Box sx={{ mb: 4 }}>
-        <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc' }}>
+        <Paper sx={{ p: 2, borderRadius: 2, border: '1px solid #ccc' }}>
           <Grid container spacing={2} sx={{ alignItems: 'center' }}>
             <Grid size={{ xs: 12, md: 8 }}>
-              <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                {activeNode ? activeNode.display_name : 'Global Operations'} Dashboard
+              <Typography variant="h4" sx={{ fontWeight: 500 }}>
+                {activeNode ? activeNode.display_name : 'Global Operations'}
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1, maxWidth: 720 }}>
+              {/* <Typography variant="body2" color="text.secondary" sx={{ mt: 1, maxWidth: 720 }}>
                 Anomalous tags are shown by default, stacked one below the other. Use the dropdown to browse any other parameter on this asset — anomaly or not.
-              </Typography>
+              </Typography> */}
             </Grid>
             <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'flex', justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
               {descendantSensors.length > 0 && (
-                <FormControl size="small" sx={{ minWidth: 260 }}>
+                <FormControl size="small" sx={{ minWidth: 320 }}>
                   <InputLabel id="sensor-filter-dropdown-label">Filter Active Graphs</InputLabel>
                   <Select
                     labelId="sensor-filter-dropdown-label"
