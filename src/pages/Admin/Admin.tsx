@@ -521,16 +521,16 @@ export const Admin: React.FC = () => {
         </DialogTitle>
 
         <DialogContent sx={{ p: 3 }}>
-          <Stepper activeStep={alertStep} sx={{ mb: 4, '& .MuiStepConnector-line': { borderColor: 'secondary.main' } }}>
+          <Stepper activeStep={alertStep} sx={{ my: 3, '& .MuiStepConnector-line': { borderColor: 'secondary.main' } }}>
             {ALERT_STEPS.map((label, index) => (
               <Step key={label} completed={index < alertStep}>
                 <StepLabel
-                  StepIconProps={{
-                    sx: {
-                      '&.Mui-completed': { color: 'secondary.main' },
-                      '&.Mui-active': { color: 'secondary.main' },
-                    }
-                  } as StepIconProps}
+                  // StepIconProps={{
+                  //   sx: {
+                  //     '&.Mui-completed': { color: 'secondary.main' },
+                  //     '&.Mui-active': { color: 'secondary.main' },
+                  //   }
+                  // } as StepIconProps}
                 >{label}</StepLabel>
               </Step>
             ))}
