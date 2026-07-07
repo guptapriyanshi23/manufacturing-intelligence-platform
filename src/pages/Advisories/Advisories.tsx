@@ -142,7 +142,7 @@ export const Advisories: React.FC = () => {
             <MenuItem value=""><em>None</em></MenuItem>
             {statusOptions.map((option) => (
               <MenuItem key={option} value={option}>
-                {option.charAt(0).toUpperCase() + option.slice(1)}
+                {option == 'in_progress' ? 'In Progress' : option.charAt(0).toUpperCase() + option.slice(1)}
               </MenuItem>
             ))}
           </Select>

@@ -14,6 +14,9 @@ import {
   InputLabel,
   Paper,
   Stack,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
 } from '@mui/material';
 import { PhotoCameraOutlined } from '@mui/icons-material';
 import { PageContainer } from '../../components/Cards/PageContainer';
@@ -24,6 +27,7 @@ export const RootCause: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [rcaStatus, setRcaStatus] = useState<'in_progress' | 'resolved'>('in_progress');
   const [rootCauseDescription, setRootCauseDescription] = useState('');
   const [actionTaken, setActionTaken] = useState('');
   const [advisories, setAdvisories] = useState<any[]>([]);
@@ -88,7 +92,7 @@ export const RootCause: React.FC = () => {
       }
 
       await api.advisories.update(Number(selectedAdvisoryId), {
-        status: 'resolved',
+        status: rcaStatus === 'resolved' ? 'resolved' : 'acknowledged',
         root_cause_description: rootCauseDescription,
         action_taken: actionTaken,
         image_path: imagePath,
@@ -238,6 +242,26 @@ export const RootCause: React.FC = () => {
                   value={actionTaken}
                   onChange={(event) => setActionTaken(event.target.value)}
                 />
+
+                <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
+                  <Typography variant="body1" >Status: </Typography>
+                  <RadioGroup
+                    row
+                    value={rcaStatus}
+                    onChange={(e) => setRcaStatus(e.target.value as 'in_progress' | 'resolved')}
+                  >
+                    <FormControlLabel
+                      value="in_progress"
+                      control={<Radio color="primary" />}
+                      label="In Progress"
+                    />
+                    <FormControlLabel
+                      value="resolved"
+                      control={<Radio color="primary" />}
+                      label="Resolved"
+                    />
+                  </RadioGroup>
+                </Box>
 
                 <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
                   <Button
