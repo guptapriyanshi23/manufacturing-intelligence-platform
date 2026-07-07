@@ -373,7 +373,7 @@ export const Dashboard: React.FC = () => {
                           color: getSeverityColor(advisory.severity),
                           fontWeight: 500,
                           fontSize: '1rem',
-                          p:1
+                          p:2
                         }}
                       />
                     </Box>

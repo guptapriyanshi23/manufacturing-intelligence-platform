@@ -118,11 +118,12 @@ export const Advisories: React.FC = () => {
             variant={isAllActive ? 'contained' : 'outlined'}
             color="primary"
             onClick={handleResetFilters}
+            sx={{minWidth: 90, fontWeight: 600, flexShrink: 0}}
           >
             All
           </Button>
 
-          <FormControl sx={{ minWidth: 400,}} size="small">
+          <FormControl sx={{flex: 1}} size="small">
             <InputLabel id="asset-filter-label">Asset</InputLabel>
             <Select
               labelId="asset-filter-label"
@@ -147,7 +148,7 @@ export const Advisories: React.FC = () => {
             </Select>
           </FormControl>
 
-          <FormControl sx={{ minWidth: 200 }} size="small">
+          <FormControl sx={{ flex: 1 }} size="small">
             <InputLabel id="status-filter-label">Status</InputLabel>
             <Select
               labelId="status-filter-label"
@@ -167,7 +168,7 @@ export const Advisories: React.FC = () => {
             </Select>
           </FormControl>
 
-          <FormControl sx={{ minWidth: 200 }} size="small">
+          <FormControl sx={{ flex: 1 }} size="small">
             <InputLabel id="severity-filter-label">Severity</InputLabel>
             <Select
               labelId="severity-filter-label"

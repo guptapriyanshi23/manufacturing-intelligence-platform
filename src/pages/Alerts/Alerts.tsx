@@ -158,9 +158,9 @@ export const Alerts: React.FC = () => {
 
       {/* Filters */}
       <Paper sx={{ p: 2, mb: 3, border: '1px solid #000000' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
 
-          <FormControl size="small" sx={{ minWidth: 400 }}>
+          <FormControl size="small" sx={{ flex: 2 }}>
             <InputLabel id="asset-filter-label">Asset</InputLabel>
             <Select
               labelId="asset-filter-label"
@@ -185,7 +185,7 @@ export const Alerts: React.FC = () => {
             </Select>
           </FormControl>
 
-          <FormControl size="small" sx={{ minWidth: 250 }}>
+          <FormControl size="small" sx={{ flex: 1 }}>
             <InputLabel id="time-range-label">Time Range</InputLabel>
             <Select
               labelId="time-range-label"
@@ -206,7 +206,7 @@ export const Alerts: React.FC = () => {
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
             slotProps={{ inputLabel: { shrink: true } }}
-            sx={{ minWidth: 190 }}
+            sx={{ flex: 1 }}
           />
           <TextField
             label="To"
@@ -215,10 +215,10 @@ export const Alerts: React.FC = () => {
             value={toDate}
             onChange={(e) => setToDate(e.target.value)}
             slotProps={{ inputLabel: { shrink: true } }}
-            sx={{ minWidth: 190 }}
+            sx={{ flex: 1 }}
           />
 
-          <Button variant="contained" color="secondary" sx={{ minWidth: 90, fontWeight: 600 }}>
+          <Button variant="contained" color="secondary" sx={{ minWidth: 90, fontWeight: 600, flexShrink: 0 }}>
             View
           </Button>
         </Box>

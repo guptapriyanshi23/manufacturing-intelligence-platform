@@ -375,14 +375,6 @@ export const Admin: React.FC = () => {
       <PageHeader
         title="Administration"
         subtitle="Manage hierarchy nodes and configure alert rules."
-        actions={
-          activeTab === 0 && selectedNodeId ? (
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={handleDelete}>Delete Node</Button>
-              <Button variant="outlined" color="primary" startIcon={<AddIcon />} onClick={handleCreateNew}>Add New Node</Button>
-            </Box>
-          ) : null
-        }
       />
 
       <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ mb: 3, borderBottom: '1px solid #000000' }}>
@@ -394,9 +386,17 @@ export const Admin: React.FC = () => {
       {activeTab === 0 && (
         <Card>
           <CardContent>
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-              {selectedNodeId ? `Edit Node: ${selectedNodeName || selectedNodeId}` : 'Create New Hierarchy Node'}
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                {selectedNodeId ? `Edit Node: ${selectedNodeName || selectedNodeId}` : 'Create New Hierarchy Node'}
+              </Typography>
+              {selectedNodeId && (
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={handleDelete}>Delete Node</Button>
+                  <Button variant="outlined" color="primary" startIcon={<AddIcon />} onClick={handleCreateNew}>Add New Node</Button>
+                </Box>
+              )}
+            </Box>
             <Divider sx={{ mb: 3 }} />
 
             {saveSuccess && <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSaveSuccess(false)}>Node saved successfully.</Alert>}
@@ -458,7 +458,7 @@ export const Admin: React.FC = () => {
           <CardContent>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="h6" sx={{ fontWeight: 600 }}>Alert Rules</Typography>
-              <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={openDrawer}>
+              <Button variant="outlined" color="primary" startIcon={<AddIcon />} onClick={openDrawer}>
                 Create Rule
               </Button>
             </Box>
