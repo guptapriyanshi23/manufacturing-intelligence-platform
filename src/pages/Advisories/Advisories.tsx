@@ -112,7 +112,7 @@ export const Advisories: React.FC = () => {
         subtitle="Active system advisories for equipment health, severity tracking, and remediation actions. Click any row to view full details."
       />
 
-      <Paper sx={{ p: 2, mb: 3, border: '1px solid #000000' }}>
+      <Paper sx={{ p: 2, mb: 3, border: '1px solid #ccc' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2,  }}>
           <Button
             variant={isAllActive ? 'contained' : 'outlined'}
@@ -197,13 +197,13 @@ export const Advisories: React.FC = () => {
       ) : (
         <TableContainer
           component={Paper}
-          sx={{ backgroundColor: '#ffffff', boxShadow: 'none', border: '1px solid #000000' }}
+          sx={{ backgroundColor: '#ffffff', boxShadow: 'none', border: '1px solid #ccc' }}
         >
           <Table sx={{ minWidth: 720 }}>
             <TableHead>
               <TableRow>
                 {['Tag', 'Asset', 'Severity', 'Status', 'Action taken'].map(col => (
-                  <TableCell key={col} sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid #000000' }}>
+                  <TableCell key={col} sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid #ccc' }}>
                     {col}
                   </TableCell>
                 ))}
@@ -217,13 +217,13 @@ export const Advisories: React.FC = () => {
                   onClick={() => handleRowClick(row)}
                   sx={{ cursor: 'pointer', '&:last-child td': { borderBottom: 0 } }}
                 >
-                  <TableCell sx={{ color: 'text.primary', fontWeight: 600, borderBottom: '1px solid #000000' }}>
+                  <TableCell sx={{ color: 'text.primary', fontWeight: 600, borderBottom: '1px solid #ccc' }}>
                     {row.tag}
                   </TableCell>
-                  <TableCell sx={{ color: 'text.secondary', borderBottom: '1px solid #000000' }}>
+                  <TableCell sx={{ color: 'text.secondary', borderBottom: '1px solid #ccc' }}>
                     {row.asset}
                   </TableCell>
-                  <TableCell sx={{ borderBottom: '1px solid #000000' }}>
+                  <TableCell sx={{ borderBottom: '1px solid #ccc' }}>
                     <Chip
                       label={row.severity.toUpperCase()}
                       size="small"
@@ -236,10 +236,10 @@ export const Advisories: React.FC = () => {
                       }}
                     />
                   </TableCell>
-                  <TableCell sx={{ borderBottom: '1px solid #000000' }}>
+                  <TableCell sx={{ borderBottom: '1px solid #ccc' }}>
                     <StatusChip label={row.status.toUpperCase()} status={row.status} />
                   </TableCell>
-                  <TableCell sx={{ color: 'text.secondary', borderBottom: '1px solid #000000' }}>
+                  <TableCell sx={{ color: 'text.secondary', borderBottom: '1px solid #ccc' }}>
                     {row.action_taken || '—'}
                   </TableCell>
                 </TableRow>
@@ -262,12 +262,12 @@ export const Advisories: React.FC = () => {
         onClose={handleCloseDetails}
         maxWidth="md"
         fullWidth
-        PaperProps={{ sx: { border: '1px solid #000000', borderRadius: 2 } }}
+        PaperProps={{ sx: { border: '1px solid #ccc', borderRadius: 2 } }}
       >
         {selectedAdvisory && (
           <>
             <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', pb: 2 }}>
-              <Typography variant="h5" sx={{ fontWeight: 700 }}>{selectedAdvisory.asset}</Typography>
+              <Typography variant="h4" sx={{ fontWeight: 700 }}>{selectedAdvisory.asset}</Typography>
               <Box sx={{ display: 'flex', gap: 1 }}>
                 <Chip
                   label={selectedAdvisory.severity.toUpperCase()}
@@ -282,7 +282,7 @@ export const Advisories: React.FC = () => {
               </Box>
             </DialogTitle>
 
-            <DialogContent sx={{ p: 3 }}>
+            <DialogContent sx={{ p: 3, mt: 2 }}>
               <Stack spacing={3}>
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>Parameter Tag</Typography>
@@ -339,13 +339,14 @@ export const Advisories: React.FC = () => {
               {selectedAdvisory.status !== 'resolved' && (
                 <Button
                   variant="contained"
-                  sx={{ backgroundColor: '#000000', color: 'white', fontWeight: 600, textTransform: 'none', '&:hover': { backgroundColor: '#1e293b' } }}
+                  color="secondary"
+                  sx={{ fontWeight: 600, textTransform: 'none' }}
                   onClick={() => handleInitiateRcaFromDetails(selectedAdvisory)}
                 >
                   Initiate RCA
                 </Button>
               )}
-              <Button onClick={handleCloseDetails} sx={{ color: 'text.secondary', textTransform: 'none', fontWeight: 600 }}>
+              <Button variant="outlined" color='secondary' sx={{ textTransform: 'none', fontWeight: 600 }}  onClick={handleCloseDetails} >
                 Close
               </Button>
             </DialogActions>

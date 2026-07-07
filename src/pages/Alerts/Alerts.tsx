@@ -157,7 +157,7 @@ export const Alerts: React.FC = () => {
       />
 
       {/* Filters */}
-      <Paper sx={{ p: 2, mb: 3, border: '1px solid #000000' }}>
+      <Paper sx={{ p: 2, mb: 3, border: '1px solid #ccc' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
 
           <FormControl size="small" sx={{ flex: 2 }}>
@@ -242,8 +242,8 @@ export const Alerts: React.FC = () => {
           <CircularProgress color="primary" />
         </Box>
       ) : (
-        <TableContainer component={Paper} sx={{ border: '1px solid #000000', boxShadow: 'none' }}>
-          <Box sx={{ px: 2, py: 1.2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #000000' }}>
+        <TableContainer component={Paper} sx={{ border: '1px solid #ccc', boxShadow: 'none' }}>
+          <Box sx={{ px: 2, py: 1.2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #ccc' }}>
             <Typography variant="body1" sx={{ fontWeight: 400 }}>
               TOTAL ALERTS :&nbsp;
               <Typography component="span" variant="subtitle1" color="text.secondary" sx={{ fontWeight: 400 }}>
@@ -264,11 +264,11 @@ export const Alerts: React.FC = () => {
           <Table sx={{ minWidth: 720 }}>
             <TableHead>
               <TableRow>
-                <TableCell padding="checkbox" sx={{ borderBottom: '1px solid #000000' }}>
+                <TableCell padding="checkbox" sx={{ borderBottom: '1px solid #ccc' }}>
                   <Checkbox indeterminate={someSelected} checked={allSelected} onChange={handleSelectAll} color="primary" />
                 </TableCell>
                 {['Alert Name', 'Asset', 'Sensor', 'Condition', 'Threshold', 'Severity', 'Status', 'Detected At'].map(col => (
-                  <TableCell key={col} sx={{ fontWeight: 700, borderBottom: '1px solid #000000' }}>{col}</TableCell>
+                  <TableCell key={col} sx={{ fontWeight: 700, borderBottom: '1px solid #ccc' }}>{col}</TableCell>
                 ))}
               </TableRow>
             </TableHead>
@@ -281,21 +281,21 @@ export const Alerts: React.FC = () => {
                   sx={{ cursor: 'pointer', '&:last-child td': { borderBottom: 0 } }}
                   onClick={() => handleSelectRow(row.id)}
                 >
-                  <TableCell padding="checkbox" sx={{ borderBottom: '1px solid #000000' }}>
+                  <TableCell padding="checkbox" sx={{ borderBottom: '1px solid #ccc' }}>
                     <Checkbox checked={selectedIds.includes(row.id)} color="primary" onClick={(e) => e.stopPropagation()} onChange={() => handleSelectRow(row.id)} />
                   </TableCell>
-                  <TableCell sx={{ fontWeight: 600, borderBottom: '1px solid #000000' }}>{row.alertName}</TableCell>
-                  <TableCell sx={{ borderBottom: '1px solid #000000' }}>{row.asset}</TableCell>
-                  <TableCell sx={{ borderBottom: '1px solid #000000' }}>{row.sensor}</TableCell>
-                  <TableCell sx={{ borderBottom: '1px solid #000000' }}>{row.condition}</TableCell>
-                  <TableCell sx={{ borderBottom: '1px solid #000000' }}>{row.threshold}</TableCell>
-                  <TableCell sx={{ borderBottom: '1px solid #000000' }}>
+                  <TableCell sx={{ fontWeight: 600, borderBottom: '1px solid #ccc' }}>{row.alertName}</TableCell>
+                  <TableCell sx={{ borderBottom: '1px solid #ccc' }}>{row.asset}</TableCell>
+                  <TableCell sx={{ borderBottom: '1px solid #ccc' }}>{row.sensor}</TableCell>
+                  <TableCell sx={{ borderBottom: '1px solid #ccc' }}>{row.condition}</TableCell>
+                  <TableCell sx={{ borderBottom: '1px solid #ccc' }}>{row.threshold}</TableCell>
+                  <TableCell sx={{ borderBottom: '1px solid #ccc' }}>
                     <Chip label={row.severity.toUpperCase()} size="small" sx={{ backgroundColor: getSeverityBgColor(row.severity), color: getSeverityColor(row.severity), fontWeight: 700 }} />
                   </TableCell>
-                  <TableCell sx={{ borderBottom: '1px solid #000000' }}>
+                  <TableCell sx={{ borderBottom: '1px solid #ccc' }}>
                     <StatusChip label={row.status.toUpperCase()} status={row.status} />
                   </TableCell>
-                  <TableCell sx={{ borderBottom: '1px solid #000000' }}>
+                  <TableCell sx={{ borderBottom: '1px solid #ccc' }}>
                     {new Date(row.timestamp).toLocaleString()}
                   </TableCell>
                 </TableRow>

@@ -196,7 +196,7 @@ export const Dashboard: React.FC = () => {
     <PageContainer>
       {/* Header Section */}
       <Box sx={{ mb: 4 }}>
-        <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #000000' }}>
+        <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc' }}>
           <Grid container spacing={2} sx={{ alignItems: 'center' }}>
             <Grid size={{ xs: 12, md: 8 }}>
               <Typography variant="h4" sx={{ fontWeight: 700 }}>
@@ -249,7 +249,7 @@ export const Dashboard: React.FC = () => {
             <Grid container spacing={3}>
               {descendantSensors.length === 0 ? (
                 <Grid size={12}>
-                  <Paper sx={{ p: 4, textAlign: 'center', border: '1px solid #000000' }}>
+                  <Paper sx={{ p: 4, textAlign: 'center', border: '1px solid #ccc' }}>
                     <Typography color="text.secondary">
                       No sensors defined under the selected hierarchy level. Select a level with configured sensor metadata.
                     </Typography>
@@ -271,7 +271,7 @@ export const Dashboard: React.FC = () => {
 
                     return (
                       <Grid size={12} key={sensor.id}>
-                        <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #000000' }}>
+                        <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc' }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                             <Typography variant="h6" sx={{ fontWeight: 700 }}>
                               {sensor.display_name}
@@ -302,7 +302,7 @@ export const Dashboard: React.FC = () => {
                                   <Tooltip
                                     contentStyle={{
                                       backgroundColor: '#ffffff',
-                                      border: '1px solid #000000',
+                                      border: '1px solid #ccc',
                                       borderRadius: 6,
                                       fontSize: 12
                                     }}
@@ -351,7 +351,7 @@ export const Dashboard: React.FC = () => {
             {openAdvisories.length > 0 ? (
               <Stack spacing={3}>
                 {openAdvisories.map((advisory) => (
-                  <Paper key={advisory.id} sx={{ p: 0, borderRadius: 2, border: '1px solid #000000', overflow: 'hidden' }}>
+                  <Paper key={advisory.id} sx={{ p: 0, borderRadius: 2, border: '1px solid #ccc', overflow: 'hidden' }}>
                     <Box
                       sx={{
                         // backgroundColor: 'secondary.main',
@@ -359,7 +359,7 @@ export const Dashboard: React.FC = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        // borderBottom: '1px solid #000000',
+                        // borderBottom: '1px solid #ccc',
                       }}
                     >
                       <Typography variant="h6" sx={{ color: 'secondary.main', fontWeight: 700, textTransform: 'uppercase' }}>
@@ -434,7 +434,7 @@ export const Dashboard: React.FC = () => {
                 ))}
               </Stack>
             ) : (
-              <Paper sx={{ p: 3, textAlign: 'center', border: '1px solid #000000' }}>
+              <Paper sx={{ p: 3, textAlign: 'center', border: '1px solid #ccc' }}>
                 <Typography color="text.secondary">No active optimization or maintenance advisories.</Typography>
               </Paper>
             )}

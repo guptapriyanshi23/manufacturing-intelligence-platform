@@ -122,7 +122,7 @@ export const RootCause: React.FC = () => {
 
       <Grid container spacing={3}>
         <Grid size={{ xs: 12 }}>
-          <Card sx={{ border: '1px solid #000000', backgroundColor: '#ffffff' }}>
+          <Card sx={{ border: '1px solid #ccc', backgroundColor: '#ffffff' }}>
             <Box
               sx={{
                 backgroundColor: 'secondary.main',

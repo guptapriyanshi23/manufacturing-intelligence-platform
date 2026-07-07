@@ -108,7 +108,7 @@ export const Reports: React.FC = () => {
       />
 
       {/* Filter bar */}
-      <Paper sx={{ p: 2, mb: 3, border: '1px solid #000000' }}>
+      <Paper sx={{ p: 2, mb: 3, border: '1px solid #ccc' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <FormControl size="small" sx={{ flex: 1 }}>
             <InputLabel id="asset-label">Asset</InputLabel>

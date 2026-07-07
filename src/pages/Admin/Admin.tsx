@@ -337,7 +337,7 @@ export const Admin: React.FC = () => {
                 size="small"
               >
                 {PENDING_PERIODS.map(p => (
-                  <ToggleButton key={p} value={p} sx={{ fontWeight: 600, px: 2,
+                  <ToggleButton key={p} value={p} sx={{ fontWeight: 600, px: 2, textTransform: 'none',
                     '&.Mui-selected': { backgroundColor: 'primary.main', color: 'white', '&:hover': { backgroundColor: 'primary.dark' } }
                   }}>{p}</ToggleButton>
                 ))}
@@ -359,7 +359,7 @@ export const Admin: React.FC = () => {
                 size="small"
               >
                 {KEEP_FIRING.map(p => (
-                  <ToggleButton key={p} value={p} sx={{ fontWeight: 600, px: 2,
+                  <ToggleButton key={p} value={p} sx={{ fontWeight: 600, px: 2, textTransform: 'none',
                     '&.Mui-selected': { backgroundColor: 'primary.main', color: 'white', '&:hover': { backgroundColor: 'primary.dark' } }
                   }}>{p}</ToggleButton>
                 ))}
@@ -377,7 +377,7 @@ export const Admin: React.FC = () => {
         subtitle="Manage hierarchy nodes and configure alert rules."
       />
 
-      <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ mb: 3, borderBottom: '1px solid #000000' }}>
+      <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ mb: 3, borderBottom: '1px solid #ccc' }}>
         <Tab label="Hierarchy" />
         <Tab label="Alert Rule" />
       </Tabs>
@@ -514,7 +514,7 @@ export const Admin: React.FC = () => {
 
       {/* ── Create Rule Dialog ── */}
       <Dialog open={drawerOpen} onClose={closeDrawer} maxWidth="sm" fullWidth
-        PaperProps={{ sx: { border: '1px solid #000000', borderRadius: 2 } }}
+        PaperProps={{ sx: { border: '1px solid #ccc', borderRadius: 2 } }}
       >
         <DialogTitle sx={{ borderBottom: '1px solid #e2e8f0', pb: 2 }}>
           <Typography variant="h5" sx={{ fontWeight: 700 }}>Create Alert Rule</Typography>

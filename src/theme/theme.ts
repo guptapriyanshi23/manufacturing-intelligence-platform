@@ -120,7 +120,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           backgroundImage: 'none',
-          border: '1px solid #000000', // Pure Black Border
+          border: '1px solid #ccc', // Pure Black Border
         },
       },
     },
@@ -128,7 +128,7 @@ const theme = createTheme({
       styleOverrides: {
         paper: {
           backgroundColor: '#000000', // Pure Black Sidebar
-          borderRight: '1px solid #000000',
+          borderRight: '1px solid #ccc',
           color: '#ffffff',
           '& .MuiTypography-root': {
             color: '#ffffff',
@@ -160,7 +160,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           backgroundColor: '#ffffff', // Pure White App Bar
-          borderBottom: '1px solid #000000', // Pure Black Border
+          borderBottom: '1px solid #ccc', // Pure Black Border
           boxShadow: 'none',
           color: '#000000',
         },

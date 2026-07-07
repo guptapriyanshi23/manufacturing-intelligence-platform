@@ -22,7 +22,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({ title, value, unit, tren
         position: 'relative',
         overflow: 'hidden',
         background: theme.palette.background.paper,
-        borderColor: '#000000',
+        borderColor: '#ccc',
         '&::before': {
           content: '""',
           position: 'absolute',
