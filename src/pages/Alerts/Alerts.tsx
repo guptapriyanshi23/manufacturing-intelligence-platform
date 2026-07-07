@@ -3,47 +3,49 @@ import {
   Box,
   CircularProgress,
   Button,
-  Drawer,
   Stack,
-  TextField,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  FormControlLabel,
+  TextField,
+  Typography,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Checkbox,
+  Chip,
   Switch,
+  FormControlLabel,
 } from '@mui/material';
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
-import { DataTable } from '../../components/Tables/DataTable';
 import { StatusChip } from '../../components/Forms/StatusChip';
+import { getSeverityColor, getSeverityBgColor } from '../../constants/severity';
 import { api } from '../../api/client';
+import type { HierarchyNode } from '../../types/hierarchy';
 
-const assetOptions = [
-  { value: 'compressor-1', label: 'Compressor 1' },
-  { value: 'pump-5', label: 'Pump 5' },
-  { value: 'assembly-line', label: 'Assembly Line' },
+const TIME_RANGE_OPTIONS = [
+  { value: 'last_1h',  label: 'Last Hour' },
+  { value: 'last_8h',  label: 'Last 8 Hours' },
+  { value: 'last_24h', label: 'Last 24 Hours' },
+  { value: 'last_7d',  label: 'Last Week' },
+  { value: 'last_30d', label: 'Last 30 Days' },
 ];
 
-const sensorOptions = [
-  { value: 'temperature', label: 'Temperature' },
-  { value: 'pressure', label: 'Pressure' },
-  { value: 'vibration', label: 'Vibration' },
-];
-
-const conditionOptions = [
-  { value: 'gt', label: 'Greater than' },
-  { value: 'lt', label: 'Less than' },
-  { value: 'gte', label: 'Greater than or equal' },
-  { value: 'lte', label: 'Less than or equal' },
-];
-
-const severityOptions = [
-  { value: 'critical', label: 'Critical' },
-  { value: 'major', label: 'Major' },
-  { value: 'minor', label: 'Minor' },
-  { value: 'warning', label: 'Warning' },
-];
+const getDateRange = (rangeValue: string) => {
+  const now = new Date();
+  const map: Record<string, number> = {
+    last_1h: 1, last_8h: 8, last_24h: 24, last_7d: 168, last_30d: 720,
+  };
+  const hours = map[rangeValue] ?? 24;
+  const from = new Date(now.getTime() - hours * 60 * 60 * 1000);
+  return { from: from.toISOString().slice(0, 16), to: now.toISOString().slice(0, 16) };
+};
 
 const demoAlerts = [
   {
@@ -54,8 +56,7 @@ const demoAlerts = [
     condition: 'Greater than',
     threshold: '85',
     severity: 'critical',
-    status: 'active',
-    message: 'Temperature exceeded safety threshold on Compressor 1',
+    status: 'open',
     timestamp: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
   },
   {
@@ -65,9 +66,8 @@ const demoAlerts = [
     sensor: 'Pressure',
     condition: 'Greater than or equal',
     threshold: '120',
-    severity: 'major',
-    status: 'active',
-    message: 'Pressure reached critical level on Pump 5',
+    severity: 'warning',
+    status: 'open',
     timestamp: new Date(Date.now() - 1000 * 60 * 42).toISOString(),
   },
   {
@@ -77,233 +77,242 @@ const demoAlerts = [
     sensor: 'Vibration',
     condition: 'Less than',
     threshold: '8',
-    severity: 'warning',
+    severity: 'info',
     status: 'acknowledged',
-    message: 'Vibration readings falling outside normal band',
     timestamp: new Date(Date.now() - 1000 * 60 * 80).toISOString(),
   },
 ];
 
 export const Alerts: React.FC = () => {
   const [alerts, setAlerts] = useState<any[]>(demoAlerts);
-  const [loading] = useState(false);
-  const [configOpen, setConfigOpen] = useState(false);
-  const [ruleName, setRuleName] = useState('');
-  const [selectedAsset, setSelectedAsset] = useState('compressor-1');
-  const [selectedSensor, setSelectedSensor] = useState('temperature');
-  const [condition, setCondition] = useState('gt');
-  const [threshold, setThreshold] = useState('75');
-  const [severity, setSeverity] = useState('critical');
-  const [isActive, setIsActive] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
+  const [selectedAssetId, setSelectedAssetId] = useState<string>('');
+  const [timeRange, setTimeRange] = useState('last_24h');
+  const initial = getDateRange('last_24h');
+  const [fromDate, setFromDate] = useState(initial.from);
+  const [toDate, setToDate] = useState(initial.to);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [showActiveOnly, setShowActiveOnly] = useState(false);
 
   useEffect(() => {
+    api.hierarchy.list(true)
+      .then(setFlatNodes)
+      .catch(() => setFlatNodes([]));
+
+    setLoading(true);
     api.alerts.list()
-      .then((res) => {
-        if (res && res.length > 0) {
-          setAlerts(res);
-        }
-      })
-      .catch(() => {
-        // Sample alerts already in state
-      });
+      .then((res) => { if (res?.length) setAlerts(res); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
-  const columns = [
-    { id: 'id', label: 'Alert ID' },
-    { id: 'alertName', label: 'Alert Name' },
-    { id: 'asset', label: 'Asset' },
-    { id: 'sensor', label: 'Sensor' },
-    { id: 'condition', label: 'Condition' },
-    { id: 'threshold', label: 'Threshold' },
-    {
-      id: 'severity',
-      label: 'Severity',
-      render: (row: any) => (
-        <StatusChip label={row.severity.toUpperCase()} status={row.severity} />
-      ),
-    },
-    {
-      id: 'status',
-      label: 'Status',
-      render: (row: any) => (
-        <StatusChip label={row.status.toUpperCase()} status={row.status} />
-      ),
-    },
-    {
-      id: 'timestamp',
-      label: 'Detected At',
-      render: (row: any) => new Date(row.timestamp).toLocaleString(),
-    },
-  ];
-
-  const handleOpenConfig = () => setConfigOpen(true);
-  const handleCloseConfig = () => setConfigOpen(false);
-
-  const handleAddAlertRule = () => {
-    const nextId = alerts.length > 0 ? Math.max(...alerts.map((alert) => alert.id)) + 1 : 1;
-    const statusText = isActive ? 'active' : 'inactive';
-    const newAlert = {
-      id: nextId,
-      alertName: ruleName || `${assetOptions.find((a) => a.value === selectedAsset)?.label} ${sensorOptions.find((s) => s.value === selectedSensor)?.label} Alert`,
-      asset: assetOptions.find((a) => a.value === selectedAsset)?.label || selectedAsset,
-      sensor: sensorOptions.find((s) => s.value === selectedSensor)?.label || selectedSensor,
-      condition: conditionOptions.find((c) => c.value === condition)?.label || condition,
-      threshold,
-      severity,
-      status: statusText,
-      message: `${selectedSensor.charAt(0).toUpperCase() + selectedSensor.slice(1)} ${condition === 'gt' ? 'above' : condition === 'lt' ? 'below' : condition === 'gte' ? 'at or above' : 'at or below'} ${threshold} on ${assetOptions.find((a) => a.value === selectedAsset)?.label}`,
-      timestamp: new Date().toISOString(),
-    };
-
-    setAlerts((prev) => [newAlert, ...prev]);
-    setRuleName('');
-    setSelectedAsset('compressor-1');
-    setSelectedSensor('temperature');
-    setCondition('gt');
-    setThreshold('75');
-    setSeverity('critical');
-    setIsActive(true);
-    setConfigOpen(false);
+  const handleTimeRangeChange = (val: string) => {
+    setTimeRange(val);
+    const { from, to } = getDateRange(val);
+    setFromDate(from);
+    setToDate(to);
   };
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <CircularProgress color="primary" />
-      </Box>
-    );
-  }
+  // Build indented hierarchy options (exclude sensors)
+  const buildHierarchyOptions = () => {
+    const getDepth = (node: HierarchyNode): number => {
+      let depth = 0;
+      let current = node;
+      while (current.parent_id) {
+        const parent = flatNodes.find(n => n.id === current.parent_id);
+        if (!parent) break;
+        depth++;
+        current = parent;
+      }
+      return depth;
+    };
+    return flatNodes
+      .filter(n => n.node_type !== 'sensor')
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map(n => ({ node: n, depth: getDepth(n) }));
+  };
+
+  const hierarchyOptions = buildHierarchyOptions();
+
+  const filteredAlerts = showActiveOnly ? alerts.filter(a => a.status === 'open' || a.status === 'active') : alerts;
+  const allSelected = filteredAlerts.length > 0 && selectedIds.length === filteredAlerts.length;
+  const someSelected = selectedIds.length > 0 && !allSelected;
+
+  const handleSelectAll = () => setSelectedIds(allSelected ? [] : filteredAlerts.map(a => a.id));
+
+  const handleSelectRow = (id: number) =>
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+
+  const handleAcknowledge = () => {
+    setAlerts(prev => prev.map(a => selectedIds.includes(a.id) ? { ...a, status: 'acknowledged' } : a));
+    setSelectedIds([]);
+  };
 
   return (
     <PageContainer>
       <PageHeader
-        title="Active Alerts"
+        title="Alerts"
         subtitle="Critical warnings, system diagnostics, and failure states needing immediate attention."
-        actions={
-          <Button variant="contained" color="primary" onClick={handleOpenConfig}>
-            Add Alert Rule
-          </Button>
-        }
       />
 
-          <DataTable title="System Alerts Log" columns={columns} data={alerts} />
-        
-      <Drawer
-        anchor="right"
-        open={configOpen}
-        onClose={handleCloseConfig}
-        ModalProps={{
-          keepMounted: true,
-        }}
-        sx={{ zIndex: (theme) => theme.zIndex.drawer + 3 }}
-      >
-        <Box sx={{ width: { xs: 320, sm: 380 }, p: 3, height: '100%', backgroundColor: 'background.paper' }}>
-          {/* <Typography variant="h5" sx={{ mb: 1, color: 'secondary.main'}}>
-            Alert Configuration
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Configure a rule for asset/sensor monitoring and threshold conditions.
-          </Typography> */}
+      {/* Filters */}
+      <Paper sx={{ p: 2, mb: 3, border: '1px solid #000000' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
 
-          <h2 style={{ color: '#000', fontWeight: 700, }}>
-            Alert Configuration
-          </h2>
-          {/* <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Configure a rule for asset/sensor monitoring and threshold conditions.
-          </Typography> */}
+          <FormControl size="small" sx={{ minWidth: 400 }}>
+            <InputLabel id="asset-filter-label">Asset</InputLabel>
+            <Select
+              labelId="asset-filter-label"
+              value={selectedAssetId}
+              label="Asset"
+              onChange={(e) => setSelectedAssetId(e.target.value)}
+              renderValue={(val) => {
+                if (!val) return 'All Assets';
+                const found = flatNodes.find(n => String(n.id) === val);
+                return found ? found.display_name : val;
+              }}
+            >
+              <MenuItem value=""><em>All Assets</em></MenuItem>
+              {hierarchyOptions.map(({ node, depth }) => (
+                <MenuItem key={node.id} value={String(node.id)}>
+                  <Box sx={{ pl: depth * 2, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    {depth > 0 && <Typography component="span" color="text.disabled" sx={{ fontSize: 12 }}>└</Typography>}
+                    {node.display_name}
+                  </Box>
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
-          <Stack spacing={3}>
-            <TextField
-              label="Alert Name"
-              value={ruleName}
-              onChange={(e) => setRuleName(e.target.value)}
-              fullWidth
-            />
+          <FormControl size="small" sx={{ minWidth: 250 }}>
+            <InputLabel id="time-range-label">Time Range</InputLabel>
+            <Select
+              labelId="time-range-label"
+              value={timeRange}
+              label="Time Range"
+              onChange={(e) => handleTimeRangeChange(e.target.value)}
+            >
+              {TIME_RANGE_OPTIONS.map(o => (
+                <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
-            <FormControl fullWidth>
-              <InputLabel id="asset-label">Asset</InputLabel>
-              <Select
-                labelId="asset-label"
-                value={selectedAsset}
-                label="Asset"
-                onChange={(event) => setSelectedAsset(event.target.value)}
-              >
-                {assetOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+          <TextField
+            label="From"
+            type="datetime-local"
+            size="small"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            slotProps={{ inputLabel: { shrink: true } }}
+            sx={{ minWidth: 190 }}
+          />
+          <TextField
+            label="To"
+            type="datetime-local"
+            size="small"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            slotProps={{ inputLabel: { shrink: true } }}
+            sx={{ minWidth: 190 }}
+          />
 
-            <FormControl fullWidth>
-              <InputLabel id="sensor-label">Sensor</InputLabel>
-              <Select
-                labelId="sensor-label"
-                value={selectedSensor}
-                label="Sensor"
-                onChange={(event) => setSelectedSensor(event.target.value)}
-              >
-                {sensorOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <FormControl fullWidth>
-              <InputLabel id="condition-label">Condition</InputLabel>
-              <Select
-                labelId="condition-label"
-                value={condition}
-                label="Condition"
-                onChange={(event) => setCondition(event.target.value)}
-              >
-                {conditionOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <TextField
-              label="Threshold"
-              type="number"
-              value={threshold}
-              onChange={(e) => setThreshold(e.target.value)}
-              fullWidth
-            />
-
-            <FormControl fullWidth>
-              <InputLabel id="severity-label">Severity</InputLabel>
-              <Select
-                labelId="severity-label"
-                value={severity}
-                label="Severity"
-                onChange={(event) => setSeverity(event.target.value)}
-              >
-                {severityOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <FormControlLabel
-              control={<Switch checked={isActive} onChange={(event) => setIsActive(event.target.checked)} />}
-              label="Active"
-            />
-
-            <Button variant="contained" color="primary" size="large" fullWidth onClick={handleAddAlertRule}>
-              Add Alert Rule
-            </Button>
-          </Stack>
+          <Button variant="contained" color="secondary" sx={{ minWidth: 90, fontWeight: 600 }}>
+            View
+          </Button>
         </Box>
-      </Drawer>
+        <Box sx={{ px: 1, pt: 1.5 }}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={showActiveOnly}
+                onChange={(e) => { setShowActiveOnly(e.target.checked); setSelectedIds([]); }}
+                size="small"
+                color="secondary"
+              />
+            }
+            label={<Typography variant="body2">Show Active Alerts</Typography>}
+          />
+        </Box>
+      </Paper>
+
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
+          <CircularProgress color="primary" />
+        </Box>
+      ) : (
+        <TableContainer component={Paper} sx={{ border: '1px solid #000000', boxShadow: 'none' }}>
+          <Box sx={{ px: 2, py: 1.2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #000000' }}>
+            <Typography variant="body1" sx={{ fontWeight: 400 }}>
+              TOTAL ALERTS :&nbsp;
+              <Typography component="span" variant="subtitle1" color="text.secondary" sx={{ fontWeight: 400 }}>
+                {filteredAlerts.length}
+              </Typography>
+            </Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              disabled={selectedIds.length === 0}
+              onClick={handleAcknowledge}
+              sx={{ fontWeight: 600, textTransform: 'none' }}
+            >
+              Acknowledge
+            </Button>
+          </Box>
+
+          <Table sx={{ minWidth: 720 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell padding="checkbox" sx={{ borderBottom: '1px solid #000000' }}>
+                  <Checkbox indeterminate={someSelected} checked={allSelected} onChange={handleSelectAll} color="primary" />
+                </TableCell>
+                {['Alert Name', 'Asset', 'Sensor', 'Condition', 'Threshold', 'Severity', 'Status', 'Detected At'].map(col => (
+                  <TableCell key={col} sx={{ fontWeight: 700, borderBottom: '1px solid #000000' }}>{col}</TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredAlerts.map((row) => (
+                <TableRow
+                  key={row.id}
+                  hover
+                  selected={selectedIds.includes(row.id)}
+                  sx={{ cursor: 'pointer', '&:last-child td': { borderBottom: 0 } }}
+                  onClick={() => handleSelectRow(row.id)}
+                >
+                  <TableCell padding="checkbox" sx={{ borderBottom: '1px solid #000000' }}>
+                    <Checkbox checked={selectedIds.includes(row.id)} color="primary" onClick={(e) => e.stopPropagation()} onChange={() => handleSelectRow(row.id)} />
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 600, borderBottom: '1px solid #000000' }}>{row.alertName}</TableCell>
+                  <TableCell sx={{ borderBottom: '1px solid #000000' }}>{row.asset}</TableCell>
+                  <TableCell sx={{ borderBottom: '1px solid #000000' }}>{row.sensor}</TableCell>
+                  <TableCell sx={{ borderBottom: '1px solid #000000' }}>{row.condition}</TableCell>
+                  <TableCell sx={{ borderBottom: '1px solid #000000' }}>{row.threshold}</TableCell>
+                  <TableCell sx={{ borderBottom: '1px solid #000000' }}>
+                    <Chip label={row.severity.toUpperCase()} size="small" sx={{ backgroundColor: getSeverityBgColor(row.severity), color: getSeverityColor(row.severity), fontWeight: 700 }} />
+                  </TableCell>
+                  <TableCell sx={{ borderBottom: '1px solid #000000' }}>
+                    <StatusChip label={row.status.toUpperCase()} status={row.status} />
+                  </TableCell>
+                  <TableCell sx={{ borderBottom: '1px solid #000000' }}>
+                    {new Date(row.timestamp).toLocaleString()}
+                  </TableCell>
+                </TableRow>
+              ))}
+              {filteredAlerts.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={9} sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
+                    No alerts found.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
     </PageContainer>
   );
 };
+
 export default Alerts;

@@ -30,6 +30,7 @@ import { StatusChip } from '../../components/Forms/StatusChip';
 import { api } from '../../api/client';
 import { getSeverityColor, getSeverityBgColor, severityOptions } from '../../constants/severity';
 import { getStatusColor, getStatusBgColor, statusOptions } from '../../constants/status';
+import type { HierarchyNode } from '../../types/hierarchy';
 
 export const Advisories: React.FC = () => {
   const navigate = useNavigate();
@@ -37,58 +38,57 @@ export const Advisories: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [severityFilter, setSeverityFilter] = useState<string>('');
+  const [assetFilter, setAssetFilter] = useState<string>('');
+  const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
 
-  // Details Modal State
   const [selectedAdvisory, setSelectedAdvisory] = useState<any | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   const fetchAdvisories = () => {
     setLoading(true);
     api.advisories.list()
-      .then((res) => {
-        setAdvisories(res);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Failed to fetch advisories:', err);
-        setLoading(false);
-      });
+      .then((res) => { setAdvisories(res); setLoading(false); })
+      .catch((err) => { console.error('Failed to fetch advisories:', err); setLoading(false); });
   };
 
   useEffect(() => {
     fetchAdvisories();
+    api.hierarchy.list(true).then(setFlatNodes).catch(() => setFlatNodes([]));
   }, []);
+
+  const getAssetDepth = (node: HierarchyNode): number => {
+    let depth = 0; let cur = node;
+    while (cur.parent_id) {
+      const p = flatNodes.find(n => n.id === cur.parent_id);
+      if (!p) break; depth++; cur = p;
+    }
+    return depth;
+  };
+
+  const assetOptions = flatNodes
+    .filter(n => n.node_type !== 'sensor')
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map(n => ({ node: n, depth: getAssetDepth(n) }));
 
   const filteredRows = advisories.filter((row) => {
     const statusMatch = statusFilter ? row.status === statusFilter : true;
     const severityMatch = severityFilter ? row.severity === severityFilter : true;
-    return statusMatch && severityMatch;
+    const assetMatch = assetFilter
+      ? row.asset === flatNodes.find(n => String(n.id) === assetFilter)?.display_name
+      : true;
+    return statusMatch && severityMatch && assetMatch;
   });
 
-  const handleStatusChange = (event: SelectChangeEvent) => {
-    setStatusFilter(event.target.value);
-  };
-
-  const handleSeverityChange = (event: SelectChangeEvent) => {
-    setSeverityFilter(event.target.value);
-  };
-
-  const isAllActive = !statusFilter && !severityFilter;
+  const isAllActive = !statusFilter && !severityFilter && !assetFilter;
 
   const handleResetFilters = () => {
     setStatusFilter('');
     setSeverityFilter('');
+    setAssetFilter('');
   };
 
-  const handleRowClick = (advisory: any) => {
-    setSelectedAdvisory(advisory);
-    setDetailsOpen(true);
-  };
-
-  const handleCloseDetails = () => {
-    setDetailsOpen(false);
-    setSelectedAdvisory(null);
-  };
+  const handleRowClick = (advisory: any) => { setSelectedAdvisory(advisory); setDetailsOpen(true); };
+  const handleCloseDetails = () => { setDetailsOpen(false); setSelectedAdvisory(null); };
 
   const handleAcknowledgeFromDetails = async (advisoryId: number) => {
     try {
@@ -112,62 +112,82 @@ export const Advisories: React.FC = () => {
         subtitle="Active system advisories for equipment health, severity tracking, and remediation actions. Click any row to view full details."
       />
 
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={2}
-        sx={{
-          justifyContent: 'flex-start',
-          alignItems: { xs: 'stretch', sm: 'center' }
-        }}
-      >
-        <Button
-          variant={isAllActive ? 'contained' : 'outlined'}
-          color="primary"
-          onClick={handleResetFilters}
-        >
-          All
-        </Button>
-
-        <FormControl sx={{ minWidth: 180 }} size="small">
-          <InputLabel id="status-filter-label">Status</InputLabel>
-          <Select
-            labelId="status-filter-label"
-            value={statusFilter}
-            label="Status"
-            onChange={handleStatusChange}
-            renderValue={(selected) =>
-              selected ? selected.charAt(0).toUpperCase() + selected.slice(1) : 'Status'
-            }
+      <Paper sx={{ p: 2, mb: 3, border: '1px solid #000000' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2,  }}>
+          <Button
+            variant={isAllActive ? 'contained' : 'outlined'}
+            color="primary"
+            onClick={handleResetFilters}
           >
-            <MenuItem value=""><em>None</em></MenuItem>
-            {statusOptions.map((option) => (
-              <MenuItem key={option} value={option}>
-                {option == 'in_progress' ? 'In Progress' : option.charAt(0).toUpperCase() + option.slice(1)}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+            All
+          </Button>
 
-        <FormControl sx={{ minWidth: 180 }} size="small">
-          <InputLabel id="severity-filter-label">Severity</InputLabel>
-          <Select
-            labelId="severity-filter-label"
-            value={severityFilter}
-            label="Severity"
-            onChange={handleSeverityChange}
-            renderValue={(selected) =>
-              selected ? selected.charAt(0).toUpperCase() + selected.slice(1) : 'Severity'
-            }
-          >
-            <MenuItem value=""><em>None</em></MenuItem>
-            {severityOptions.map((option) => (
-              <MenuItem key={option} value={option}>
-                {option.charAt(0).toUpperCase() + option.slice(1)}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </Stack>
+          <FormControl sx={{ minWidth: 400,}} size="small">
+            <InputLabel id="asset-filter-label">Asset</InputLabel>
+            <Select
+              labelId="asset-filter-label"
+              value={assetFilter}
+              label="Asset"
+              onChange={(e) => setAssetFilter(e.target.value)}
+              renderValue={(val) => {
+                if (!val) return 'All Assets';
+                const found = flatNodes.find(n => String(n.id) === val);
+                return found ? found.display_name : val;
+              }}
+            >
+              <MenuItem value=""><em>All Assets</em></MenuItem>
+              {assetOptions.map(({ node, depth }) => (
+                <MenuItem key={node.id} value={String(node.id)}>
+                  <Box sx={{ pl: depth * 2, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    {depth > 0 && <Typography component="span" color="text.disabled" sx={{ fontSize: 12 }}>└</Typography>}
+                    {node.display_name}
+                  </Box>
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl sx={{ minWidth: 200 }} size="small">
+            <InputLabel id="status-filter-label">Status</InputLabel>
+            <Select
+              labelId="status-filter-label"
+              value={statusFilter}
+              label="Status"
+              onChange={(e: SelectChangeEvent) => setStatusFilter(e.target.value)}
+              renderValue={(selected) =>
+                selected ? selected.charAt(0).toUpperCase() + selected.slice(1) : 'Status'
+              }
+            >
+              <MenuItem value=""><em>None</em></MenuItem>
+              {statusOptions.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option === 'in_progress' ? 'In Progress' : option.charAt(0).toUpperCase() + option.slice(1)}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl sx={{ minWidth: 200 }} size="small">
+            <InputLabel id="severity-filter-label">Severity</InputLabel>
+            <Select
+              labelId="severity-filter-label"
+              value={severityFilter}
+              label="Severity"
+              onChange={(e: SelectChangeEvent) => setSeverityFilter(e.target.value)}
+              renderValue={(selected) =>
+                selected ? selected.charAt(0).toUpperCase() + selected.slice(1) : 'Severity'
+              }
+            >
+              <MenuItem value=""><em>None</em></MenuItem>
+              {severityOptions.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option.charAt(0).toUpperCase() + option.slice(1)}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+      </Paper>
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
@@ -176,26 +196,16 @@ export const Advisories: React.FC = () => {
       ) : (
         <TableContainer
           component={Paper}
-          sx={{ backgroundColor: '#ffffff', boxShadow: 'none', border: '1px solid #000000', mt: 4 }}
+          sx={{ backgroundColor: '#ffffff', boxShadow: 'none', border: '1px solid #000000' }}
         >
           <Table sx={{ minWidth: 720 }}>
             <TableHead>
               <TableRow>
-                <TableCell sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid #000000' }}>
-                  Tag
-                </TableCell>
-                <TableCell sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid #000000' }}>
-                  Asset
-                </TableCell>
-                <TableCell sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid #000000' }}>
-                  Severity
-                </TableCell>
-                <TableCell sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid #000000' }}>
-                  Status
-                </TableCell>
-                <TableCell sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid #000000' }}>
-                  Action taken
-                </TableCell>
+                {['Tag', 'Asset', 'Severity', 'Status', 'Action taken'].map(col => (
+                  <TableCell key={col} sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid #000000' }}>
+                    {col}
+                  </TableCell>
+                ))}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -256,11 +266,7 @@ export const Advisories: React.FC = () => {
         {selectedAdvisory && (
           <>
             <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', pb: 2 }}>
-              <Box>
-                <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                  {selectedAdvisory.asset}
-                </Typography>
-              </Box>
+              <Typography variant="h5" sx={{ fontWeight: 700 }}>{selectedAdvisory.asset}</Typography>
               <Box sx={{ display: 'flex', gap: 1 }}>
                 <Chip
                   label={selectedAdvisory.severity.toUpperCase()}
@@ -278,59 +284,36 @@ export const Advisories: React.FC = () => {
             <DialogContent sx={{ p: 3 }}>
               <Stack spacing={3}>
                 <Box>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Parameter Tag
-                  </Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                    {selectedAdvisory.tag}
-                  </Typography>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>Parameter Tag</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedAdvisory.tag}</Typography>
                 </Box>
-
                 <Box>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Anomaly Description
-                  </Typography>
-                  <Typography variant="body1" sx={{ lineHeight: 1.6 }}>
-                    {selectedAdvisory.description}
-                  </Typography>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>Anomaly Description</Typography>
+                  <Typography variant="body1" sx={{ lineHeight: 1.6 }}>{selectedAdvisory.description}</Typography>
                 </Box>
-
                 <Box>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    First Detected
-                  </Typography>
-                  <Typography variant="body1">
-                    {new Date(selectedAdvisory.first_detected).toLocaleString()}
-                  </Typography>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>First Detected</Typography>
+                  <Typography variant="body1">{new Date(selectedAdvisory.first_detected).toLocaleString()}</Typography>
                 </Box>
-
                 {selectedAdvisory.root_cause_description && (
                   <Box>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      Root Cause Description
-                    </Typography>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>Root Cause Description</Typography>
                     <Typography variant="body1" sx={{ p: 2, bgcolor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 1 }}>
                       {selectedAdvisory.root_cause_description}
                     </Typography>
                   </Box>
                 )}
-
                 {selectedAdvisory.action_taken && (
                   <Box>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      Action Taken
-                    </Typography>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>Action Taken</Typography>
                     <Typography variant="body1" sx={{ p: 2, bgcolor: 'rgba(34, 197, 94, 0.08)', border: '1px solid #bbf7d0', borderRadius: 1 }}>
                       {selectedAdvisory.action_taken}
                     </Typography>
                   </Box>
                 )}
-
                 {selectedAdvisory.image_path && (
                   <Box>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      RCA Evidence / Image
-                    </Typography>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>RCA Evidence / Image</Typography>
                     <Box
                       component="img"
                       src={
@@ -339,14 +322,7 @@ export const Advisories: React.FC = () => {
                           : `http://127.0.0.1:8000${selectedAdvisory.image_path}`
                       }
                       alt="RCA Evidence"
-                      sx={{
-                        maxWidth: '100%',
-                        maxHeight: 300,
-                        objectFit: 'contain',
-                        borderRadius: 1,
-                        border: '1px solid #e2e8f0',
-                        mt: 1,
-                      }}
+                      sx={{ maxWidth: '100%', maxHeight: 300, objectFit: 'contain', borderRadius: 1, border: '1px solid #e2e8f0', mt: 1 }}
                     />
                   </Box>
                 )}
@@ -355,27 +331,14 @@ export const Advisories: React.FC = () => {
 
             <DialogActions sx={{ borderTop: '1px solid #e2e8f0', px: 3, py: 2 }}>
               {selectedAdvisory.status === 'open' && (
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={() => handleAcknowledgeFromDetails(selectedAdvisory.id)}
-                  sx={{ textTransform: 'none', fontWeight: 600 }}
-                >
+                <Button variant="contained" color="primary" onClick={() => handleAcknowledgeFromDetails(selectedAdvisory.id)} sx={{ textTransform: 'none', fontWeight: 600 }}>
                   Acknowledge
                 </Button>
               )}
               {selectedAdvisory.status !== 'resolved' && (
                 <Button
                   variant="contained"
-                  sx={{
-                    backgroundColor: '#000000',
-                    color: 'white',
-                    fontWeight: 600,
-                    textTransform: 'none',
-                    '&:hover': {
-                      backgroundColor: '#1e293b',
-                    },
-                  }}
+                  sx={{ backgroundColor: '#000000', color: 'white', fontWeight: 600, textTransform: 'none', '&:hover': { backgroundColor: '#1e293b' } }}
                   onClick={() => handleInitiateRcaFromDetails(selectedAdvisory)}
                 >
                   Initiate RCA
