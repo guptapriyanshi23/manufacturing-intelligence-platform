@@ -10,7 +10,8 @@ import {
   ListItemButton,
   ListItemIcon,
   CircularProgress,
-  Tooltip
+  Tooltip,
+  Button
 } from '@mui/material';
 import { api } from '../api/client';
 import {
@@ -19,7 +20,8 @@ import {
   Troubleshoot as RootCauseIcon,
   Lightbulb as AdvisoriesIcon,
   Assessment as ReportsIcon,
-  Settings as AdminIcon
+  Settings as AdminIcon,
+  AccountCircle as AccountCircleIcon
 } from '@mui/icons-material';
 import { TreeView } from '../components/Tree/TreeView';
 import type { HierarchyNode } from '../types/hierarchy';
@@ -27,12 +29,12 @@ import type { HierarchyNode } from '../types/hierarchy';
 const drawerWidth = 280;
 
 const navItems = [
-  { path: '/', label: 'Alerts', icon: <AlertsIcon /> },
-  { path: '/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
-  { path: '/root-cause', label: 'Root Cause', icon: <RootCauseIcon /> },
-  { path: '/advisories', label: 'Advisories', icon: <AdvisoriesIcon /> },
-  { path: '/reports', label: 'Reports', icon: <ReportsIcon /> },
-  { path: '/admin', label: 'Admin', icon: <AdminIcon /> },
+  { path: '/', label: 'Alerts', icon: <AlertsIcon />, permission: 'alerts:view' },
+  { path: '/dashboard', label: 'Dashboard', icon: <DashboardIcon />, permission: 'dashboard:view' },
+  { path: '/root-cause', label: 'Root Cause', icon: <RootCauseIcon />, permission: 'advisories:rca' },
+  { path: '/advisories', label: 'Advisories', icon: <AdvisoriesIcon />, permission: 'advisories:view' },
+  { path: '/reports', label: 'Reports', icon: <ReportsIcon />, permission: 'reports:view' },
+  { path: '/admin', label: 'Admin', icon: <AdminIcon />, permission: 'admin:view' },
 ];
 
 export const MainLayout: React.FC = () => {
@@ -41,6 +43,27 @@ export const MainLayout: React.FC = () => {
   const [selectedNode, setSelectedNode] = useState<HierarchyNode | null>(null);
   const [nodes, setNodes] = useState<HierarchyNode[]>([]);
   const [loadingNodes, setLoadingNodes] = useState(true);
+  const [profile, setProfile] = useState<{ email: string; permissions: string[] } | null>(null);
+
+  useEffect(() => {
+    const cached = localStorage.getItem('user_profile');
+    if (cached) {
+      try {
+        setProfile(JSON.parse(cached));
+      } catch (e) {}
+    } else {
+      api.auth.getMe()
+        .then((res) => {
+          setProfile(res);
+          localStorage.setItem('user_profile', JSON.stringify(res));
+        })
+        .catch(() => {
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('user_profile');
+          navigate('/login');
+        });
+    }
+  }, [navigate]);
 
   const fetchNodes = () => {
     setLoadingNodes(true);
@@ -57,16 +80,36 @@ export const MainLayout: React.FC = () => {
 
   useEffect(() => {
     fetchNodes();
-  }, []); // Run only once on mount
+  }, []);
 
   const handleSelectNode = (node: HierarchyNode) => {
     setSelectedNode(node);
-    if (location.pathname === '/admin') {
+    
+    // Sync node selection to dashboard via query params
+    if (location.pathname === '/dashboard') {
+      navigate(`/dashboard?selectedNodeId=${node.id}&selectedNodeName=${encodeURIComponent(node.display_name)}`);
+    } else if (location.pathname === '/admin') {
       navigate(`/admin?selectedNodeId=${node.id}&selectedNodeName=${encodeURIComponent(node.display_name)}`);
-    } else {
-      navigate(`/dashboard?selectedNodeId=${node.id}`);
     }
   };
+
+  const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_profile');
+    navigate('/login');
+  };
+
+  const allowedNavItems = navItems.filter((item) =>
+    profile ? profile.permissions.includes(item.permission) : false
+  );
+
+  const showHierarchy = profile && (
+    profile.permissions.includes('dashboard:view') ||
+    profile.permissions.includes('alerts:view') ||
+    profile.permissions.includes('advisories:rca') ||
+    profile.permissions.includes('advisories:view') ||
+    profile.permissions.includes('admin:view')
+  );
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -75,19 +118,20 @@ export const MainLayout: React.FC = () => {
         <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Box component="img" src="/deloitte_logo_black.svg" alt="Deloitte Logo" sx={{ height: 20, width: 'auto' }} />
-              <Typography variant="h4" sx={{ color: '#ccc', fontWeight: 100 }}>
-                |
-              </Typography>
-              <Typography variant="h4" color="text.primary" sx={{ fontWeight: 500, letterSpacing: '0.5px' }}>
-                AssetWize
-              </Typography>
+            <Typography variant="h4" sx={{ color: '#ccc', fontWeight: 100 }}>
+              |
+            </Typography>
+            <Typography variant="h4" color="text.primary" sx={{ fontWeight: 500, letterSpacing: '0.5px' }}>
+              AssetWize
+            </Typography>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', }}>
-            <List sx={{ px: 1, display: 'flex', }}>
-              {navItems.map((item) => {
+          
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            {/* Tabs switcher */}
+            <List sx={{ px: 1, display: 'flex' }}>
+              {allowedNavItems.map((item) => {
                 const isActive = location.pathname === item.path;
                 const handleNavClick = () => {
-                  // Preserve query params for Dashboard navigation
                   if (item.path === '/dashboard') {
                     navigate(`${item.path}${location.search}`);
                   } else {
@@ -109,17 +153,32 @@ export const MainLayout: React.FC = () => {
                       },
                     }}
                   >
-
-                    <Tooltip title={item.label} placement="bottom" arrow >
+                    <Tooltip title={item.label} placement="bottom" arrow>
                       <ListItemIcon sx={{ color: 'inherit', minWidth: 0 }}>{item.icon}</ListItemIcon>
                     </Tooltip>
                   </ListItemButton>
                 );
               })}
             </List>
-            {/* <IconButton color="inherit" size="small">
-              <RefreshIcon fontSize="small" />
-            </IconButton> */}
+
+            {/* Profile Info and Logout */}
+            {profile && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 2, borderLeft: '1px solid #e0e0e0', pl: 2 }}>
+                <AccountCircleIcon fontSize="medium" sx={{ color: 'text.secondary' }} />
+                <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                  {profile.email}
+                </Typography>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="error"
+                  onClick={handleLogout}
+                  sx={{ ml: 2, textTransform: 'none', py: 0.5 }}
+                >
+                  Logout
+                </Button>
+              </Box>
+            )}
           </Box>
         </Toolbar>
       </AppBar>
@@ -134,83 +193,50 @@ export const MainLayout: React.FC = () => {
         }}
       >
         <Toolbar />
-        <Box sx={{ overflow: 'auto', display: 'flex', flexDirection: 'column', height: '100%', }}>
-          {/* Main Navigation links */}
-          {/* <List sx={{ px: 1 }}>
-            {navItems.map((item) => {
-              const isActive = location.pathname === item.path;
-              const handleNavClick = () => {
-                // Preserve query params for Dashboard navigation
-                if (item.path === '/dashboard') {
-                  navigate(`${item.path}${location.search}`);
-                } else {
-                  navigate(item.path);
-                }
-              };
-              return (
-                <ListItemButton
-                  key={item.path}
-                  onClick={handleNavClick}
-                  selected={isActive}
-                  sx={{
-                    borderRadius: 1,
-                    mb: 0.5,
-                    color: isActive ? 'primary.main' : 'text.secondary',
-                    '&.Mui-selected': {
-                      backgroundColor: 'rgba(6, 182, 212, 0.08)',
-                      color: 'primary.main',
-                      fontWeight: 600,
-                    },
-                  }}
-                >
-                  <ListItemIcon sx={{ color: 'inherit', minWidth: 40 }}>{item.icon}</ListItemIcon>
-                  <ListItemText primary={<Typography sx={{ fontWeight: isActive ? 600 : 400 }}>{item.label}</Typography>} />
-                </ListItemButton>
-              );
-            })}
-          </List> */}
-
-          {/* <Divider sx={{ my: 1, borderColor: 'rgba(255, 255, 255, 0.05)' }} /> */}
-
-          {/* Hierarchy section */}
-          <Box sx={{ px: 2, my: 1 }}>
-            <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>
-              Plant Hierarchy (ISA-95)
-            </Typography>
-          </Box>
-          <Box
-            sx={{
-              flexGrow: 1,
-              overflowY: 'auto',
-              pl: 0,
-              pr: 0, // No right padding so scrollbar is flush against the edge
-              '&::-webkit-scrollbar': {
-                width: '4px',
-              },
-              '&::-webkit-scrollbar-track': {
-                background: 'transparent',
-              },
-              '&::-webkit-scrollbar-thumb': {
-                background: '#bdbdbd', // thin gray line
-                borderRadius: '0px', // rectangular scrollbar
-              },
-              '&::-webkit-scrollbar-thumb:hover': {
-                background: '#9e9e9e',
-              },
-            }}
-          >
-            {loadingNodes ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-                <CircularProgress size={24} />
+        <Box sx={{ overflow: 'auto', display: 'flex', flexDirection: 'column', height: '100%' }}>
+          {showHierarchy && (
+            <>
+              {/* Hierarchy section */}
+              <Box sx={{ px: 2, my: 1 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>
+                  Plant Hierarchy (ISA-95)
+                </Typography>
               </Box>
-            ) : (
-              <TreeView
-                nodes={nodes}
-                onSelectNode={handleSelectNode}
-                selectedNodeId={selectedNode?.id}
-              />
-            )}
-          </Box>
+              <Box
+                sx={{
+                  flexGrow: 1,
+                  overflowY: 'auto',
+                  pl: 0,
+                  pr: 0,
+                  '&::-webkit-scrollbar': {
+                    width: '4px',
+                  },
+                  '&::-webkit-scrollbar-track': {
+                    background: 'transparent',
+                  },
+                  '&::-webkit-scrollbar-thumb': {
+                    background: '#bdbdbd',
+                    borderRadius: '0px',
+                  },
+                  '&::-webkit-scrollbar-thumb:hover': {
+                    background: '#9e9e9e',
+                  },
+                }}
+              >
+                {loadingNodes ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                    <CircularProgress size={24} />
+                  </Box>
+                ) : (
+                  <TreeView
+                    nodes={nodes}
+                    onSelectNode={handleSelectNode}
+                    selectedNodeId={selectedNode?.id}
+                  />
+                )}
+              </Box>
+            </>
+          )}
         </Box>
       </Drawer>
 
@@ -221,4 +247,5 @@ export const MainLayout: React.FC = () => {
     </Box>
   );
 };
+
 export default MainLayout;

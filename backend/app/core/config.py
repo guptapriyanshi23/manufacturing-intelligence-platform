@@ -7,6 +7,10 @@ class Settings(BaseSettings):
     
     # Database settings. Fallback to a default local URI if not set.
     DATABASE_URL: str = os.getenv("DATABASE_URL")
+    
+    SECRET_KEY: str = "deloittemanufacturingsecretkey12345"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 1 day
 
     class Config:
         case_sensitive = True

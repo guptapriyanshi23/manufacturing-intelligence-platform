@@ -7,6 +7,7 @@ from backend.app.core.database import engine, Base
 from backend.app.models import hierarchy  # noqa
 from backend.app.models import alerts  # noqa
 from backend.app.models import advisories  # noqa
+from backend.app.models import users  # noqa
 
 # Import routers from our business domain modules
 from backend.app.modules.hierarchy.router import router as hierarchy_router
@@ -16,6 +17,8 @@ from backend.app.modules.rootcause.router import router as rootcause_router
 from backend.app.modules.advisories.router import router as advisories_router
 from backend.app.modules.reports.router import router as reports_router
 from backend.app.modules.admin.router import router as admin_router
+from backend.app.modules.auth.router import router as auth_router
+from backend.app.modules.admin.users_router import router as admin_users_router
 
 from fastapi.staticfiles import StaticFiles
 import os
@@ -58,6 +61,8 @@ app.include_router(rootcause_router, prefix=api_router_prefix)
 app.include_router(advisories_router, prefix=api_router_prefix)
 app.include_router(reports_router, prefix=api_router_prefix)
 app.include_router(admin_router, prefix=api_router_prefix)
+app.include_router(auth_router, prefix=f"{api_router_prefix}/auth", tags=["auth"])
+app.include_router(admin_users_router, prefix=f"{api_router_prefix}/admin", tags=["admin-users"])
 
 @app.get("/")
 def read_root():
