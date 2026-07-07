@@ -30,6 +30,7 @@ import {
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { api } from '../../api/client';
 import type { HierarchyNode } from '../../types/hierarchy';
+import { getSeverityBgColor, getSeverityColor, getSeverityLevel } from '../../constants/severity';
 
 interface TelemetryPoint {
   timestamp: string;
@@ -353,21 +354,31 @@ export const Dashboard: React.FC = () => {
                   <Paper key={advisory.id} sx={{ p: 0, borderRadius: 2, border: '1px solid #000000', overflow: 'hidden' }}>
                     <Box
                       sx={{
-                        backgroundColor:
-                          advisory.severity === 'critical'
-                            ? '#B91C1C'
-                            : advisory.severity === 'warning'
-                            ? '#D97706'
-                            : '#2563EB',
+                        // backgroundColor: 'secondary.main',
                         p: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        // borderBottom: '1px solid #000000',
                       }}
                     >
-                      <Typography variant="h6" sx={{ color: 'white', fontWeight: 700, textTransform: 'uppercase' }}>
+                      <Typography variant="h6" sx={{ color: 'secondary.main', fontWeight: 700, textTransform: 'uppercase' }}>
                         ADVISORY - {advisory.severity}
                       </Typography>
+                      <Chip
+                        label={getSeverityLevel(advisory.severity)}
+                        size="small"
+                        sx={{
+                          backgroundColor: getSeverityBgColor(advisory.severity),
+                          color: getSeverityColor(advisory.severity),
+                          fontWeight: 500,
+                          fontSize: '1rem',
+                          p:1
+                        }}
+                      />
                     </Box>
 
-                    <Box sx={{ p: 2 }}>
+                    <Box sx={{ pb: 2, px: 2 }}>
                       <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
                         {advisory.asset}
                       </Typography>

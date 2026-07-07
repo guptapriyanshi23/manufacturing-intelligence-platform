@@ -6,12 +6,7 @@ import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
 import { MetricCard } from '../../components/Cards/MetricCard';
 import { api } from '../../api/client';
-
-const severityColors: Record<string, string> = {
-  critical: '#d32f2f',
-  warning:  '#f57c00',
-  info:     '#9e9e9e',
-};
+import { getSeverityColor, getSeverityLevel, SEVERITY_LEVEL_MAP } from '../../constants/severity';
 
 export const Reports: React.FC = () => {
   const [advisories, setAdvisories] = useState<any[]>([]);
@@ -38,10 +33,12 @@ export const Reports: React.FC = () => {
   const resolvedCount = advisories.filter((a) => a.status === 'resolved').length;
   const pct = (n: number) => total > 0 ? `${Math.round((n / total) * 100)}%` : '0%';
 
-  const severityChartData = ['info', 'warning', 'critical'].map((sev) => ({
-    severity: sev.toUpperCase(),
+  const severityChartData = Object.keys(SEVERITY_LEVEL_MAP).map((sev) => ({
+    severity: getSeverityLevel(sev),
     count: advisories.filter((a) => a.severity === sev).length,
-  })).reverse();
+    originalSeverity: sev,
+  })).filter((d, i, arr) => arr.findIndex(x => x.severity === d.severity) === i) // dedupe S-levels
+    .sort((a, b) => a.severity.localeCompare(b.severity));
 
   if (loading) {
     return (
@@ -157,14 +154,14 @@ export const Reports: React.FC = () => {
                   <YAxis
                     type="category"
                     dataKey="severity"
-                    width={90}
+                    width={50}
                     tick={{ fontSize: 13 }}
                   />
                   <Tooltip formatter={(v) => [`${v}`, 'Count']} />
                   <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={36}>
                     <LabelList dataKey="count" position="right" style={{ fontSize: 13, fontWeight: 600 }} />
                     {severityChartData.map((entry) => (
-                      <Cell key={entry.severity} fill={severityColors[entry.severity.toLowerCase()] ?? '#90a4ae'} />
+                      <Cell key={entry.severity} fill={getSeverityColor(entry.originalSeverity)} />
                     ))}
                   </Bar>
                 </BarChart>

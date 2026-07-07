@@ -28,25 +28,15 @@ import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
 import { StatusChip } from '../../components/Forms/StatusChip';
 import { api } from '../../api/client';
-
-const severityStyles: Record<string, { backgroundColor: string; color: string }> = {
-  critical: { backgroundColor: 'rgba(244, 63, 94, 0.12)', color: 'error.main' },
-  warning: { backgroundColor: 'rgba(245, 158, 11, 0.12)', color: 'warning.main' },
-  info: { backgroundColor: 'rgba(14, 165, 233, 0.12)', color: 'info.main' },
-};
-
-const statusOptions = ['open', 'acknowledged', 'resolved'] as const;
-const severityOptions = ['critical', 'warning', 'info'] as const;
-
-type StatusOption = (typeof statusOptions)[number];
-type SeverityOption = (typeof severityOptions)[number];
+import { getSeverityColor, getSeverityBgColor, severityOptions } from '../../constants/severity';
+import { getStatusColor, getStatusBgColor, statusOptions } from '../../constants/status';
 
 export const Advisories: React.FC = () => {
   const navigate = useNavigate();
   const [advisories, setAdvisories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<StatusOption | ''>('');
-  const [severityFilter, setSeverityFilter] = useState<SeverityOption | ''>('');
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [severityFilter, setSeverityFilter] = useState<string>('');
 
   // Details Modal State
   const [selectedAdvisory, setSelectedAdvisory] = useState<any | null>(null);
@@ -76,11 +66,11 @@ export const Advisories: React.FC = () => {
   });
 
   const handleStatusChange = (event: SelectChangeEvent) => {
-    setStatusFilter(event.target.value as StatusOption | '');
+    setStatusFilter(event.target.value);
   };
 
   const handleSeverityChange = (event: SelectChangeEvent) => {
-    setSeverityFilter(event.target.value as SeverityOption | '');
+    setSeverityFilter(event.target.value);
   };
 
   const isAllActive = !statusFilter && !severityFilter;
@@ -145,16 +135,11 @@ export const Advisories: React.FC = () => {
             value={statusFilter}
             label="Status"
             onChange={handleStatusChange}
-            renderValue={(selected) => {
-              if (!selected) {
-                return 'Status';
-              }
-              return selected.charAt(0).toUpperCase() + selected.slice(1);
-            }}
+            renderValue={(selected) =>
+              selected ? selected.charAt(0).toUpperCase() + selected.slice(1) : 'Status'
+            }
           >
-            <MenuItem value="">
-              <em>None</em>
-            </MenuItem>
+            <MenuItem value=""><em>None</em></MenuItem>
             {statusOptions.map((option) => (
               <MenuItem key={option} value={option}>
                 {option.charAt(0).toUpperCase() + option.slice(1)}
@@ -170,16 +155,11 @@ export const Advisories: React.FC = () => {
             value={severityFilter}
             label="Severity"
             onChange={handleSeverityChange}
-            renderValue={(selected) => {
-              if (!selected) {
-                return 'Severity';
-              }
-              return selected.charAt(0).toUpperCase() + selected.slice(1);
-            }}
+            renderValue={(selected) =>
+              selected ? selected.charAt(0).toUpperCase() + selected.slice(1) : 'Severity'
+            }
           >
-            <MenuItem value="">
-              <em>None</em>
-            </MenuItem>
+            <MenuItem value=""><em>None</em></MenuItem>
             {severityOptions.map((option) => (
               <MenuItem key={option} value={option}>
                 {option.charAt(0).toUpperCase() + option.slice(1)}
@@ -237,7 +217,8 @@ export const Advisories: React.FC = () => {
                       label={row.severity.toUpperCase()}
                       size="small"
                       sx={{
-                        ...(severityStyles[row.severity] || { backgroundColor: 'grey.300', color: 'text.primary' }),
+                        backgroundColor: getSeverityBgColor(row.severity),
+                        color: getSeverityColor(row.severity),
                         fontWeight: 700,
                         minWidth: 32,
                         justifyContent: 'center',
@@ -285,7 +266,8 @@ export const Advisories: React.FC = () => {
                   label={selectedAdvisory.severity.toUpperCase()}
                   size="small"
                   sx={{
-                    ...(severityStyles[selectedAdvisory.severity] || { backgroundColor: 'grey.300', color: 'text.primary' }),
+                    backgroundColor: getSeverityBgColor(selectedAdvisory.severity),
+                    color: getSeverityColor(selectedAdvisory.severity),
                     fontWeight: 700,
                   }}
                 />

@@ -75,14 +75,12 @@ export const MainLayout: React.FC = () => {
         <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Box component="img" src="/deloitte_logo_black.svg" alt="Deloitte Logo" sx={{ height: 20, width: 'auto' }} />
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography variant="h6" color="text.primary" sx={{ fontWeight: 100, letterSpacing: '0.5px' }}>
+              <Typography variant="h4" sx={{ color: '#ccc', fontWeight: 100 }}>
                 |
               </Typography>
-              <Typography variant="h5" color="text.primary" sx={{ fontWeight: 700, letterSpacing: '0.5px' }}>
+              <Typography variant="h4" color="text.primary" sx={{ fontWeight: 500, letterSpacing: '0.5px' }}>
                 AssetWize
               </Typography>
-            </Box>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', }}>
             <List sx={{ px: 1, display: 'flex', }}>
