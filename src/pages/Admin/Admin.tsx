@@ -1016,12 +1016,12 @@ export const Admin: React.FC = () => {
                           alignItems: 'center',
                           justifyContent: 'space-between',
                           p: 1.25,
-                          border: isChecked ? '1px solid #1b7a1b' : '1px solid #cbd5e1',
+                          border: isChecked ? '1px solid #1b7a1b' : '1px solid #e2e8f0',
                           borderRadius: 1,
                           cursor: 'pointer',
                           bgcolor: isChecked ? 'rgba(27, 122, 27, 0.04)' : '#ffffff',
                           '&:hover': {
-                            bgcolor: isChecked ? 'rgba(27, 122, 27, 0.08)' : '#f1f5f9',
+                            bgcolor: isChecked ? 'rgba(27, 122, 27, 0.08)' : 'rgba(27, 122, 27, 0.04)',
                           }
                         }}
                       >
