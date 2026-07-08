@@ -31,6 +31,7 @@ import { api } from '../../api/client';
 import { getSeverityColor, getSeverityBgColor, severityOptions } from '../../constants/severity';
 import { statusOptions } from '../../constants/status';
 import type { HierarchyNode } from '../../types/hierarchy';
+import { HierarchySelector } from '../../components/Filters/HierarchySelector';
 
 export const Advisories: React.FC = () => {
   const navigate = useNavigate();
@@ -38,8 +39,9 @@ export const Advisories: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [severityFilter, setSeverityFilter] = useState<string>('');
-  const [assetFilter, setAssetFilter] = useState<string>('');
   const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
+  const [hierarchyLoading, setHierarchyLoading] = useState(true);
+  const [selectedNode, setSelectedNode] = useState<HierarchyNode | null>(null);
 
   const [selectedAdvisory, setSelectedAdvisory] = useState<any | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -67,38 +69,39 @@ export const Advisories: React.FC = () => {
 
   useEffect(() => {
     fetchAdvisories();
-    api.hierarchy.list(true).then(setFlatNodes).catch(() => setFlatNodes([]));
+    api.hierarchy.list(true)
+      .then(setFlatNodes)
+      .catch(() => setFlatNodes([]))
+      .finally(() => setHierarchyLoading(false));
   }, []);
 
-  const getAssetDepth = (node: HierarchyNode): number => {
-    let depth = 0; let cur = node;
-    while (cur.parent_id) {
-      const p = flatNodes.find(n => n.id === cur.parent_id);
-      if (!p) break; depth++; cur = p;
+  const getDescendantNames = (node: HierarchyNode): Set<string> => {
+    const names = new Set<string>();
+    const queue = [node.id];
+    while (queue.length > 0) {
+      const id = queue.shift()!;
+      flatNodes.filter(n => n.parent_id === id).forEach(child => {
+        names.add(child.display_name);
+        queue.push(child.id);
+      });
     }
-    return depth;
+    names.add(node.display_name);
+    return names;
   };
-
-  const assetOptions = flatNodes
-    .filter(n => n.node_type !== 'sensor')
-    .sort((a, b) => a.sort_order - b.sort_order)
-    .map(n => ({ node: n, depth: getAssetDepth(n) }));
 
   const filteredRows = advisories.filter((row) => {
     const statusMatch = statusFilter ? row.status === statusFilter : true;
     const severityMatch = severityFilter ? row.severity === severityFilter : true;
-    const assetMatch = assetFilter
-      ? row.asset === flatNodes.find(n => String(n.id) === assetFilter)?.display_name
-      : true;
+    const assetMatch = selectedNode ? getDescendantNames(selectedNode).has(row.asset) : true;
     return statusMatch && severityMatch && assetMatch;
   });
 
-  const isAllActive = !statusFilter && !severityFilter && !assetFilter;
+  const isAllActive = !statusFilter && !severityFilter && !selectedNode;
 
   const handleResetFilters = () => {
     setStatusFilter('');
     setSeverityFilter('');
-    setAssetFilter('');
+    setSelectedNode(null);
   };
 
   const handleRowClick = (advisory: any) => { setSelectedAdvisory(advisory); setDetailsOpen(true); };
@@ -126,43 +129,17 @@ export const Advisories: React.FC = () => {
         subtitle="Active system advisories for equipment health, severity tracking, and remediation actions. Click any row to view full details."
       />
 
-      <Paper sx={{ p: 2, mb: 3, border: '1px solid #ccc' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2,  }}>
-          <Button
-            variant={isAllActive ? 'contained' : 'outlined'}
-            color="primary"
-            onClick={handleResetFilters}
-            sx={{minWidth: 90, fontWeight: 600, flexShrink: 0}}
-          >
-            All
-          </Button>
+      <Paper sx={{ px: 2, py: 2.5, mb: 3, border: '1px solid #ccc' }}>
+        <Box sx={{ mb: 3 }}>
+          <HierarchySelector
+            flatNodes={flatNodes}
+            onSelectionChange={(node) => setSelectedNode(node)}
+            loading={hierarchyLoading}
+          />
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
 
-          <FormControl sx={{flex: 1}} size="small">
-            <InputLabel id="asset-filter-label">Asset</InputLabel>
-            <Select
-              labelId="asset-filter-label"
-              value={assetFilter}
-              label="Asset"
-              onChange={(e) => setAssetFilter(e.target.value)}
-              renderValue={(val) => {
-                if (!val) return 'All Assets';
-                const found = flatNodes.find(n => String(n.id) === val);
-                return found ? found.display_name : val;
-              }}
-            >
-              <MenuItem value=""><em>All Assets</em></MenuItem>
-              {assetOptions.map(({ node, depth }) => (
-                <MenuItem key={node.id} value={String(node.id)}>
-                  <Box sx={{ pl: depth * 2, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    {depth > 0 && <Typography component="span" color="text.disabled" sx={{ fontSize: 12 }}>└</Typography>}
-                    {node.display_name}
-                  </Box>
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl sx={{ flex: 1 }} size="small">
+          <FormControl sx={{ minWidth: 220 }} size="small">
             <InputLabel id="status-filter-label">Status</InputLabel>
             <Select
               labelId="status-filter-label"
@@ -182,7 +159,7 @@ export const Advisories: React.FC = () => {
             </Select>
           </FormControl>
 
-          <FormControl sx={{ flex: 1 }} size="small">
+          <FormControl sx={{ minWidth: 220 }} size="small">
             <InputLabel id="severity-filter-label">Severity</InputLabel>
             <Select
               labelId="severity-filter-label"
@@ -201,6 +178,16 @@ export const Advisories: React.FC = () => {
               ))}
             </Select>
           </FormControl>
+
+            <Button
+            variant={isAllActive ? 'contained' : 'outlined'}
+            color="primary"
+            onClick={handleResetFilters}
+            sx={{ minWidth: 90, fontWeight: 600, flexShrink: 0 }}
+          >
+            All
+          </Button>
+
         </Box>
       </Paper>
 

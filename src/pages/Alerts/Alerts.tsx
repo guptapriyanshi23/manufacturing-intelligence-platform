@@ -8,8 +8,8 @@ import {
   Select,
   MenuItem,
   TextField,
-  Typography,
   Paper,
+  Typography,
   Table,
   TableBody,
   TableCell,
@@ -27,6 +27,7 @@ import { StatusChip } from '../../components/Forms/StatusChip';
 import { getSeverityColor, getSeverityBgColor } from '../../constants/severity';
 import { api } from '../../api/client';
 import type { HierarchyNode } from '../../types/hierarchy';
+import { HierarchySelector } from '../../components/Filters/HierarchySelector';
 
 const TIME_RANGE_OPTIONS = [
   { value: 'last_1h',  label: 'Last Hour' },
@@ -86,7 +87,7 @@ export const Alerts: React.FC = () => {
   const [alerts, setAlerts] = useState<any[]>(demoAlerts);
   const [loading, setLoading] = useState(false);
   const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
-  const [selectedAssetId, setSelectedAssetId] = useState<string>('');
+  const [hierarchyLoading, setHierarchyLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('last_24h');
   const initial = getDateRange('last_24h');
   const [fromDate, setFromDate] = useState(initial.from);
@@ -97,12 +98,13 @@ export const Alerts: React.FC = () => {
   useEffect(() => {
     api.hierarchy.list(true)
       .then(setFlatNodes)
-      .catch(() => setFlatNodes([]));
+      .catch(() => setFlatNodes([]))
+      .finally(() => setHierarchyLoading(false));
 
     setLoading(true);
     api.alerts.list()
       .then((res) => { if (res?.length) setAlerts(res); })
-      .catch(() => {})
+      .catch(() => setAlerts(demoAlerts))
       .finally(() => setLoading(false));
   }, []);
 
@@ -112,27 +114,6 @@ export const Alerts: React.FC = () => {
     setFromDate(from);
     setToDate(to);
   };
-
-  // Build indented hierarchy options (exclude sensors)
-  const buildHierarchyOptions = () => {
-    const getDepth = (node: HierarchyNode): number => {
-      let depth = 0;
-      let current = node;
-      while (current.parent_id) {
-        const parent = flatNodes.find(n => n.id === current.parent_id);
-        if (!parent) break;
-        depth++;
-        current = parent;
-      }
-      return depth;
-    };
-    return flatNodes
-      .filter(n => n.node_type !== 'sensor')
-      .sort((a, b) => a.sort_order - b.sort_order)
-      .map(n => ({ node: n, depth: getDepth(n) }));
-  };
-
-  const hierarchyOptions = buildHierarchyOptions();
 
   const filteredAlerts = showActiveOnly ? alerts.filter(a => a.status === 'open' || a.status === 'active') : alerts;
   const allSelected = filteredAlerts.length > 0 && selectedIds.length === filteredAlerts.length;
@@ -156,35 +137,16 @@ export const Alerts: React.FC = () => {
       />
 
       {/* Filters */}
-      <Paper sx={{ p: 2, mb: 3, border: '1px solid #ccc' }}>
+      <Paper sx={{ px: 2, py: 2.5, mb: 3, border: '1px solid #ccc' }}>
+        <Box sx={{ mb: 3 }}>
+            <HierarchySelector
+              flatNodes={flatNodes}
+              onSelectionChange={() => {}}
+              loading={hierarchyLoading}
+            />
+          </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-
-          <FormControl size="small" sx={{ flex: 2 }}>
-            <InputLabel id="asset-filter-label">Asset</InputLabel>
-            <Select
-              labelId="asset-filter-label"
-              value={selectedAssetId}
-              label="Asset"
-              onChange={(e) => setSelectedAssetId(e.target.value)}
-              renderValue={(val) => {
-                if (!val) return 'All Assets';
-                const found = flatNodes.find(n => String(n.id) === val);
-                return found ? found.display_name : val;
-              }}
-            >
-              <MenuItem value=""><em>All Assets</em></MenuItem>
-              {hierarchyOptions.map(({ node, depth }) => (
-                <MenuItem key={node.id} value={String(node.id)}>
-                  <Box sx={{ pl: depth * 2, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    {depth > 0 && <Typography component="span" color="text.disabled" sx={{ fontSize: 12 }}>└</Typography>}
-                    {node.display_name}
-                  </Box>
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl size="small" sx={{ flex: 1 }}>
+          <FormControl size="small" sx={{ minWidth: 160 }}>
             <InputLabel id="time-range-label">Time Range</InputLabel>
             <Select
               labelId="time-range-label"
@@ -197,7 +159,6 @@ export const Alerts: React.FC = () => {
               ))}
             </Select>
           </FormControl>
-
           <TextField
             label="From"
             type="datetime-local"
@@ -205,7 +166,7 @@ export const Alerts: React.FC = () => {
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
             slotProps={{ inputLabel: { shrink: true } }}
-            sx={{ flex: 1 }}
+            sx={{ minWidth: 200 }}
           />
           <TextField
             label="To"
@@ -214,14 +175,12 @@ export const Alerts: React.FC = () => {
             value={toDate}
             onChange={(e) => setToDate(e.target.value)}
             slotProps={{ inputLabel: { shrink: true } }}
-            sx={{ flex: 1 }}
+            sx={{ minWidth: 200 }}
           />
-
           <Button variant="contained" color="secondary" sx={{ minWidth: 90, fontWeight: 600, flexShrink: 0 }}>
             View
           </Button>
-        </Box>
-        <Box sx={{ px: 1, pt: 1.5 }}>
+          <Box sx={{ flex: 1 }} />
           <FormControlLabel
             control={
               <Switch

@@ -12,8 +12,9 @@ import { OpenInFull as ExpandIcon, Close as CloseIcon } from '@mui/icons-materia
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { api } from '../../api/client';
 import type { HierarchyNode } from '../../types/hierarchy';
-import { getSeverityBgColor, getSeverityColor, getSeverityLevel, getSeverityLevelFull } from '../../constants/severity';
+import { getSeverityBgColor, getSeverityColor, getSeverityLevelFull } from '../../constants/severity';
 import { PageHeader } from '../../components/Cards/PageHeader';
+import { HierarchySelector } from '../../components/Filters/HierarchySelector';
 
 const TIME_RANGE_OPTIONS = [
   { value: 'last_1h', label: 'Last Hour' },
@@ -44,15 +45,34 @@ export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
 
   const searchParams = new URLSearchParams(location.search);
-  const selectedNodeId = searchParams.get('selectedNodeId');
+  const initialNodeId = searchParams.get('selectedNodeId') ? Number(searchParams.get('selectedNodeId')) : null;
 
   const [hierarchyLoading, setHierarchyLoading] = useState(true);
   const [telemetryLoading, setTelemetryLoading] = useState(false);
   const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
+  const [selectedNode, setSelectedNode] = useState<HierarchyNode | null>(null);
+  const [hierarchyComplete, setHierarchyComplete] = useState(false);
   const [descendantSensors, setDescendantSensors] = useState<HierarchyNode[]>([]);
   const [selectedSensorIds, setSelectedSensorIds] = useState<string[]>([]);
   const [telemetryPoints, setTelemetryPoints] = useState<TelemetryPoint[]>([]);
   const [advisories, setAdvisories] = useState<any[]>([]);
+
+  const initRange = getDateRange('last_24h');
+  const [timeRange, setTimeRange] = useState('last_24h');
+  const [fromDate, setFromDate] = useState(initRange.from);
+  const [toDate, setToDate] = useState(initRange.to);
+
+  const handleTimeRangeChange = (val: string) => {
+    setTimeRange(val);
+    const { from, to } = getDateRange(val);
+    setFromDate(from);
+    setToDate(to);
+  };
+
+  const getHoursFromRange = () => {
+    const map: Record<string, number> = { last_1h: 1, last_8h: 8, last_24h: 24, last_7d: 168, last_30d: 720 };
+    return map[timeRange] ?? 24;
+  };
 
   // Telemetry line chart expand state
   const [expandedSensor, setExpandedSensor] = useState<HierarchyNode | null>(null);
@@ -101,38 +121,36 @@ export const Dashboard: React.FC = () => {
       .finally(() => setHierarchyLoading(false));
   }, []);
 
-  useEffect(() => {
-    if (flatNodes.length === 0) return;
-    let targetNodeId = selectedNodeId ? Number(selectedNodeId) : null;
-    if (!targetNodeId) {
-      const rootNode = flatNodes.find(n => !n.parent_id);
-      if (rootNode) targetNodeId = rootNode.id;
+  const handleHierarchyChange = (node: HierarchyNode | null, isComplete: boolean) => {
+    setSelectedNode(node);
+    setHierarchyComplete(isComplete);
+    if (!node || !isComplete) {
+      setDescendantSensors([]);
+      setSelectedSensorIds([]);
+      return;
     }
-    if (targetNodeId) {
-      const sensors: HierarchyNode[] = [];
-      const queue = [targetNodeId];
-      while (queue.length > 0) {
-        const currentId = queue.shift()!;
-        flatNodes.filter(n => n.parent_id === currentId).forEach(child => {
-          if (child.node_type === 'sensor') sensors.push(child);
-          else queue.push(child.id);
-        });
-      }
-      const selfNode = flatNodes.find(n => n.id === targetNodeId);
-      if (selfNode?.node_type === 'sensor') sensors.push(selfNode);
-      setDescendantSensors(sensors);
-      setSelectedSensorIds(sensors.map(s => s.sensor_metadata?.sensor_id).filter(Boolean) as string[]);
+    const sensors: HierarchyNode[] = [];
+    const queue = [node.id];
+    while (queue.length > 0) {
+      const currentId = queue.shift()!;
+      flatNodes.filter(n => n.parent_id === currentId).forEach(child => {
+        if (child.node_type === 'sensor') sensors.push(child);
+        else queue.push(child.id);
+      });
     }
-  }, [selectedNodeId, flatNodes]);
+    if (node.node_type === 'sensor') sensors.push(node);
+    setDescendantSensors(sensors);
+    setSelectedSensorIds(sensors.map(s => s.sensor_metadata?.sensor_id).filter(Boolean) as string[]);
+  };
 
   useEffect(() => {
     if (selectedSensorIds.length === 0) { setTelemetryPoints([]); return; }
     setTelemetryLoading(true);
-    api.dashboard.getTelemetry(selectedSensorIds, 24)
+    api.dashboard.getTelemetry(selectedSensorIds, getHoursFromRange())
       .then(setTelemetryPoints)
       .catch(() => setTelemetryPoints([]))
       .finally(() => setTelemetryLoading(false));
-  }, [selectedSensorIds]);
+  }, [selectedSensorIds, timeRange]);
 
   const getSensorDataPoints = (sensorId: string) =>
     telemetryPoints
@@ -149,8 +167,6 @@ export const Dashboard: React.FC = () => {
     const value = event.target.value;
     setSelectedSensorIds(typeof value === 'string' ? value.split(',') : value);
   };
-
-  const activeNode = flatNodes.find(n => n.id === Number(selectedNodeId)) || flatNodes[0];
 
   const renderLineChart = (data: any[], sensor: HierarchyNode, height: number) => {
     const unit = sensor.sensor_metadata?.unit || '';
@@ -220,19 +236,38 @@ export const Dashboard: React.FC = () => {
         subtitle="Anomalous tags are shown by default, stacked one below the other. Use the dropdown to browse any other parameter on this asset — anomaly or not."
       />
       <Box sx={{ mb: 4 }}>
-        <Paper sx={{ p: 2, borderRadius: 2, border: '1px solid #ccc' }}>
-          <Grid container spacing={2} sx={{ alignItems: 'center' }}>
-            <Grid size={{ xs: 12, md: 8 }}>
-              <Typography variant="h4" sx={{ fontWeight: 500 }}>
-                {activeNode ? activeNode.display_name : 'Global Operations'}
-              </Typography>
-              {/* <Typography variant="body2" color="text.secondary" sx={{ mt: 1, maxWidth: 720 }}>
-                Anomalous tags are shown by default, stacked one below the other. Use the dropdown to browse any other parameter on this asset — anomaly or not.
-              </Typography> */}
+        <Paper sx={{ px: 2, py: 2.5, borderRadius: 2, border: '1px solid #ccc' }}>
+          <Grid container spacing={3} sx={{ alignItems: 'center' }}>
+            <Grid size={12}>
+              <HierarchySelector
+                flatNodes={flatNodes}
+                onSelectionChange={handleHierarchyChange}
+                initialNodeId={initialNodeId}
+                loading={hierarchyLoading}
+              />
             </Grid>
-            <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'flex', justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
-              {descendantSensors.length > 0 && (
-                <FormControl size="small" sx={{ minWidth: 320 }}>
+            <Grid size={12}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                <FormControl size="small" sx={{ minWidth: 160 }}>
+                  <InputLabel>Time Range</InputLabel>
+                  <Select value={timeRange} label="Time Range" onChange={(e) => handleTimeRangeChange(e.target.value)}>
+                    {TIME_RANGE_OPTIONS.map(o => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
+                  </Select>
+                </FormControl>
+                <TextField
+                  label="From" type="datetime-local" size="small" value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  sx={{ minWidth: 200 }}
+                />
+                <TextField
+                  label="To" type="datetime-local" size="small" value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  sx={{ minWidth: 200 }}
+                />
+                <Box sx={{ flex: 1 }} />
+                <FormControl size="small" sx={{ minWidth: 220 }} disabled={descendantSensors.length === 0}>
                   <InputLabel id="sensor-filter-dropdown-label">Filter Active Graphs</InputLabel>
                   <Select
                     labelId="sensor-filter-dropdown-label"
@@ -253,7 +288,7 @@ export const Dashboard: React.FC = () => {
                     })}
                   </Select>
                 </FormControl>
-              )}
+              </Box>
             </Grid>
           </Grid>
         </Paper>
@@ -264,10 +299,10 @@ export const Dashboard: React.FC = () => {
           <CircularProgress size={40} color="secondary" />
         </Box>
       ) : (
-        <Grid container spacing={3} sx={{ alignItems: 'stretch' }}>
+        <Grid container spacing={3} sx={{ alignItems: 'flex-start' }}>
           {/* Left: Telemetry Charts */}
-          <Grid size={{ xs: 12, lg: 8 }} sx={{ display: 'flex', flexDirection: 'column' }}>
-            <Grid container spacing={3} sx={{ flex: 1, alignItems: 'stretch' }}>
+          <Grid size={{ xs: 12, lg: 8 }}>
+            <Grid container spacing={3}>
               {descendantSensors.length === 0 ? (
                 <Grid size={12}>
                   <Paper sx={{ p: 4, textAlign: 'center', border: '1px solid #ccc' }}>
@@ -290,8 +325,8 @@ export const Dashboard: React.FC = () => {
                     const data = getSensorDataPoints(sid);
                     const unit = sensor.sensor_metadata?.unit || '';
                     return (
-                      <Grid size={12} key={sensor.id} sx={{ display: 'flex', flexDirection: 'column' }}>
-                        <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                      <Grid size={12} key={sensor.id}>
+                        <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc' }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                             <Typography variant="h6" sx={{ fontWeight: 700 }}>{sensor.display_name}</Typography>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -304,14 +339,14 @@ export const Dashboard: React.FC = () => {
                             </Box>
                           </Box>
                           {data.length === 0 ? (
-                            <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed #000000', borderRadius: 1 }}>
+                            <Box sx={{ height: 270, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed #000000', borderRadius: 1 }}>
                               <Typography variant="body2" color="text.secondary">
                                 No telemetry data received for this sensor in the last 24 hours.
                               </Typography>
                             </Box>
                           ) : (
-                            <Box sx={{ width: '100%', height: 280 }}>
-                              {renderLineChart(data, sensor, 280)}
+                            <Box sx={{ width: '100%', height: 270 }}>
+                              {renderLineChart(data, sensor, 270)}
                             </Box>
                           )}
                         </Paper>
@@ -323,11 +358,11 @@ export const Dashboard: React.FC = () => {
           </Grid>
 
           {/* Right: Advisories */}
-          <Grid size={{ xs: 12, lg: 4 }} sx={{ display: 'flex', flexDirection: 'column' }}>
+          <Grid size={{ xs: 12, lg: 4 }}>
             {openAdvisories.length > 0 ? (
-              <Stack spacing={3} sx={{ flex: 1 }}>
+              <Stack spacing={3}>
                 {openAdvisories.map((advisory) => (
-                  <Paper key={advisory.id} sx={{ p: 0, borderRadius: 2, border: '1px solid #ccc', overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <Paper key={advisory.id} sx={{ p: 0, borderRadius: 2, border: '1px solid #ccc', overflow: 'hidden' }}>
                     <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <Typography variant="h6" sx={{ color: 'secondary.main', fontWeight: 700, textTransform: 'uppercase' }}>
                         ADVISORY
