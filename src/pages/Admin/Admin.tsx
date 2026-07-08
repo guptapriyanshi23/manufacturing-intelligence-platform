@@ -158,7 +158,7 @@ const HierarchyCheckItem: React.FC<{
   const hasChildren = node.children && node.children.length > 0;
   
   return (
-    <Box sx={{ pl: depth * 2 }}>
+    <Box sx={{ pl: 3 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', py: 0.25 }}>
         <Checkbox
           checked={isChecked}
@@ -167,7 +167,8 @@ const HierarchyCheckItem: React.FC<{
           color="success"
           sx={{ p: 0.5 }}
         />
-        <Typography variant="body2" sx={{ fontWeight: depth === 0 ? 600 : 400 }}>
+        <Typography variant="body2" sx={{ fontWeight: depth === 0 ? 600 : 400, whiteSpace: 'nowrap',
+          overflow: 'visible', textOverflow: 'clip' }}>
           {node.display_name} <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>({node.node_type})</span>
         </Typography>
       </Box>
@@ -680,17 +681,18 @@ export const Admin: React.FC = () => {
       {activeTab === 2 && (
         <Card sx={{ border: '1px solid #ccc' }}>
           <CardContent>
-            <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600, }}>
               Manage User Permissions
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               Select a user to review and update their access permissions.
             </Typography>
+            <Divider sx={{ mb: 2 }} />
             
-            <TableContainer component={Paper} variant="outlined">
-              <Table>
-                <TableHead sx={{ bgcolor: '#f8fafc' }}>
-                  <TableRow>
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ '& th': { fontWeight: 700, backgroundColor: 'grey.50' } }}>
                     <TableCell sx={{ fontWeight: 700 }}>ID</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>Email Address</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>Active Status</TableCell>
@@ -747,17 +749,17 @@ export const Admin: React.FC = () => {
       )}
 
       {/* Edit Permissions Dialog */}
-      <Dialog open={userPermissionsOpen} onClose={() => setUserPermissionsOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ borderBottom: '1px solid #e2e8f0', p: 3 }}>
+      <Dialog open={userPermissionsOpen} onClose={() => setUserPermissionsOpen(false)} fullWidth>
+        <DialogTitle sx={{ borderBottom: '1px solid #e2e8f0', px: 3, py: 2 }}>
           <Typography variant="h5" sx={{ fontWeight: 700 }}>Edit Permissions</Typography>
           <Typography variant="body2" color="text.secondary">
             User: {selectedUser?.email}
           </Typography>
         </DialogTitle>
-        <DialogContent sx={{ p: 3, pt: 2 }}>
-          <Stack spacing={3} sx={{ mt: 1 }}>
+        <DialogContent sx={{ p: 3, }}>
+          <Stack spacing={3} sx={{ mt: 2 }}>
             {permissionGroups.map((group) => (
-              <Box key={group.module} sx={{ border: '1px solid #e2e8f0', borderRadius: 2, p: 2, bgcolor: '#f8fafc' }}>
+              <Box key={group.module} sx={{ border: '1px solid #e2e8f0', borderRadius: 2, p: 2, }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'secondary.main', mb: 1.5 }}>
                   {group.module}
                 </Typography>
@@ -812,14 +814,14 @@ export const Admin: React.FC = () => {
             ))}
 
             {/* Plant Hierarchy Access Control Box */}
-            <Box sx={{ border: '1px solid #e2e8f0', borderRadius: 2, p: 2, bgcolor: '#f8fafc' }}>
+            <Box sx={{ border: '1px solid #e2e8f0', borderRadius: 2, p: 2, }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'secondary.main', mb: 1 }}>
                 Hierarchy Access Control
               </Typography>
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
                 Authorize sub-tree roots by checking nodes. Assumed full tree access if none is checked.
               </Typography>
-              <Box sx={{ border: '1px solid #cbd5e1', borderRadius: 1, p: 1.5, bgcolor: '#ffffff', maxHeight: 250, overflowY: 'auto' }}>
+              <Box sx={{ border: '1px solid #ccc', borderRadius: 1, p: 1.5, maxHeight: 250, overflowY: 'auto' }}>
                 {buildTreeFromFlat(flatNodes).map((node) => (
                   <HierarchyCheckItem
                     key={node.id}
@@ -840,7 +842,7 @@ export const Admin: React.FC = () => {
           </Stack>
         </DialogContent>
         <DialogActions sx={{ borderTop: '1px solid #e2e8f0', px: 3, py: 2 }}>
-          <Button variant="outlined" onClick={() => setUserPermissionsOpen(false)}>Cancel</Button>
+          <Button variant="outlined" color="secondary" onClick={() => setUserPermissionsOpen(false)}>Cancel</Button>
           <Button
             variant="contained"
             color="primary"
