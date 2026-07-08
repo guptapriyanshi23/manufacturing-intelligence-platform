@@ -497,7 +497,7 @@ export const Admin: React.FC = () => {
     <PageContainer>
       <PageHeader
         title="Administration"
-        subtitle="Manage hierarchy nodes and configure alert rules."
+        subtitle="Manage hierarchy nodes, configure alert rules and user permissions."
       />
 
       <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ mb: 3, borderBottom: '1px solid #ccc' }}>
