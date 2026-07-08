@@ -1,7 +1,15 @@
+import sys
+import os
+from datetime import datetime, timedelta, timezone
+
+# Add parent directory of 'backend' to sys.path to allow imports like 'backend.app...'
+backend_parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if backend_parent_dir not in sys.path:
+    sys.path.insert(0, backend_parent_dir)
+
 import time
 import random
-import sys
-from datetime import datetime, timedelta, timezone
+import math
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
@@ -59,20 +67,39 @@ def get_active_sensors(session):
     ]
 
 
-def generate_value(sensor_name):
+def generate_value(sensor_name, timestamp):
     """
-    Generate realistic mock telemetry values depending on sensor type
+    Generate realistic mock telemetry values with sine wave baseline, noise, and occasional spikes.
     """
     name = sensor_name.lower()
+    epoch = timestamp.timestamp()
+    
+    # 1. Base sine wave pattern (diurnal cycle: 24h = 86400 seconds)
+    sine = math.sin(2 * math.pi * epoch / 86400)
+    
+    # 2. Occasional spike window: 2-minute duration spike window every hour
+    is_spike = (int(epoch) % 3600 < 120) and (random.random() < 0.3)
+
     if "temp" in name:
-        return round(random.uniform(55.0, 85.0), 2)  # 55-85 °C
+        base = 70.0 + 10.0 * sine + random.uniform(-1.5, 1.5)
+        val = base * 1.3 if is_spike else base
+        return round(val, 2)
     elif "vib" in name:
-        return round(random.uniform(0.8, 4.5), 2)   # 0.8-4.5 mm/s
+        base = 2.0 + 0.8 * sine + random.uniform(-0.15, 0.15)
+        val = base * 3.5 if is_spike else base
+        return round(val, 2)
     elif "hum" in name:
-        return round(random.uniform(35.0, 65.0), 2)  # 35-65 %
+        base = 50.0 + 8.0 * sine + random.uniform(-2.0, 2.0)
+        val = base * 1.4 if is_spike else base
+        return round(val, 2)
     elif "press" in name or "prs" in name:
-        return round(random.uniform(120.0, 160.0), 2) # 120-160 bar
-    return round(random.uniform(10.0, 100.0), 2)
+        base = 140.0 + 15.0 * sine + random.uniform(-3.0, 3.0)
+        val = base * 1.25 if is_spike else base
+        return round(val, 2)
+        
+    base = 50.0 + 15.0 * sine + random.uniform(-2.0, 2.0)
+    val = base * 1.5 if is_spike else base
+    return round(val, 2)
 
 
 def generate_history(session, sensors, hours=24):
@@ -83,15 +110,21 @@ def generate_history(session, sensors, hours=24):
     now = datetime.now(timezone.utc)
     start_time = now - timedelta(hours=hours)
     
-    # 5-minute intervals
-    interval = timedelta(minutes=5)
+    n_sensors = len(sensors)
+    if n_sensors == 0:
+        return
+        
+    # Calculate interval per sensor to yield exactly 100 points per minute total across all sensors
+    # Total points per minute = 100 -> interval = (60 * n_sensors) / 100 seconds
+    interval_seconds = (60.0 * n_sensors) / 100.0
+    interval = timedelta(seconds=interval_seconds)
     current_time = start_time
     
     data_points = []
     
     while current_time <= now:
         for sensor in sensors:
-            val = generate_value(sensor["name"])
+            val = generate_value(sensor["name"], current_time)
             data_points.append({
                 "timestamp": current_time,
                 "sensor_id": sensor["id"],
@@ -101,21 +134,25 @@ def generate_history(session, sensors, hours=24):
             })
         current_time += interval
 
-    # Batch insert
+    # Batch insert in chunks of 1000 to prevent memory pressure, packet size limits, or server timeouts
     if data_points:
-        try:
-            session.execute(
-                text(
-                    "INSERT INTO sensor_telemetry (timestamp, sensor_id, sensor_name, value, inserted_at) "
-                    "VALUES (:timestamp, :sensor_id, :sensor_name, :value, :inserted_at)"
-                ),
-                data_points
-            )
-            session.commit()
-            print(f"Successfully inserted {len(data_points)} historical telemetry data points!")
-        except Exception as e:
-            session.rollback()
-            print(f"Error during historical batch insert: {e}")
+        chunk_size = 1000
+        for i in range(0, len(data_points), chunk_size):
+            chunk = data_points[i:i+chunk_size]
+            try:
+                session.execute(
+                    text(
+                        "INSERT INTO sensor_telemetry (timestamp, sensor_id, sensor_name, value, inserted_at) "
+                        "VALUES (:timestamp, :sensor_id, :sensor_name, :value, :inserted_at) "
+                        "ON CONFLICT (timestamp, sensor_id) DO NOTHING"
+                    ),
+                    chunk
+                )
+                session.commit()
+                print(f"Inserted chunk {i // chunk_size + 1}/{math.ceil(len(data_points) / chunk_size)} ({len(chunk)} points)...")
+            except Exception as e:
+                session.rollback()
+                print(f"Error during historical batch insert chunk: {e}")
 
 
 def seed_thresholds_and_alerts(db, sensors):
@@ -311,37 +348,39 @@ def seed_users_and_permissions(db):
 
 def stream_live_telemetry(session, sensors):
     """
-    Infinite loop that streams live data points to the database
+    Infinite loop that streams live data points to the database at 100 points/minute
     """
-    print(f"Starting live telemetry stream. Press CTRL+C to stop.")
-    print("Streaming data for:")
-    for s in sensors:
-        print(f" - {s['id']} ({s['name']})")
-    print("-" * 50)
+    print(f"Starting live telemetry stream (100 points/min total). Press CTRL+C to stop.")
+    N = len(sensors)
+    if N == 0:
+        return
     
     try:
+        index = 0
         while True:
             now = datetime.now(timezone.utc)
-            for sensor in sensors:
-                val = generate_value(sensor["name"])
-                
-                session.execute(
-                    text(
-                        "INSERT INTO sensor_telemetry (timestamp, sensor_id, sensor_name, value, inserted_at) "
-                        "VALUES (:timestamp, :sensor_id, :sensor_name, :value, :inserted_at)"
-                    ),
-                    {
-                        "timestamp": now,
-                        "sensor_id": sensor["id"],
-                        "sensor_name": sensor["name"],
-                        "value": val,
-                        "inserted_at": now
-                    }
-                )
-                print(f"[{now.strftime('%H:%M:%S')}] {sensor['id']} -> {val} {sensor['unit']}")
+            sensor = sensors[index]
+            val = generate_value(sensor["name"], now)
             
+            session.execute(
+                text(
+                    "INSERT INTO sensor_telemetry (timestamp, sensor_id, sensor_name, value, inserted_at) "
+                    "VALUES (:timestamp, :sensor_id, :sensor_name, :value, :inserted_at) "
+                    "ON CONFLICT (timestamp, sensor_id) DO NOTHING"
+                ),
+                {
+                    "timestamp": now,
+                    "sensor_id": sensor["id"],
+                    "sensor_name": sensor["name"],
+                    "value": val,
+                    "inserted_at": now
+                }
+            )
             session.commit()
-            time.sleep(5)  # insert every 5 seconds
+            print(f"[{now.strftime('%H:%M:%S')}] {sensor['id']} -> {val} {sensor['unit']}")
+            
+            index = (index + 1) % N
+            time.sleep(0.6) # 0.6 seconds sleep = 100 points per minute total
             
     except KeyboardInterrupt:
         print("\nStreaming stopped by user.")
@@ -447,16 +486,16 @@ if __name__ == "__main__":
         active_sensors = get_active_sensors(db)
         
         # Seed thresholds and alerts
-        seed_thresholds_and_alerts(db, active_sensors)
+        # seed_thresholds_and_alerts(db, active_sensors)
         
         # Seed advisories
-        seed_advisories(db)
+        # seed_advisories(db)
         
         # Seed users and permissions
-        seed_users_and_permissions(db)
+        # seed_users_and_permissions(db)
         
-        # 1. Ask or default to generating 24h history
-        generate_history(db, active_sensors, hours=24)
+        # 1. Generate 48h (2 days) historical data
+        generate_history(db, active_sensors, hours=48)
         
         # 2. Start live streaming
         stream_live_telemetry(db, active_sensors)

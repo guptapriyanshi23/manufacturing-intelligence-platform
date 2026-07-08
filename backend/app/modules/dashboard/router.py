@@ -19,9 +19,10 @@ def get_summary():
 def get_telemetry(
     sensor_ids: List[str] = Query(None),
     hours: int = 24,
+    granularity: str = Query(None),
     db: Session = Depends(get_db)
 ):
     """
     Get telemetry history data for a list of sensor IDs.
     """
-    return service.get_sensor_telemetry(db=db, sensor_ids=sensor_ids, hours=hours)
+    return service.get_sensor_telemetry(db=db, sensor_ids=sensor_ids, hours=hours, granularity=granularity)

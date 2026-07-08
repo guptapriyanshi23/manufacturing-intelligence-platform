@@ -107,17 +107,42 @@ export const Dashboard: React.FC = () => {
   const [sensorExpTimeRange, setSensorExpTimeRange] = useState('last_24h');
   const [sensorExpFrom, setSensorExpFrom] = useState(sensorExpInit.from);
   const [sensorExpTo, setSensorExpTo] = useState(sensorExpInit.to);
+  const [expandedTelemetry, setExpandedTelemetry] = useState<TelemetryPoint[]>([]);
+  const [expandedTelemetryLoading, setExpandedTelemetryLoading] = useState(false);
+  const [expandedGranularity, setExpandedGranularity] = useState<string>('auto');
 
   const handleSensorExpTimeRangeChange = (val: string) => {
     setSensorExpTimeRange(val);
     const { from, to } = getDateRange(val);
     setSensorExpFrom(from); setSensorExpTo(to);
   };
+  
   const openSensorExpanded = (sensor: HierarchyNode) => {
     setExpandedSensor(sensor);
     const { from, to } = getDateRange('last_24h');
     setSensorExpTimeRange('last_24h'); setSensorExpFrom(from); setSensorExpTo(to);
+    setExpandedGranularity('auto');
   };
+
+  useEffect(() => {
+    if (!expandedSensor) {
+      setExpandedTelemetry([]);
+      return;
+    }
+    const sid = expandedSensor.sensor_metadata?.sensor_id;
+    if (!sid) return;
+
+    setExpandedTelemetryLoading(true);
+    const getExpHours = () => {
+      const map: Record<string, number> = { last_1h: 1, last_8h: 8, last_24h: 24, last_7d: 168, last_30d: 720 };
+      return map[sensorExpTimeRange] ?? 24;
+    };
+
+    api.dashboard.getTelemetry([sid], getExpHours(), expandedGranularity === 'auto' ? undefined : expandedGranularity)
+      .then(setExpandedTelemetry)
+      .catch(() => setExpandedTelemetry([]))
+      .finally(() => setExpandedTelemetryLoading(false));
+  }, [expandedSensor, sensorExpTimeRange, expandedGranularity]);
 
   const [profile, setProfile] = useState<{ email: string; permissions: string[] } | null>(null);
 
@@ -168,14 +193,14 @@ export const Dashboard: React.FC = () => {
     setSelectedSensorIds(sensors.map(s => s.sensor_metadata?.sensor_id).filter(Boolean) as string[]);
   };
 
-  useEffect(() => {
+  const handleViewClick = () => {
     if (selectedSensorIds.length === 0) { setTelemetryPoints([]); return; }
     setTelemetryLoading(true);
     api.dashboard.getTelemetry(selectedSensorIds, getHoursFromRange())
       .then(setTelemetryPoints)
       .catch(() => setTelemetryPoints([]))
       .finally(() => setTelemetryLoading(false));
-  }, [selectedSensorIds, timeRange]);
+  };
 
   const getSensorDataPoints = (sensorId: string) =>
     telemetryPoints
@@ -229,6 +254,7 @@ export const Dashboard: React.FC = () => {
     tr: string, onTrChange: (v: string) => void,
     from: string, onFromChange: (v: string) => void,
     to: string, onToChange: (v: string) => void,
+    granularity: string, onGranularityChange: (v: string) => void,
     onClose: () => void,
     extraRight?: React.ReactNode,
   ) => (
@@ -241,10 +267,22 @@ export const Dashboard: React.FC = () => {
           </Select>
         </FormControl>
 
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel>Granularity</InputLabel>
+          <Select value={granularity} label="Granularity" onChange={(e) => onGranularityChange(e.target.value)}>
+            <MenuItem value="auto">Auto</MenuItem>
+            <MenuItem value="raw">Raw Data</MenuItem>
+            <MenuItem value="1m">1 Minute</MenuItem>
+            <MenuItem value="5m">5 Minutes</MenuItem>
+            <MenuItem value="10m">10 Minutes</MenuItem>
+            <MenuItem value="1h">1 Hour</MenuItem>
+            <MenuItem value="6h">6 Hours</MenuItem>
+            <MenuItem value="1d">1 Day</MenuItem>
+          </Select>
+        </FormControl>
+
         <TextField label="From" type="datetime-local" size="small" value={from} onChange={(e) => onFromChange(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ minWidth: 200 }} />
         <TextField label="To" type="datetime-local" size="small" value={to} onChange={(e) => onToChange(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ minWidth: 200 }} />
-
-        <Button variant="contained" color="secondary" sx={{ fontWeight: 600, flexShrink: 0 }}>Apply</Button>
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         {extraRight}
@@ -330,6 +368,15 @@ export const Dashboard: React.FC = () => {
                     })}
                   </Select>
                 </FormControl>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  onClick={handleViewClick}
+                  disabled={selectedSensorIds.length === 0}
+                  sx={{ fontWeight: 700, px: 3, py: 1, ml: 1 }}
+                >
+                  View
+                </Button>
               </Box>
             </Grid>
           </Grid>
@@ -350,6 +397,17 @@ export const Dashboard: React.FC = () => {
                   <Paper sx={{ p: 4, textAlign: 'center', border: '1px solid #ccc' }}>
                     <Typography color="text.secondary">
                       No sensors defined under the selected hierarchy level. Select a level with configured sensor metadata.
+                    </Typography>
+                  </Paper>
+                </Grid>
+              ) : telemetryPoints.length === 0 && !telemetryLoading ? (
+                <Grid size={12}>
+                  <Paper sx={{ p: 6, textAlign: 'center', border: '1px solid #ccc', borderRadius: 2 }}>
+                    <Typography variant="h6" color="text.secondary" gutterBottom sx={{ fontWeight: 600 }}>
+                      No Telemetry Data Loaded
+                    </Typography>
+                    <Typography color="text.secondary" variant="body2">
+                      Please customize your hierarchy level, time range, or active graphs and click the <strong>View</strong> button to load charts.
                     </Typography>
                   </Paper>
                 </Grid>
@@ -489,7 +547,15 @@ export const Dashboard: React.FC = () => {
         <DialogContent sx={{ p: 3 }}>
           {expandedSensor && (() => {
             const sid = expandedSensor.sensor_metadata?.sensor_id || '';
-            const data = getSensorDataPoints(sid);
+            const data = expandedTelemetry
+              .filter(p => p.sensor_id === sid)
+              .map(p => ({
+                timestamp: new Date(p.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                value: p.value,
+                name: p.sensor_name,
+                alarmLimit: (p as any).alarm_limit,
+                tripLimit: (p as any).trip_limit,
+              }));
             const unit = expandedSensor.sensor_metadata?.unit || '';
             return (
               <>
@@ -497,12 +563,25 @@ export const Dashboard: React.FC = () => {
                   sensorExpTimeRange, handleSensorExpTimeRangeChange,
                   sensorExpFrom, setSensorExpFrom,
                   sensorExpTo, setSensorExpTo,
+                  expandedGranularity, setExpandedGranularity,
                   () => setExpandedSensor(null),
                   data.length > 0 ? <Chip label={`Current: ${data[data.length - 1].value} ${unit}`} color="secondary" size="small" sx={{ fontWeight: 600 }} /> : undefined,
                 )}
                 <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>{expandedSensor.display_name}</Typography>
-                <Box sx={{ width: '100%', height: 500 }}>
-                  {renderLineChart(data, expandedSensor, 500)}
+                <Box sx={{ width: '100%', height: 500, position: 'relative' }}>
+                  {expandedTelemetryLoading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                      <CircularProgress size={40} color="secondary" />
+                    </Box>
+                  ) : data.length === 0 ? (
+                    <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed #ccc', borderRadius: 1 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        No telemetry data found for the selected time range and granularity.
+                      </Typography>
+                    </Box>
+                  ) : (
+                    renderLineChart(data, expandedSensor, 500)
+                  )}
                 </Box>
               </>
             );
