@@ -29,7 +29,7 @@ import { PageHeader } from '../../components/Cards/PageHeader';
 import { StatusChip } from '../../components/Forms/StatusChip';
 import { api } from '../../api/client';
 import { getSeverityColor, getSeverityBgColor, severityOptions } from '../../constants/severity';
-import { getStatusColor, getStatusBgColor, statusOptions } from '../../constants/status';
+import { statusOptions } from '../../constants/status';
 import type { HierarchyNode } from '../../types/hierarchy';
 
 export const Advisories: React.FC = () => {
@@ -50,6 +50,20 @@ export const Advisories: React.FC = () => {
       .then((res) => { setAdvisories(res); setLoading(false); })
       .catch((err) => { console.error('Failed to fetch advisories:', err); setLoading(false); });
   };
+
+  const [profile, setProfile] = useState<{ email: string; permissions: string[] } | null>(null);
+
+  useEffect(() => {
+    const cached = localStorage.getItem('user_profile');
+    if (cached) {
+      try {
+        setProfile(JSON.parse(cached));
+      } catch (e) {}
+    }
+  }, []);
+
+  const canAcknowledge = profile?.permissions.includes('advisories:acknowledge') ?? false;
+  const canRca = profile?.permissions.includes('advisories:rca') ?? false;
 
   useEffect(() => {
     fetchAdvisories();
@@ -262,7 +276,7 @@ export const Advisories: React.FC = () => {
         onClose={handleCloseDetails}
         maxWidth="md"
         fullWidth
-        PaperProps={{ sx: { border: '1px solid #ccc', borderRadius: 2 } }}
+        slotProps={{ paper: { sx: { border: '1px solid #ccc', borderRadius: 2 } } }}
       >
         {selectedAdvisory && (
           <>
@@ -332,7 +346,20 @@ export const Advisories: React.FC = () => {
 
             <DialogActions sx={{ borderTop: '1px solid #e2e8f0', px: 3, py: 2 }}>
               {selectedAdvisory.status === 'open' && (
-                <Button variant="contained" color="primary" onClick={() => handleAcknowledgeFromDetails(selectedAdvisory.id)} sx={{ textTransform: 'none', fontWeight: 600 }}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  disabled={!canAcknowledge}
+                  onClick={() => handleAcknowledgeFromDetails(selectedAdvisory.id)}
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    '&.Mui-disabled': {
+                      backgroundColor: '#e2e8f0',
+                      color: '#94a3b8',
+                    }
+                  }}
+                >
                   Acknowledge
                 </Button>
               )}
@@ -340,7 +367,15 @@ export const Advisories: React.FC = () => {
                 <Button
                   variant="contained"
                   color="secondary"
-                  sx={{ fontWeight: 600, textTransform: 'none' }}
+                  disabled={!canRca}
+                  sx={{
+                    fontWeight: 600,
+                    textTransform: 'none',
+                    '&.Mui-disabled': {
+                      backgroundColor: '#e2e8f0',
+                      color: '#94a3b8',
+                    }
+                  }}
                   onClick={() => handleInitiateRcaFromDetails(selectedAdvisory)}
                 >
                   Initiate RCA

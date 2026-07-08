@@ -34,14 +34,15 @@ import {
   TableHead,
   TableRow,
   Chip,
+  Paper,
+  Checkbox,
 } from '@mui/material';
 import { Save as SaveIcon, AddCircle as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
-import type { StepIconProps } from '@mui/material/StepIcon';
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
 import { api } from '../../api/client';
 import type { HierarchyNode, NodeType } from '../../types/hierarchy';
-import { severityOptions, getSeverityColor, getSeverityBgColor } from '../../constants/severity';
+import { getSeverityColor, getSeverityBgColor } from '../../constants/severity';
 
 // ─── Hierarchy constants ────────────────────────────────────────────────────
 const LEVELS: NodeType[] = ['enterprise','site','area','line','station','asset','component','sensor'];
@@ -84,6 +85,105 @@ const defaultAlertForm: AlertForm = {
   pendingPeriod: '1m', keepFiring: 'None', notifyEmail: '',
 };
 
+const permissionGroups = [
+  {
+    module: 'Alerts',
+    actions: [
+      { name: 'View', value: 'alerts:view', description: 'Access the Alerts page' }
+    ]
+  },
+  {
+    module: 'Dashboard',
+    actions: [
+      { name: 'View', value: 'dashboard:view', description: 'Access the Dashboard summary & charts' }
+    ]
+  },
+  {
+    module: 'Advisories',
+    actions: [
+      { name: 'View', value: 'advisories:view', description: 'Access the Advisories page' },
+      { name: 'Acknowledge', value: 'advisories:acknowledge', description: 'Acknowledge active advisories' },
+      { name: 'RCA / Resolve', value: 'advisories:rca', description: 'Upload evidence and resolve advisories' }
+    ]
+  },
+  {
+    module: 'Reports',
+    actions: [
+      { name: 'View', value: 'reports:view', description: 'Access report generation page' }
+    ]
+  },
+  {
+    module: 'Administration',
+    actions: [
+      { name: 'View', value: 'admin:view', description: 'Access settings and permission console' }
+    ]
+  }
+];
+
+const buildTreeFromFlat = (nodes: any[]) => {
+  const nodeMap: Record<number, any> = {};
+  nodes.forEach(n => {
+    nodeMap[n.id] = { ...n, children: [] };
+  });
+  
+  const roots: any[] = [];
+  nodes.forEach(n => {
+    const mapped = nodeMap[n.id];
+    if (n.parent_id === null || !nodeMap[n.parent_id]) {
+      roots.push(mapped);
+    } else {
+      if (nodeMap[n.parent_id]) {
+        nodeMap[n.parent_id].children.push(mapped);
+      } else {
+        roots.push(mapped);
+      }
+    }
+  });
+  
+  roots.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+  Object.values(nodeMap).forEach((mapped: any) => {
+    mapped.children.sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0));
+  });
+  
+  return roots;
+};
+
+const HierarchyCheckItem: React.FC<{
+  node: any;
+  depth: number;
+  selected: number[];
+  onChange: (id: number, checked: boolean) => void;
+}> = ({ node, depth, selected, onChange }) => {
+  const isChecked = selected.includes(node.id);
+  const hasChildren = node.children && node.children.length > 0;
+  
+  return (
+    <Box sx={{ pl: depth * 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', py: 0.25 }}>
+        <Checkbox
+          checked={isChecked}
+          onChange={(e) => onChange(node.id, e.target.checked)}
+          size="small"
+          color="success"
+          sx={{ p: 0.5 }}
+        />
+        <Typography variant="body2" sx={{ fontWeight: depth === 0 ? 600 : 400 }}>
+          {node.display_name} <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>({node.node_type})</span>
+        </Typography>
+      </Box>
+      {hasChildren && node.children.map((child: any) => (
+        <HierarchyCheckItem
+          key={child.id}
+          node={child}
+          depth={depth + 1}
+          selected={selected}
+          onChange={onChange}
+        />
+      ))}
+    </Box>
+  );
+};
+
 // ─── Component ───────────────────────────────────────────────────────────────
 export const Admin: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -102,6 +202,13 @@ export const Admin: React.FC = () => {
   const [alertForm, setAlertForm] = useState<AlertForm>(defaultAlertForm);
   const [alertSaved, setAlertSaved] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // User permissions management state
+  const [users, setUsers] = useState<any[]>([]);
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [userPermissionsOpen, setUserPermissionsOpen] = useState(false);
+  const [userPermissionsSelected, setUserPermissionsSelected] = useState<string[]>([]);
+  const [userHierarchySelected, setUserHierarchySelected] = useState<number[]>([]);
 
   const DEMO_RULES = [
     { id: 1, name: 'High Temperature Alert', asset: 'Compressor A', trigger: 'temp_sensor_01', condition: 'Greater than 85°C', severity: 'critical', pendingPeriod: '2m', status: 'Active' },
@@ -173,6 +280,21 @@ export const Admin: React.FC = () => {
     setParentSelections(updated);
     setValue('parent_id', id ? Number(id) : null);
   };
+
+  const loadUsersAndPermissions = () => {
+    api.admin.listUsers()
+      .then(setUsers)
+      .catch((e) => console.error("Failed to load admin users:", e));
+    api.hierarchy.list(true)
+      .then(setFlatNodes)
+      .catch((e) => console.error("Failed to load hierarchy nodes:", e));
+  };
+
+  useEffect(() => {
+    if (activeTab === 2) {
+      loadUsersAndPermissions();
+    }
+  }, [activeTab]);
 
   const onSubmit = async (data: FormValues) => {
     setLoading(true); setSaveSuccess(false); setApiError(null);
@@ -380,6 +502,7 @@ export const Admin: React.FC = () => {
       <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ mb: 3, borderBottom: '1px solid #ccc' }}>
         <Tab label="Hierarchy" />
         <Tab label="Alert Rule" />
+        <Tab label="Permissions" />
       </Tabs>
 
       {/* ── Tab 0: Hierarchy ── */}
@@ -514,7 +637,7 @@ export const Admin: React.FC = () => {
 
       {/* ── Create Rule Dialog ── */}
       <Dialog open={drawerOpen} onClose={closeDrawer} maxWidth="sm" fullWidth
-        PaperProps={{ sx: { border: '1px solid #ccc', borderRadius: 2 } }}
+        slotProps={{ paper: { sx: { border: '1px solid #ccc', borderRadius: 2 } } }}
       >
         <DialogTitle sx={{ borderBottom: '1px solid #e2e8f0', pb: 2 }}>
           <Typography variant="h5" sx={{ fontWeight: 700 }}>Create Alert Rule</Typography>
@@ -550,6 +673,192 @@ export const Admin: React.FC = () => {
           ) : (
             <Button variant="contained" color="primary" onClick={handleAlertSubmit}>Save Rule</Button>
           )}
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Tab 2: Users & Permissions ── */}
+      {activeTab === 2 && (
+        <Card sx={{ border: '1px solid #ccc' }}>
+          <CardContent>
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+              Manage User Permissions
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Select a user to review and update their access permissions.
+            </Typography>
+            
+            <TableContainer component={Paper} variant="outlined">
+              <Table>
+                <TableHead sx={{ bgcolor: '#f8fafc' }}>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 700 }}>ID</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Email Address</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Active Status</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Assigned Permissions</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }} align="right">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {users.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell>{user.id}</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>{user.email}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={user.is_active ? 'Active' : 'Inactive'}
+                          size="small"
+                          color={user.is_active ? 'success' : 'default'}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {user.permissions.map((p: string) => (
+                            <Chip key={p} label={p} size="small" variant="outlined" />
+                          ))}
+                          {user.permissions.length === 0 && (
+                            <Typography variant="caption" color="text.secondary">None</Typography>
+                          )}
+                        </Box>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setUserPermissionsSelected(user.permissions);
+                            setUserHierarchySelected([]);
+                            api.admin.getUserHierarchy(user.id)
+                              .then(setUserHierarchySelected)
+                              .catch(err => console.error("Failed to load user hierarchy:", err));
+                            setUserPermissionsOpen(true);
+                          }}
+                        >
+                          Edit Permissions
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Edit Permissions Dialog */}
+      <Dialog open={userPermissionsOpen} onClose={() => setUserPermissionsOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ borderBottom: '1px solid #e2e8f0', p: 3 }}>
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>Edit Permissions</Typography>
+          <Typography variant="body2" color="text.secondary">
+            User: {selectedUser?.email}
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ p: 3, pt: 2 }}>
+          <Stack spacing={3} sx={{ mt: 1 }}>
+            {permissionGroups.map((group) => (
+              <Box key={group.module} sx={{ border: '1px solid #e2e8f0', borderRadius: 2, p: 2, bgcolor: '#f8fafc' }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'secondary.main', mb: 1.5 }}>
+                  {group.module}
+                </Typography>
+                <Stack spacing={1.5}>
+                  {group.actions.map((act) => {
+                    const isChecked = userPermissionsSelected.includes(act.value);
+                    const handleToggle = () => {
+                      if (isChecked) {
+                        setUserPermissionsSelected(userPermissionsSelected.filter(p => p !== act.value));
+                      } else {
+                        setUserPermissionsSelected([...userPermissionsSelected, act.value]);
+                      }
+                    };
+                    return (
+                      <Box
+                        key={act.value}
+                        onClick={handleToggle}
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          p: 1.25,
+                          border: isChecked ? '1px solid #1b7a1b' : '1px solid #cbd5e1',
+                          borderRadius: 1,
+                          cursor: 'pointer',
+                          bgcolor: isChecked ? 'rgba(27, 122, 27, 0.04)' : '#ffffff',
+                          '&:hover': {
+                            bgcolor: isChecked ? 'rgba(27, 122, 27, 0.08)' : '#f1f5f9',
+                          }
+                        }}
+                      >
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            {act.name}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {act.description}
+                          </Typography>
+                        </Box>
+                        <Checkbox
+                          checked={isChecked}
+                          onChange={handleToggle}
+                          size="small"
+                          color="success"
+                          sx={{ p: 0.5 }}
+                        />
+                      </Box>
+                    );
+                  })}
+                </Stack>
+              </Box>
+            ))}
+
+            {/* Plant Hierarchy Access Control Box */}
+            <Box sx={{ border: '1px solid #e2e8f0', borderRadius: 2, p: 2, bgcolor: '#f8fafc' }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'secondary.main', mb: 1 }}>
+                Hierarchy Access Control
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+                Authorize sub-tree roots by checking nodes. Assumed full tree access if none is checked.
+              </Typography>
+              <Box sx={{ border: '1px solid #cbd5e1', borderRadius: 1, p: 1.5, bgcolor: '#ffffff', maxHeight: 250, overflowY: 'auto' }}>
+                {buildTreeFromFlat(flatNodes).map((node) => (
+                  <HierarchyCheckItem
+                    key={node.id}
+                    node={node}
+                    depth={0}
+                    selected={userHierarchySelected}
+                    onChange={(id, checked) => {
+                      if (checked) {
+                        setUserHierarchySelected([...userHierarchySelected, id]);
+                      } else {
+                        setUserHierarchySelected(userHierarchySelected.filter(x => x !== id));
+                      }
+                    }}
+                  />
+                ))}
+              </Box>
+            </Box>
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ borderTop: '1px solid #e2e8f0', px: 3, py: 2 }}>
+          <Button variant="outlined" onClick={() => setUserPermissionsOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={async () => {
+              if (selectedUser) {
+                try {
+                  await api.admin.updatePermissions(selectedUser.id, userPermissionsSelected);
+                  await api.admin.updateUserHierarchy(selectedUser.id, userHierarchySelected);
+                  setUserPermissionsOpen(false);
+                  loadUsersAndPermissions();
+                } catch (err) {
+                  console.error("Failed to update user permissions:", err);
+                }
+              }
+            }}
+          >
+            Save Changes
+          </Button>
         </DialogActions>
       </Dialog>
     </PageContainer>

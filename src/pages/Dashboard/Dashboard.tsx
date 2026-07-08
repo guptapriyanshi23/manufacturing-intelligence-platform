@@ -72,6 +72,20 @@ export const Dashboard: React.FC = () => {
     setSensorExpTimeRange('last_24h'); setSensorExpFrom(from); setSensorExpTo(to);
   };
 
+  const [profile, setProfile] = useState<{ email: string; permissions: string[] } | null>(null);
+
+  useEffect(() => {
+    const cached = localStorage.getItem('user_profile');
+    if (cached) {
+      try {
+        setProfile(JSON.parse(cached));
+      } catch (e) {}
+    }
+  }, []);
+
+  const canAcknowledge = profile?.permissions.includes('advisories:acknowledge') ?? false;
+  const canRca = profile?.permissions.includes('advisories:rca') ?? false;
+
   const fetchAdvisories = () => {
     api.advisories.list()
       .then((res) => setAdvisories(res))
@@ -331,10 +345,45 @@ export const Dashboard: React.FC = () => {
                         {new Date(advisory.first_detected).toLocaleDateString([], { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </Typography>
                       <Typography variant="body2" sx={{ mb: 3, lineHeight: 1.6, flex: 1 }}>{advisory.description}</Typography>
-                      <Button fullWidth variant="contained" color="primary" onClick={() => handleAcknowledge(advisory.id)} sx={{ fontWeight: 600, textTransform: 'none', py: 1.5, mb: 2 }}>
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        color="primary"
+                        disabled={!canAcknowledge}
+                        onClick={() => handleAcknowledge(advisory.id)}
+                        sx={{
+                          fontWeight: 600,
+                          textTransform: 'none',
+                          py: 1.5,
+                          mb: 2,
+                          '&.Mui-disabled': {
+                            backgroundColor: '#e2e8f0',
+                            color: '#94a3b8',
+                          }
+                        }}
+                      >
                         Acknowledge
                       </Button>
-                      <Button fullWidth variant="contained" sx={{ backgroundColor: '#000000', color: 'white', fontWeight: 600, textTransform: 'none', py: 1.5, '&:hover': { backgroundColor: '#1e293b' } }} onClick={() => handleInitiateRca(advisory)}>
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        disabled={!canRca}
+                        sx={{
+                          backgroundColor: '#000000',
+                          color: 'white',
+                          fontWeight: 600,
+                          textTransform: 'none',
+                          py: 1.5,
+                          '&:hover': {
+                            backgroundColor: '#1e293b',
+                          },
+                          '&.Mui-disabled': {
+                            backgroundColor: '#e2e8f0',
+                            color: '#94a3b8',
+                          }
+                        }}
+                        onClick={() => handleInitiateRca(advisory)}
+                      >
                         Initiate RCA →
                       </Button>
                     </Box>
@@ -358,7 +407,7 @@ export const Dashboard: React.FC = () => {
         onClose={() => setExpandedSensor(null)}
         maxWidth={false}
         fullWidth
-        PaperProps={{ sx: { width: '95vw', maxWidth: '95vw', m: 2, border: '1px solid #000000', borderRadius: 2 } }}
+        slotProps={{ paper: { sx: { width: '95vw', maxWidth: '95vw', m: 2, border: '1px solid #000000', borderRadius: 2 } } }}
       >
         <DialogContent sx={{ p: 3 }}>
           {expandedSensor && (() => {

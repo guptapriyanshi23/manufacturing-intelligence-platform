@@ -1,0 +1,11 @@
+# Set default behavior to handle line endings automatically
+* text=auto
+
+# Explicitly ensure source code files use LF (Unix) line endings
+*.py text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.css text eol=lf
+*.html text eol=lf

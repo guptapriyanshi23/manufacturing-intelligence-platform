@@ -4,8 +4,11 @@ const BASE_URL = `http://127.0.0.1:8000/api/v1`;
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const url = `${BASE_URL}${endpoint}`;
+  
+  const token = localStorage.getItem('auth_token');
   const headers = {
     'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     ...(options?.headers || {}),
   };
 
@@ -33,6 +36,16 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  auth: {
+    getConfig: () => request<{ jwt_enabled: boolean; sso_enabled: boolean }>('/auth/config'),
+    login: (email: string, password: string) =>
+      request<{ access_token: string; token_type: string }>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      }),
+    getMe: () =>
+      request<{ id: number; email: string; is_active: boolean; permissions: string[] }>('/auth/me'),
+  },
   hierarchy: {
     list: (flat?: boolean) => request<HierarchyNode[]>(flat ? '/hierarchy?flat=true' : '/hierarchy'),
     get: (id: number) => request<HierarchyNode>(`/hierarchy/${id}`),
@@ -76,8 +89,10 @@ export const api = {
     uploadImage: (file: File) => {
       const formData = new FormData();
       formData.append('file', file);
+      const token = localStorage.getItem('auth_token');
       return fetch('http://127.0.0.1:8000/api/v1/advisories/upload', {
         method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData,
       }).then(res => {
         if (!res.ok) throw new Error("Upload failed");
@@ -90,5 +105,19 @@ export const api = {
   },
   admin: {
     getStatus: () => request<any>('/admin/status'),
+    listUsers: () => request<any[]>('/admin/users'),
+    listPermissions: () => request<any[]>('/admin/permissions'),
+    updatePermissions: (userId: number, permissions: string[]) =>
+      request<any>(`/admin/users/${userId}/permissions`, {
+        method: 'PUT',
+        body: JSON.stringify({ permissions }),
+      }),
+    getUserHierarchy: (userId: number) =>
+      request<number[]>(`/admin/users/${userId}/hierarchy`),
+    updateUserHierarchy: (userId: number, nodes: number[]) =>
+      request<any>(`/admin/users/${userId}/hierarchy`, {
+        method: 'PUT',
+        body: JSON.stringify({ nodes }),
+      }),
   },
 };

@@ -238,6 +238,76 @@ def seed_advisories(db):
         db.commit()
 
 
+def seed_users_and_permissions(db):
+    """
+    Seed default users and permissions if tables are empty.
+    """
+    # 1. Seed Permissions
+    has_perms = db.execute(text("SELECT 1 FROM permissions LIMIT 1")).scalar()
+    if not has_perms:
+        print("Seeding permissions...")
+        perms = [
+            {"name": "alerts:view", "description": "Permission to view alerts page"},
+            {"name": "dashboard:view", "description": "Permission to view dashboard page"},
+            {"name": "advisories:view", "description": "Permission to view system advisories"},
+            {"name": "advisories:acknowledge", "description": "Permission to acknowledge advisories"},
+            {"name": "advisories:rca", "description": "Permission to view/perform root cause analysis"},
+            {"name": "reports:view", "description": "Permission to view reports page"},
+            {"name": "admin:view", "description": "Permission to view administration page"}
+        ]
+        db.execute(text("""
+            INSERT INTO permissions (name, description)
+            VALUES (:name, :description)
+        """), perms)
+        db.commit()
+
+    # 2. Seed Users
+    has_users = db.execute(text("SELECT 1 FROM users LIMIT 1")).scalar()
+    if not has_users:
+        print("Seeding users...")
+        from backend.app.core.security import hash_password
+        
+        users = [
+            {"email": "admin@deloitte.com", "hashed_password": hash_password("adminpass"), "is_active": True, "created_at": datetime.now(timezone.utc)},
+            {"email": "operator@deloitte.com", "hashed_password": hash_password("operatorpass"), "is_active": True, "created_at": datetime.now(timezone.utc)},
+            {"email": "viewer@deloitte.com", "hashed_password": hash_password("viewerpass"), "is_active": True, "created_at": datetime.now(timezone.utc)}
+        ]
+        
+        # Insert users
+        for u in users:
+            db.execute(text("""
+                INSERT INTO users (email, hashed_password, is_active, created_at)
+                VALUES (:email, :hashed_password, :is_active, :created_at)
+            """), u)
+        db.commit()
+
+        # Fetch IDs to assign user permissions
+        admin_id = db.execute(text("SELECT id FROM users WHERE email = 'admin@deloitte.com'")).scalar()
+        operator_id = db.execute(text("SELECT id FROM users WHERE email = 'operator@deloitte.com'")).scalar()
+        viewer_id = db.execute(text("SELECT id FROM users WHERE email = 'viewer@deloitte.com'")).scalar()
+
+        # Admin permissions: all of them
+        all_perms = ["alerts:view", "dashboard:view", "advisories:view", "advisories:acknowledge", "advisories:rca", "reports:view", "admin:view"]
+        admin_mappings = [{"user_id": admin_id, "permission_name": p} for p in all_perms]
+
+        # Operator permissions
+        operator_perms = ["alerts:view", "dashboard:view", "advisories:view", "advisories:acknowledge", "advisories:rca"]
+        operator_mappings = [{"user_id": operator_id, "permission_name": p} for p in operator_perms]
+
+        # Viewer permissions
+        viewer_perms = ["dashboard:view", "advisories:view", "reports:view"]
+        viewer_mappings = [{"user_id": viewer_id, "permission_name": p} for p in viewer_perms]
+
+        all_mappings = admin_mappings + operator_mappings + viewer_mappings
+        db.execute(text("""
+            INSERT INTO user_permissions (user_id, permission_name)
+            VALUES (:user_id, :permission_name)
+        """), all_mappings)
+        db.commit()
+        print("Successfully seeded users, permissions, and mappings!")
+
+
+
 
 def stream_live_telemetry(session, sensors):
     """
@@ -327,6 +397,40 @@ if __name__ == "__main__":
                 updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
             );
         """))
+        db.execute(text("DROP TABLE IF EXISTS user_hierarchy_permissions CASCADE;"))
+        db.execute(text("DROP TABLE IF EXISTS user_permissions CASCADE;"))
+        db.execute(text("DROP TABLE IF EXISTS users CASCADE;"))
+        db.execute(text("DROP TABLE IF EXISTS permissions CASCADE;"))
+        db.commit()
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                email VARCHAR UNIQUE NOT NULL,
+                hashed_password VARCHAR NOT NULL,
+                is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+            );
+        """))
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS permissions (
+                name VARCHAR PRIMARY KEY,
+                description VARCHAR
+            );
+        """))
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS user_permissions (
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                permission_name VARCHAR REFERENCES permissions(name) ON DELETE CASCADE,
+                PRIMARY KEY (user_id, permission_name)
+            );
+        """))
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS user_hierarchy_permissions (
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                node_id INTEGER REFERENCES hierarchy_nodes(id) ON DELETE CASCADE,
+                PRIMARY KEY (user_id, node_id)
+            );
+        """))
         db.commit()
 
         # Eagerly convert to TimescaleDB hypertable if extension is active
@@ -347,6 +451,9 @@ if __name__ == "__main__":
         
         # Seed advisories
         seed_advisories(db)
+        
+        # Seed users and permissions
+        seed_users_and_permissions(db)
         
         # 1. Ask or default to generating 24h history
         generate_history(db, active_sensors, hours=24)
