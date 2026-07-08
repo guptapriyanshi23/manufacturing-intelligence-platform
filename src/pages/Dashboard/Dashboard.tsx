@@ -260,7 +260,7 @@ export const Dashboard: React.FC = () => {
         title="Dashboard"
         subtitle="Anomalous tags are shown by default, stacked one below the other. Use the dropdown to browse any other parameter on this asset — anomaly or not."
         actions={
-          <FormControl size="small" sx={{ minWidth: 160 }}>
+          <FormControl size="small" sx={{ minWidth: 350, bgcolor: 'white', }}>
             <InputLabel id="site-select-label">Site</InputLabel>
             <Select
               labelId="site-select-label"

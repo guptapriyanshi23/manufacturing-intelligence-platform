@@ -147,7 +147,7 @@ export const Alerts: React.FC = () => {
         title="Alerts"
         subtitle="Critical warnings, system diagnostics, and failure states needing immediate attention."
         actions={
-          <FormControl size="small" sx={{ minWidth: 160 }}>
+          <FormControl size="small" sx={{ minWidth: 350, bgcolor: 'white', }}>
             <InputLabel id="site-select-label">Site</InputLabel>
             <Select
               labelId="site-select-label"

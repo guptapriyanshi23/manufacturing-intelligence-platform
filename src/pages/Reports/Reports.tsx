@@ -101,7 +101,7 @@ export const Reports: React.FC = () => {
         title="Generate Reports"
         subtitle="Generate Advisory summaries - for a single asset, a set of equipment or an entire process line."
         actions={
-          <FormControl size="small" sx={{ minWidth: 160 }}>
+          <FormControl size="small" sx={{ minWidth: 350, bgcolor: 'white',  }}>
             <InputLabel id="site-select-label">Site</InputLabel>
             <Select
               labelId="site-select-label"
