@@ -141,7 +141,7 @@ export const Advisories: React.FC = () => {
         title="Advisories"
         subtitle="Active system advisories for equipment health, severity tracking, and remediation actions. Click any row to view full details."
         actions={
-          <FormControl size="small" sx={{ minWidth: 160 }}>
+          <FormControl size="small" sx={{ minWidth: 350, bgcolor: 'white', }}>
             <InputLabel id="site-select-label">Site</InputLabel>
             <Select
               labelId="site-select-label"

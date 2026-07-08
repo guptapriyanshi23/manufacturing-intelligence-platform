@@ -117,13 +117,13 @@ export const MainLayout: React.FC = () => {
       <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, border: '1px solid #ccc' }}>
         <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box component="img" src="/deloitte_logo_black.svg" alt="Deloitte Logo" sx={{ height: 20, width: 'auto' }} />
-            <Typography variant="h4" sx={{ color: '#ccc', fontWeight: 100 }}>
-              |
-            </Typography>
-            <Typography variant="h4" color="text.primary" sx={{ fontWeight: 500, letterSpacing: '0.5px' }}>
+            <Box component="img" src="/deloitte_logo_black.svg" alt="Deloitte Logo" 
+              sx={{ height: 20, width: 'auto',}} />
+            <Box sx={{ borderLeft: '1px solid #e0e0e0', pl: 2 }}>
+              <Typography variant="h4" color="text.primary" sx={{ fontWeight: 500, letterSpacing: '0.5px' }}>
               AssetWize
             </Typography>
+            </Box>
           </Box>
           
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -163,7 +163,7 @@ export const MainLayout: React.FC = () => {
 
             {/* Profile Info and Logout */}
             {profile && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 2, borderLeft: '1px solid #e0e0e0', pl: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1,  borderLeft: '1px solid #e0e0e0', pl: 2 }}>
                 <AccountCircleIcon fontSize="medium" sx={{ color: 'text.secondary' }} />
                 <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
                   {profile.email}
