@@ -12,7 +12,7 @@ import { OpenInFull as ExpandIcon, Close as CloseIcon } from '@mui/icons-materia
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { api } from '../../api/client';
 import type { HierarchyNode } from '../../types/hierarchy';
-import { getSeverityBgColor, getSeverityColor, getSeverityLevel } from '../../constants/severity';
+import { getSeverityBgColor, getSeverityColor, getSeverityLevel, getSeverityLevelFull } from '../../constants/severity';
 import { PageHeader } from '../../components/Cards/PageHeader';
 
 const TIME_RANGE_OPTIONS = [
@@ -267,7 +267,7 @@ export const Dashboard: React.FC = () => {
         <Grid container spacing={3} sx={{ alignItems: 'stretch' }}>
           {/* Left: Telemetry Charts */}
           <Grid size={{ xs: 12, lg: 8 }} sx={{ display: 'flex', flexDirection: 'column' }}>
-            <Grid container spacing={3}>
+            <Grid container spacing={3} sx={{ flex: 1, alignItems: 'stretch' }}>
               {descendantSensors.length === 0 ? (
                 <Grid size={12}>
                   <Paper sx={{ p: 4, textAlign: 'center', border: '1px solid #ccc' }}>
@@ -290,8 +290,8 @@ export const Dashboard: React.FC = () => {
                     const data = getSensorDataPoints(sid);
                     const unit = sensor.sensor_metadata?.unit || '';
                     return (
-                      <Grid size={12} key={sensor.id}>
-                        <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc' }}>
+                      <Grid size={12} key={sensor.id} sx={{ display: 'flex', flexDirection: 'column' }}>
+                        <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc', flex: 1, display: 'flex', flexDirection: 'column' }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                             <Typography variant="h6" sx={{ fontWeight: 700 }}>{sensor.display_name}</Typography>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -304,7 +304,7 @@ export const Dashboard: React.FC = () => {
                             </Box>
                           </Box>
                           {data.length === 0 ? (
-                            <Box sx={{ height: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed #000000', borderRadius: 1 }}>
+                            <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed #000000', borderRadius: 1 }}>
                               <Typography variant="body2" color="text.secondary">
                                 No telemetry data received for this sensor in the last 24 hours.
                               </Typography>
@@ -325,17 +325,17 @@ export const Dashboard: React.FC = () => {
           {/* Right: Advisories */}
           <Grid size={{ xs: 12, lg: 4 }} sx={{ display: 'flex', flexDirection: 'column' }}>
             {openAdvisories.length > 0 ? (
-              <Stack spacing={3} sx={{ flex: 1, height: '100%' }}>
+              <Stack spacing={3} sx={{ flex: 1 }}>
                 {openAdvisories.map((advisory) => (
                   <Paper key={advisory.id} sx={{ p: 0, borderRadius: 2, border: '1px solid #ccc', overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column' }}>
                     <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <Typography variant="h6" sx={{ color: 'secondary.main', fontWeight: 700, textTransform: 'uppercase' }}>
-                        ADVISORY - {advisory.severity}
+                        ADVISORY
                       </Typography>
                       <Chip
-                        label={getSeverityLevel(advisory.severity)}
+                        label={getSeverityLevelFull(advisory.severity)}
                         size="small"
-                        sx={{ backgroundColor: getSeverityBgColor(advisory.severity), color: getSeverityColor(advisory.severity), fontWeight: 500, fontSize: '1rem', p: 2 }}
+                        sx={{ backgroundColor: getSeverityBgColor(advisory.severity), color: getSeverityColor(advisory.severity), fontWeight: 500, fontSize: '0.8rem', py: 2, px: 1 }}
                       />
                     </Box>
                     <Box sx={{ pb: 2, px: 2, flex: 1, display: 'flex', flexDirection: 'column' }}>

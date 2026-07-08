@@ -244,7 +244,7 @@ export const RootCause: React.FC = () => {
                 />
 
                 <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
-                  <Typography variant="body1" >Status: </Typography>
+                  <Typography variant="body1" >Status </Typography>
                   <RadioGroup
                     row
                     value={rcaStatus}
