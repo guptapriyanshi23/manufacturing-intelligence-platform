@@ -23,8 +23,19 @@ export const SEVERITY_LEVEL_MAP: Record<string, string> = {
   info: 'S5',
 };
 
+export const SEVERITY_LEVEL_FULL_MAP: Record<string, string> = {
+  critical: 'S1 - Critical',
+  high: 'S2 - High',
+  warning: 'S3 - Warning',
+  low: 'S4 - Low',
+  info: 'S5 - Info',
+};
+
 export const getSeverityLevel = (severity: string): string =>
   SEVERITY_LEVEL_MAP[severity?.toLowerCase()] ?? 'S5';
+
+export const getSeverityLevelFull = (severity: string): string =>
+  SEVERITY_LEVEL_FULL_MAP[severity?.toLowerCase()] ?? 'S5 - Info';
 
 export const getSeverityColor = (severity: string): string =>
   SEVERITY_COLORS[getSeverityLevel(severity)];
