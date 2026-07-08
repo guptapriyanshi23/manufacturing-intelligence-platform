@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -35,12 +35,25 @@ import { HierarchySelector } from '../../components/Filters/HierarchySelector';
 
 export const Advisories: React.FC = () => {
   const navigate = useNavigate();
+  const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
+  const [hierarchyLoading, setHierarchyLoading] = useState(true);
+  const [selectedSiteId, setSelectedSiteId] = useState<number | ''>('');
+
+  const sites = useMemo(() => {
+    return flatNodes.filter(n => n.node_type === 'site');
+  }, [flatNodes]);
+
+  useEffect(() => {
+    if (flatNodes.length > 0 && !selectedSiteId) {
+      const sitesList = flatNodes.filter(n => n.node_type === 'site');
+      setSelectedSiteId(sitesList[0]?.id || '');
+    }
+  }, [flatNodes, selectedSiteId]);
+
   const [advisories, setAdvisories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [severityFilter, setSeverityFilter] = useState<string>('');
-  const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
-  const [hierarchyLoading, setHierarchyLoading] = useState(true);
   const [selectedNode, setSelectedNode] = useState<HierarchyNode | null>(null);
 
   const [selectedAdvisory, setSelectedAdvisory] = useState<any | null>(null);
@@ -127,6 +140,22 @@ export const Advisories: React.FC = () => {
       <PageHeader
         title="Advisories"
         subtitle="Active system advisories for equipment health, severity tracking, and remediation actions. Click any row to view full details."
+        actions={
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <InputLabel id="site-select-label">Site</InputLabel>
+            <Select
+              labelId="site-select-label"
+              value={selectedSiteId}
+              label="Site"
+              onChange={(e) => setSelectedSiteId(e.target.value as number)}
+              disabled={hierarchyLoading}
+            >
+              {sites.map(s => (
+                <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        }
       />
 
       <Paper sx={{ px: 2, py: 2.5, mb: 3, border: '1px solid #ccc' }}>
@@ -135,6 +164,7 @@ export const Advisories: React.FC = () => {
             flatNodes={flatNodes}
             onSelectionChange={(node) => setSelectedNode(node)}
             loading={hierarchyLoading}
+            selectedSiteId={selectedSiteId}
           />
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>

@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Box, FormControl, InputLabel, MenuItem, Select, Typography } from '@mui/material';
+import { Box, FormControl, InputLabel, MenuItem, Select } from '@mui/material';
 import type { HierarchyNode, NodeType } from '../../types/hierarchy';
 
-// Levels in order; sensor is excluded (handled separately as a tag filter)
-const LEVEL_ORDER: NodeType[] = ['enterprise', 'site', 'area', 'line', 'station', 'asset', 'component'];
+// Levels in order; sensor, enterprise, and site are excluded (handled separately/externally)
+const LEVEL_ORDER: NodeType[] = ['area', 'line', 'station', 'asset', 'component'];
 const MANDATORY_UP_TO: NodeType = 'asset';
-const DEFAULT_LEVELS: NodeType[] = ['enterprise', 'site', 'area', 'asset'];
+const DEFAULT_LEVELS: NodeType[] = ['area', 'asset'];
 
 function getLevelLabel(type: NodeType): string {
   const labels: Record<NodeType, string> = {
@@ -29,6 +29,8 @@ export interface HierarchySelectorProps {
   initialNodeId?: number | null;
   /** Disables all dropdowns while hierarchy data is loading */
   loading?: boolean;
+  /** Selected Site ID from the page header */
+  selectedSiteId?: number | '';
 }
 
 export const HierarchySelector: React.FC<HierarchySelectorProps> = ({
@@ -36,6 +38,7 @@ export const HierarchySelector: React.FC<HierarchySelectorProps> = ({
   onSelectionChange,
   initialNodeId,
   loading = false,
+  selectedSiteId = '',
 }) => {
   // selections[i] = selected node id at level i (or '')
   const [selections, setSelections] = useState<(number | '')[]>([]);
@@ -47,10 +50,17 @@ export const HierarchySelector: React.FC<HierarchySelectorProps> = ({
     return detected.length > 0 ? detected : DEFAULT_LEVELS;
   }, [flatNodes]);
 
-  // Initialize selections array length when levels change
+  // Track previous selectedSiteId to prevent clearing pre-selection on first mount
+  const prevSiteIdRef = React.useRef<number | '' | null>(null);
+
+  // Initialize/reset selections when selectedSiteId changes
   useEffect(() => {
-    setSelections(new Array(presentLevels.length).fill(''));
-  }, [presentLevels.length]);
+    if (prevSiteIdRef.current !== null && prevSiteIdRef.current !== selectedSiteId) {
+      setSelections(new Array(presentLevels.length).fill(''));
+      onSelectionChange(null, false);
+    }
+    prevSiteIdRef.current = selectedSiteId;
+  }, [selectedSiteId, presentLevels.length]);
 
   // Pre-select initialNodeId by walking up the ancestor chain
   useEffect(() => {
@@ -72,12 +82,19 @@ export const HierarchySelector: React.FC<HierarchySelectorProps> = ({
       if (idx !== -1) newSelections[idx] = n.id;
     });
     setSelections(newSelections);
+
+    const mandatoryIdx = presentLevels.indexOf(MANDATORY_UP_TO);
+    const isComplete = mandatoryIdx === -1
+      ? true
+      : newSelections.slice(0, mandatoryIdx + 1).every(s => s !== '');
+    onSelectionChange(node, isComplete);
   }, [initialNodeId, flatNodes, presentLevels]);
 
-  // Get children of the node selected at level i-1 (or root nodes if i=0)
+  // Get children of the node selected at level i-1 (or root area nodes if i=0)
   const getOptionsForLevel = (levelIndex: number): HierarchyNode[] => {
     if (levelIndex === 0) {
-      return flatNodes.filter(n => !n.parent_id && n.node_type === presentLevels[0]);
+      if (!selectedSiteId) return [];
+      return flatNodes.filter(n => n.parent_id === selectedSiteId && n.node_type === presentLevels[0]);
     }
     const parentId = selections[levelIndex - 1];
     if (!parentId) return [];

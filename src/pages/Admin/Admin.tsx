@@ -36,8 +36,9 @@ import {
   Chip,
   Paper,
   Checkbox,
+  IconButton,
 } from '@mui/material';
-import { Save as SaveIcon, AddCircle as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { Save as SaveIcon, AddCircle as AddIcon, Delete as DeleteIcon, ChevronRight as ChevronRightIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
 import { api } from '../../api/client';
@@ -202,13 +203,10 @@ export const Admin: React.FC = () => {
   const [alertForm, setAlertForm] = useState<AlertForm>(defaultAlertForm);
   const [alertSaved, setAlertSaved] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [expandedNodeIds, setExpandedNodeIds] = useState<Record<number, boolean>>({});
+  const [selectedRuleDetails, setSelectedRuleDetails] = useState<any | null>(null);
+  const [editingRuleId, setEditingRuleId] = useState<number | null>(null);
 
-  // User permissions management state
-  const [users, setUsers] = useState<any[]>([]);
-  const [selectedUser, setSelectedUser] = useState<any | null>(null);
-  const [userPermissionsOpen, setUserPermissionsOpen] = useState(false);
-  const [userPermissionsSelected, setUserPermissionsSelected] = useState<string[]>([]);
-  const [userHierarchySelected, setUserHierarchySelected] = useState<number[]>([]);
 
   const DEMO_RULES = [
     { id: 1, name: 'High Temperature Alert', asset: 'Compressor A', trigger: 'temp_sensor_01', condition: 'Greater than 85°C', severity: 'critical', pendingPeriod: '2m', status: 'Active' },
@@ -217,6 +215,15 @@ export const Admin: React.FC = () => {
     { id: 4, name: 'Flow Rate Drop', asset: 'Line 2 Feed', trigger: 'flow_sensor_04', condition: 'Less than 50 L/min', severity: 'warning', pendingPeriod: 'None', status: 'Active' },
     { id: 5, name: 'Power Consumption High', asset: 'Assembly Station 1', trigger: 'power_meter_01', condition: 'Greater than 200 kW', severity: 'info', pendingPeriod: '5m', status: 'Active' },
   ];
+  const [alertRules, setAlertRules] = useState<any[]>(DEMO_RULES);
+
+  // User permissions management state
+  const [users, setUsers] = useState<any[]>([]);
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [userPermissionsOpen, setUserPermissionsOpen] = useState(false);
+  const [userPermissionsSelected, setUserPermissionsSelected] = useState<string[]>([]);
+  const [userHierarchySelected, setUserHierarchySelected] = useState<number[]>([]);
+
 
   const { control, handleSubmit, watch, reset, setValue, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema) as any,
@@ -233,7 +240,14 @@ export const Admin: React.FC = () => {
     api.hierarchy.list(true).then(setFlatNodes).catch(() => setFlatNodes([]));
   };
 
-  useEffect(() => { loadFlatNodes(); }, [saveSuccess, deleteSuccess]);
+  const loadAlertRules = () => {
+    api.alerts.listRules().then(setAlertRules).catch(() => setAlertRules([]));
+  };
+
+  useEffect(() => {
+    loadFlatNodes();
+    loadAlertRules();
+  }, [saveSuccess, deleteSuccess]);
 
   useEffect(() => {
     if (selectedNodeId && flatNodes.length > 0) {
@@ -291,7 +305,9 @@ export const Admin: React.FC = () => {
   };
 
   useEffect(() => {
-    if (activeTab === 2) {
+    if (activeTab === 1) {
+      loadAlertRules();
+    } else if (activeTab === 2) {
       loadUsersAndPermissions();
     }
   }, [activeTab]);
@@ -354,30 +370,164 @@ export const Admin: React.FC = () => {
   const af = (field: keyof AlertForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setAlertForm(prev => ({ ...prev, [field]: e.target.value }));
 
-  const sensorOptions = flatNodes.filter(n => n.node_type === 'sensor');
-  const assetNodes = flatNodes.filter(n => n.node_type !== 'sensor');
 
-  const getAssetDepth = (node: HierarchyNode): number => {
-    let depth = 0; let cur = node;
-    while (cur.parent_id) {
-      const p = flatNodes.find(n => n.id === cur.parent_id);
-      if (!p) break; depth++; cur = p;
+  const getSensorsForAsset = (assetId: string | number): HierarchyNode[] => {
+    if (!assetId) return [];
+    const targetId = Number(assetId);
+    const sensors: HierarchyNode[] = [];
+    const queue = [targetId];
+    while (queue.length > 0) {
+      const currentId = queue.shift()!;
+      flatNodes.filter(n => n.parent_id === currentId).forEach(child => {
+        if (child.node_type === 'sensor') {
+          sensors.push(child);
+        } else {
+          queue.push(child.id);
+        }
+      });
     }
-    return depth;
+    return sensors;
+  };
+
+  const getTreeOrderedNodes = (nodes: HierarchyNode[]): { node: HierarchyNode; depth: number }[] => {
+    const result: { node: HierarchyNode; depth: number }[] = [];
+    
+    // Roots are nodes of type 'site'
+    let roots = nodes.filter(n => n.node_type === 'site');
+    if (roots.length === 0) {
+      roots = nodes.filter(n => !n.parent_id && n.node_type !== 'sensor');
+    }
+    
+    const traverse = (node: HierarchyNode, depth: number) => {
+      result.push({ node, depth });
+      if (expandedNodeIds[node.id]) {
+        const children = nodes.filter(n => n.parent_id === node.id && n.node_type !== 'sensor');
+        children.sort((a, b) => a.sort_order - b.sort_order);
+        children.forEach(child => traverse(child, depth + 1));
+      }
+    };
+    
+    roots.sort((a, b) => a.sort_order - b.sort_order);
+    roots.forEach(r => traverse(r, 0));
+    return result;
+  };
+
+  const toggleNodeExpand = (nodeId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedNodeIds(prev => ({ ...prev, [nodeId]: !prev[nodeId] }));
+  };
+
+  const handleAssetSelect = (assetId: string) => {
+    const assetNode = flatNodes.find(n => String(n.id) === assetId);
+    const assetName = assetNode ? assetNode.display_name : '';
+    setAlertForm(prev => ({
+      ...prev,
+      assetId,
+      name: assetName ? `${assetName} Alert` : '',
+      description: assetName ? `Alert rule for monitoring ${assetName}` : '',
+    }));
+  };
+
+  const handleSensorSelect = (sensorId: string) => {
+    const sensorNode = flatNodes.find(n => String(n.id) === sensorId);
+    const sensorName = sensorNode ? sensorNode.display_name : '';
+    const assetNode = flatNodes.find(n => String(n.id) === alertForm.assetId);
+    const assetName = assetNode ? assetNode.display_name : '';
+    setAlertForm(prev => ({
+      ...prev,
+      trigger: sensorId,
+      name: assetName && sensorName ? `${assetName} ${sensorName} Alert` : prev.name,
+    }));
   };
 
   const handleAlertSubmit = () => {
-    console.log('Alert rule saved:', alertForm);
-    setAlertSaved(true);
+    const payload = {
+      name: alertForm.name,
+      description: alertForm.description || null,
+      severity: alertForm.severity,
+      node_id: Number(alertForm.assetId),
+      condition_type: alertForm.conditionType || null,
+      sensor_id: alertForm.trigger || null,
+      alert_type: alertForm.alertType || null,
+      value: alertForm.value ? Number(alertForm.value) : null,
+      delay: alertForm.delay ? Number(alertForm.delay) : null,
+      pending_period: alertForm.pendingPeriod || null,
+      keep_firing: alertForm.keepFiring || null,
+      notify_email: alertForm.notifyEmail || null,
+      status: 'Active',
+    };
+
+    const action = editingRuleId 
+      ? api.alerts.updateRule(editingRuleId, payload)
+      : api.alerts.createRule(payload);
+
+    action
+      .then(() => {
+        loadAlertRules();
+        setAlertSaved(true);
+        setAlertForm(defaultAlertForm);
+        setAlertStep(0);
+        setEditingRuleId(null);
+        setDrawerOpen(false);
+      })
+      .catch((err) => {
+        console.error('Failed to save alert rule:', err);
+        alert('Failed to save alert rule: ' + err.message);
+      });
+  };
+
+  const handleEditRuleClick = (rule: any) => {
+    setSelectedRuleDetails(null);
+    setEditingRuleId(rule.id);
+    setAlertForm({
+      name: rule.name,
+      description: rule.description || '',
+      severity: rule.severity,
+      assetId: String(rule.node_id),
+      conditionType: rule.condition_type || 'Threshold',
+      trigger: rule.sensor_id || '',
+      alertType: rule.alert_type || 'Greater than',
+      value: rule.value !== null && rule.value !== undefined ? String(rule.value) : '',
+      delay: rule.delay !== null && rule.delay !== undefined ? String(rule.delay) : '0',
+      pendingPeriod: rule.pending_period || 'None',
+      keepFiring: rule.keep_firing || 'Yes',
+      notifyEmail: rule.notify_email || '',
+    });
+    setAlertStep(0);
+    setDrawerOpen(true);
+  };
+
+  const handleDeleteRuleClick = (ruleId: number) => {
+    if (!confirm('Are you sure you want to delete this alert rule?')) return;
+    api.alerts.deleteRule(ruleId)
+      .then(() => {
+        loadAlertRules();
+        setSelectedRuleDetails(null);
+      })
+      .catch((err) => {
+        console.error('Failed to delete rule:', err);
+        alert('Failed to delete rule: ' + err.message);
+      });
+  };
+
+  const openDrawer = () => {
     setAlertForm(defaultAlertForm);
     setAlertStep(0);
+    setEditingRuleId(null);
+    setDrawerOpen(true);
+  };
+
+  const closeDrawer = () => {
+    setAlertForm(defaultAlertForm);
+    setAlertStep(0);
+    setEditingRuleId(null);
     setDrawerOpen(false);
   };
 
-  const openDrawer = () => { setAlertForm(defaultAlertForm); setAlertStep(0); setDrawerOpen(true); };
-  const closeDrawer = () => { setAlertForm(defaultAlertForm); setAlertStep(0); setDrawerOpen(false); };
-
   const renderAlertStep = () => {
+    const treeOrderedNodes = getTreeOrderedNodes(flatNodes);
+    const assetSensors = getSensorsForAsset(alertForm.assetId);
+
     switch (alertStep) {
       case 0:
         return (
@@ -385,26 +535,90 @@ export const Admin: React.FC = () => {
             <Typography variant="subtitle2" color="text.secondary">
               Provide a name and description for this alert rule, and select the target asset and severity.
             </Typography>
-            <TextField label="Alert Name" size="small" fullWidth value={alertForm.name} onChange={af('name')} />
-            <TextField label="Description" size="small" fullWidth multiline rows={3} value={alertForm.description} onChange={af('description')} />
+
             <TextField select label="Asset" size="small" fullWidth value={alertForm.assetId}
-              onChange={(e) => setAlertForm(p => ({ ...p, assetId: e.target.value }))}
+              onChange={(e) => handleAssetSelect(e.target.value)}
               slotProps={{ select: { renderValue: (val: any) => {
                 if (!val) return <em>Select Asset</em>;
                 const found = flatNodes.find(n => String(n.id) === val);
                 return found ? found.display_name : String(val);
               }} }}
             >
-              <MenuItem value=""><em>Select Asset</em></MenuItem>
-              {assetNodes.sort((a,b) => a.sort_order - b.sort_order).map(n => (
-                <MenuItem key={n.id} value={String(n.id)}>
-                  <Box sx={{ pl: getAssetDepth(n) * 2, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    {getAssetDepth(n) > 0 && <Typography component="span" color="text.disabled" sx={{ fontSize: 12 }}>└</Typography>}
-                    {n.display_name}
-                  </Box>
-                </MenuItem>
-              ))}
+              {treeOrderedNodes.map(({ node, depth }) => {
+                const isAsset = node.node_type === 'asset';
+                const hasChildren = flatNodes.some(n => n.parent_id === node.id && n.node_type !== 'sensor');
+                const isExpanded = !!expandedNodeIds[node.id];
+
+                if (!isAsset) {
+                  return (
+                    <Box
+                      key={node.id}
+                      onClick={(e) => toggleNodeExpand(node.id, e)}
+                      sx={{
+                        pl: depth * 2.5 + 2,
+                        pr: 2,
+                        py: 0.75,
+                        fontWeight: 500,
+                        color: 'text.secondary',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        '&:hover': {
+                          backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                        },
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        {depth > 0 && <Typography component="span" color="text.disabled" sx={{ fontSize: 12, mr: 0.5 }}>└</Typography>}
+                        {node.display_name} <Typography component="span" sx={{ fontSize: 11, ml: 0.5, opacity: 0.7 }}>({node.node_type})</Typography>
+                      </Box>
+                      {hasChildren && (
+                        <IconButton
+                          size="small"
+                          onClick={(e) => toggleNodeExpand(node.id, e)}
+                          sx={{ p: 0.25, color: 'text.secondary' }}
+                        >
+                          {isExpanded ? <ExpandMoreIcon fontSize="small" /> : <ChevronRightIcon fontSize="small" />}
+                        </IconButton>
+                      )}
+                    </Box>
+                  );
+                }
+
+                return (
+                  <MenuItem 
+                    key={node.id} 
+                    value={String(node.id)}
+                    sx={{
+                      pl: depth * 2.5 + 2,
+                      fontWeight: 600,
+                      color: 'text.primary',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      {depth > 0 && <Typography component="span" color="text.disabled" sx={{ fontSize: 12, mr: 0.5 }}>└</Typography>}
+                      {node.display_name}
+                    </Box>
+                  </MenuItem>
+                );
+              })}
             </TextField>
+
+            <TextField select label="Severity" size="small" fullWidth value={alertForm.severity}
+              onChange={(e) => setAlertForm(p => ({ ...p, severity: e.target.value }))}
+            >
+              <MenuItem value="critical">Critical</MenuItem>
+              <MenuItem value="warning">Warning</MenuItem>
+              <MenuItem value="info">Info</MenuItem>
+            </TextField>
+
+            <TextField label="Alert Name" size="small" fullWidth value={alertForm.name} onChange={af('name')} />
+            <TextField label="Description" size="small" fullWidth multiline rows={3} value={alertForm.description} onChange={af('description')} />
           </Stack>
         );
       case 1:
@@ -419,10 +633,14 @@ export const Admin: React.FC = () => {
               {CONDITION_TYPES.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
             </TextField>
             <TextField select label="Trigger (Sensor / Tag)" size="small" fullWidth value={alertForm.trigger}
-              onChange={(e) => setAlertForm(p => ({ ...p, trigger: e.target.value }))}
+              onChange={(e) => handleSensorSelect(e.target.value)}
+              disabled={!alertForm.assetId}
             >
               <MenuItem value=""><em>Select Sensor</em></MenuItem>
-              {sensorOptions.map(s => <MenuItem key={s.id} value={String(s.id)}>{s.display_name}</MenuItem>)}
+              {assetSensors.map(s => <MenuItem key={s.id} value={String(s.id)}>{s.display_name}</MenuItem>)}
+              {alertForm.assetId && assetSensors.length === 0 && (
+                <MenuItem disabled value=""><em>No sensors found under this asset</em></MenuItem>
+              )}
             </TextField>
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: 6 }}>
@@ -608,26 +826,42 @@ export const Admin: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {DEMO_RULES.map(rule => (
-                    <TableRow key={rule.id} hover>
-                      <TableCell>{rule.id}</TableCell>
-                      <TableCell>{rule.name}</TableCell>
-                      <TableCell>{rule.asset}</TableCell>
-                      <TableCell sx={{ color: 'text.secondary', fontSize: 12 }}>{rule.trigger}</TableCell>
-                      <TableCell>{rule.condition}</TableCell>
-                      <TableCell>
-                        <Chip label={rule.severity.toUpperCase()} size="small"
-                          sx={{ backgroundColor: getSeverityBgColor(rule.severity), color: getSeverityColor(rule.severity), fontWeight: 600, fontSize: 11 }}
-                        />
-                      </TableCell>
-                      <TableCell>{rule.pendingPeriod}</TableCell>
-                      <TableCell>
-                        <Chip label={rule.status} size="small"
-                          sx={{ backgroundColor: rule.status === 'Active' ? '#e8f5e9' : '#f5f5f5', color: rule.status === 'Active' ? '#2e7d32' : '#757575', fontWeight: 600, fontSize: 11 }}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {alertRules.map(rule => {
+                    const assetNode = flatNodes.find(n => n.id === rule.node_id);
+                    const sensorNode = flatNodes.find(n => String(n.id) === rule.sensor_id);
+                    const assetName = assetNode ? assetNode.display_name : (rule.asset || `Asset #${rule.node_id}`);
+                    const triggerName = sensorNode ? sensorNode.display_name : (rule.trigger || rule.sensor_id || 'None');
+                    const conditionText = rule.alert_type && rule.value !== null && rule.value !== undefined
+                      ? `${rule.alert_type} ${rule.value}`
+                      : (rule.condition || 'None');
+                    const pendingText = rule.pending_period || rule.pendingPeriod || 'None';
+
+                    return (
+                      <TableRow 
+                        key={rule.id} 
+                        hover 
+                        onClick={() => setSelectedRuleDetails(rule)}
+                        sx={{ cursor: 'pointer' }}
+                      >
+                        <TableCell>{rule.id}</TableCell>
+                        <TableCell>{rule.name}</TableCell>
+                        <TableCell>{assetName}</TableCell>
+                        <TableCell sx={{ color: 'text.secondary', fontSize: 12 }}>{triggerName}</TableCell>
+                        <TableCell>{conditionText}</TableCell>
+                        <TableCell>
+                          <Chip label={rule.severity.toUpperCase()} size="small"
+                            sx={{ backgroundColor: getSeverityBgColor(rule.severity), color: getSeverityColor(rule.severity), fontWeight: 600, fontSize: 11 }}
+                          />
+                        </TableCell>
+                        <TableCell>{pendingText}</TableCell>
+                        <TableCell>
+                          <Chip label={rule.status} size="small"
+                            sx={{ backgroundColor: rule.status === 'Active' ? '#e8f5e9' : '#f5f5f5', color: rule.status === 'Active' ? '#2e7d32' : '#757575', fontWeight: 600, fontSize: 11 }}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -859,6 +1093,106 @@ export const Admin: React.FC = () => {
           >
             Save Changes
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Alert Rule Details Dialog */}
+      <Dialog open={!!selectedRuleDetails} onClose={() => setSelectedRuleDetails(null)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ borderBottom: '1px solid #e2e8f0', pb: 2 }}>
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>Alert Rule Details</Typography>
+        </DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
+          {selectedRuleDetails && (() => {
+            const assetNode = flatNodes.find(n => n.id === selectedRuleDetails.node_id);
+            const sensorNode = flatNodes.find(n => String(n.id) === selectedRuleDetails.sensor_id);
+            const assetName = assetNode ? assetNode.display_name : (selectedRuleDetails.asset || `Asset #${selectedRuleDetails.node_id}`);
+            const triggerName = sensorNode ? sensorNode.display_name : (selectedRuleDetails.trigger || selectedRuleDetails.sensor_id || 'None');
+            
+            return (
+              <Stack spacing={2} sx={{ mt: 1 }}>
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>Rule Name</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedRuleDetails.name}</Typography>
+                </Box>
+                
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>Description</Typography>
+                  <Typography variant="body2">{selectedRuleDetails.description || 'No description provided'}</Typography>
+                </Box>
+
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 6 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>Target Asset</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>{assetName}</Typography>
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>Trigger Sensor</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>{triggerName}</Typography>
+                  </Grid>
+                  
+                  <Grid size={{ xs: 6 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>Condition Type</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>{selectedRuleDetails.condition_type || 'Threshold'}</Typography>
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>Condition Value</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      {selectedRuleDetails.alert_type} {selectedRuleDetails.value}
+                    </Typography>
+                  </Grid>
+
+                  <Grid size={{ xs: 6 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>Severity</Typography>
+                    <Box sx={{ mt: 0.5 }}>
+                      <Chip label={selectedRuleDetails.severity.toUpperCase()} size="small"
+                        sx={{ backgroundColor: getSeverityBgColor(selectedRuleDetails.severity), color: getSeverityColor(selectedRuleDetails.severity), fontWeight: 600, fontSize: 11 }}
+                      />
+                    </Box>
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>Pending Period</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      {selectedRuleDetails.pending_period || selectedRuleDetails.pendingPeriod || 'None'}
+                    </Typography>
+                  </Grid>
+
+                  <Grid size={{ xs: 6 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>Status</Typography>
+                    <Box sx={{ mt: 0.5 }}>
+                      <Chip label={selectedRuleDetails.status} size="small"
+                        sx={{ backgroundColor: selectedRuleDetails.status === 'Active' ? '#e8f5e9' : '#f5f5f5', color: selectedRuleDetails.status === 'Active' ? '#2e7d32' : '#757575', fontWeight: 600, fontSize: 11 }}
+                      />
+                    </Box>
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>Notification Email</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      {selectedRuleDetails.notify_email || 'None'}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </Stack>
+            );
+          })()}
+        </DialogContent>
+        <DialogActions sx={{ borderTop: '1px solid #e2e8f0', px: 3, py: 2, display: 'flex', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="contained"
+              color="error"
+              onClick={() => handleDeleteRuleClick(selectedRuleDetails.id)}
+            >
+              Delete
+            </Button>
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={() => handleEditRuleClick(selectedRuleDetails)}
+            >
+              Edit
+            </Button>
+          </Box>
+          <Button variant="outlined" onClick={() => setSelectedRuleDetails(null)}>Close</Button>
         </DialogActions>
       </Dialog>
     </PageContainer>
