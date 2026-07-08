@@ -49,14 +49,7 @@ export const Login: React.FC = () => {
       const profile = await api.auth.getMe();
       localStorage.setItem('user_profile', JSON.stringify(profile));
 
-      // Redirect based on permissions
-      if (profile.permissions.includes('view_dashboard')) {
-        navigate('/dashboard');
-      } else if (profile.permissions.includes('view_alerts')) {
-        navigate('/');
-      } else {
-        navigate('/advisories');
-      }
+      navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Invalid username or password.');
     } finally {
