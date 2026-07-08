@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box, Card, CardContent, Grid, Button, Typography, CircularProgress,
   MenuItem, Select, FormControl, InputLabel, TextField, Paper,
@@ -33,10 +33,23 @@ const getDateRange = (rangeValue: string) => {
 };
 
 export const Reports: React.FC = () => {
-  const [advisories, setAdvisories] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
   const [hierarchyLoading, setHierarchyLoading] = useState(true);
+  const [selectedSiteId, setSelectedSiteId] = useState<number | ''>('');
+
+  const sites = useMemo(() => {
+    return flatNodes.filter(n => n.node_type === 'site');
+  }, [flatNodes]);
+
+  useEffect(() => {
+    if (flatNodes.length > 0 && !selectedSiteId) {
+      const sitesList = flatNodes.filter(n => n.node_type === 'site');
+      setSelectedSiteId(sitesList[0]?.id || '');
+    }
+  }, [flatNodes, selectedSiteId]);
+
+  const [advisories, setAdvisories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('last_24h');
   const initial = getDateRange('last_24h');
   const [fromDate, setFromDate] = useState(initial.from);
@@ -87,6 +100,22 @@ export const Reports: React.FC = () => {
       <PageHeader
         title="Generate Reports"
         subtitle="Generate Advisory summaries - for a single asset, a set of equipment or an entire process line."
+        actions={
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <InputLabel id="site-select-label">Site</InputLabel>
+            <Select
+              labelId="site-select-label"
+              value={selectedSiteId}
+              label="Site"
+              onChange={(e) => setSelectedSiteId(e.target.value as number)}
+              disabled={hierarchyLoading}
+            >
+              {sites.map(s => (
+                <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        }
       />
 
       {/* Filter bar */}
@@ -96,6 +125,7 @@ export const Reports: React.FC = () => {
             flatNodes={flatNodes}
             onSelectionChange={() => { }}
             loading={hierarchyLoading}
+            selectedSiteId={selectedSiteId}
           />
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>

@@ -66,6 +66,18 @@ export const api = {
   },
   alerts: {
     list: () => request<any[]>('/alerts'),
+    listRules: () => request<any[]>('/alerts/rules'),
+    createRule: (data: any) => request<any>('/alerts/rules', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    updateRule: (id: number, data: any) => request<any>(`/alerts/rules/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+    deleteRule: (id: number) => request<void>(`/alerts/rules/${id}`, {
+      method: 'DELETE',
+    }),
   },
   dashboard: {
     getSummary: () => request<any>('/dashboard/summary'),

@@ -50,12 +50,39 @@ export const Dashboard: React.FC = () => {
   const [hierarchyLoading, setHierarchyLoading] = useState(true);
   const [telemetryLoading, setTelemetryLoading] = useState(false);
   const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
-  const [selectedNode, setSelectedNode] = useState<HierarchyNode | null>(null);
-  const [hierarchyComplete, setHierarchyComplete] = useState(false);
   const [descendantSensors, setDescendantSensors] = useState<HierarchyNode[]>([]);
   const [selectedSensorIds, setSelectedSensorIds] = useState<string[]>([]);
   const [telemetryPoints, setTelemetryPoints] = useState<TelemetryPoint[]>([]);
   const [advisories, setAdvisories] = useState<any[]>([]);
+
+  const [selectedSiteId, setSelectedSiteId] = useState<number | ''>('');
+
+  const sites = React.useMemo(() => {
+    return flatNodes.filter(n => n.node_type === 'site');
+  }, [flatNodes]);
+
+  React.useEffect(() => {
+    if (flatNodes.length > 0) {
+      const sitesList = flatNodes.filter(n => n.node_type === 'site');
+      if (initialNodeId) {
+        let current: HierarchyNode | undefined = flatNodes.find(n => n.id === initialNodeId);
+        let siteId: number | '' = '';
+        while (current) {
+          if (current.node_type === 'site') {
+            siteId = current.id;
+            break;
+          }
+          const pId = current.parent_id;
+          current = pId ? flatNodes.find(n => n.id === pId) : undefined;
+        }
+        setSelectedSiteId(siteId || sitesList[0]?.id || '');
+      } else {
+        if (!selectedSiteId) {
+          setSelectedSiteId(sitesList[0]?.id || '');
+        }
+      }
+    }
+  }, [flatNodes, initialNodeId]);
 
   const initRange = getDateRange('last_24h');
   const [timeRange, setTimeRange] = useState('last_24h');
@@ -122,8 +149,6 @@ export const Dashboard: React.FC = () => {
   }, []);
 
   const handleHierarchyChange = (node: HierarchyNode | null, isComplete: boolean) => {
-    setSelectedNode(node);
-    setHierarchyComplete(isComplete);
     if (!node || !isComplete) {
       setDescendantSensors([]);
       setSelectedSensorIds([]);
@@ -234,6 +259,22 @@ export const Dashboard: React.FC = () => {
       <PageHeader
         title="Dashboard"
         subtitle="Anomalous tags are shown by default, stacked one below the other. Use the dropdown to browse any other parameter on this asset — anomaly or not."
+        actions={
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <InputLabel id="site-select-label">Site</InputLabel>
+            <Select
+              labelId="site-select-label"
+              value={selectedSiteId}
+              label="Site"
+              onChange={(e) => setSelectedSiteId(e.target.value as number)}
+              disabled={hierarchyLoading}
+            >
+              {sites.map(s => (
+                <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        }
       />
       <Box sx={{ mb: 4 }}>
         <Paper sx={{ px: 2, py: 2.5, borderRadius: 2, border: '1px solid #ccc' }}>
@@ -244,6 +285,7 @@ export const Dashboard: React.FC = () => {
                 onSelectionChange={handleHierarchyChange}
                 initialNodeId={initialNodeId}
                 loading={hierarchyLoading}
+                selectedSiteId={selectedSiteId}
               />
             </Grid>
             <Grid size={12}>

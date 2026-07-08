@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   CircularProgress,
@@ -82,12 +82,24 @@ const demoAlerts = [
     timestamp: new Date(Date.now() - 1000 * 60 * 80).toISOString(),
   },
 ];
-
 export const Alerts: React.FC = () => {
-  const [alerts, setAlerts] = useState<any[]>(demoAlerts);
-  const [loading, setLoading] = useState(false);
   const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
   const [hierarchyLoading, setHierarchyLoading] = useState(true);
+  const [selectedSiteId, setSelectedSiteId] = useState<number | ''>('');
+
+  const sites = useMemo(() => {
+    return flatNodes.filter(n => n.node_type === 'site');
+  }, [flatNodes]);
+
+  useEffect(() => {
+    if (flatNodes.length > 0 && !selectedSiteId) {
+      const sitesList = flatNodes.filter(n => n.node_type === 'site');
+      setSelectedSiteId(sitesList[0]?.id || '');
+    }
+  }, [flatNodes, selectedSiteId]);
+
+  const [alerts, setAlerts] = useState<any[]>(demoAlerts);
+  const [loading, setLoading] = useState(false);
   const [timeRange, setTimeRange] = useState('last_24h');
   const initial = getDateRange('last_24h');
   const [fromDate, setFromDate] = useState(initial.from);
@@ -134,6 +146,22 @@ export const Alerts: React.FC = () => {
       <PageHeader
         title="Alerts"
         subtitle="Critical warnings, system diagnostics, and failure states needing immediate attention."
+        actions={
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <InputLabel id="site-select-label">Site</InputLabel>
+            <Select
+              labelId="site-select-label"
+              value={selectedSiteId}
+              label="Site"
+              onChange={(e) => setSelectedSiteId(e.target.value as number)}
+              disabled={hierarchyLoading}
+            >
+              {sites.map(s => (
+                <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        }
       />
 
       {/* Filters */}
@@ -143,6 +171,7 @@ export const Alerts: React.FC = () => {
               flatNodes={flatNodes}
               onSelectionChange={() => {}}
               loading={hierarchyLoading}
+              selectedSiteId={selectedSiteId}
             />
           </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
