@@ -1,9 +1,9 @@
 services:
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: mip-backend
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: assetwize-backend
     ports:
       - "8000:8000"
     env_file:
@@ -11,9 +11,11 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: mip-frontend
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: http://127.0.0.1:8000
+    container_name: assetwize-frontend
     ports:
       - "5173:5173"
     depends_on:
