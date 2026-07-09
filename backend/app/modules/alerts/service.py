@@ -10,6 +10,12 @@ def create_alert(db: Session, alert_in: AlertCreate) -> Alert:
     db_alert = Alert(
         node_id=alert_in.node_id,
         sensor_id=alert_in.sensor_id,
+        name=alert_in.name,
+        description=alert_in.description,
+        asset_name=alert_in.asset_name,
+        sensor_name=alert_in.sensor_name,
+        condition=alert_in.condition,
+        threshold=alert_in.threshold,
         severity=alert_in.severity,
         message=alert_in.message,
         status=alert_in.status
@@ -18,6 +24,29 @@ def create_alert(db: Session, alert_in: AlertCreate) -> Alert:
     db.commit()
     db.refresh(db_alert)
     return db_alert
+
+def ensure_alert_columns(db: Session):
+    try:
+        from sqlalchemy import text
+        columns_to_add = [
+            ("name", "VARCHAR"),
+            ("description", "VARCHAR"),
+            ("asset_name", "VARCHAR"),
+            ("sensor_name", "VARCHAR"),
+            ("condition", "VARCHAR"),
+            ("threshold", "DOUBLE PRECISION"),
+        ]
+        
+        for col_name, col_type in columns_to_add:
+            try:
+                db.execute(text(f"ALTER TABLE alerts ADD COLUMN {col_name} {col_type};"))
+                db.commit()
+                print(f"Added column {col_name} to alerts table.")
+            except Exception:
+                db.rollback()
+    except Exception as e:
+        print(f"Note: Could not automatically migrate alerts table columns: {e}")
+
 
 def get_alert_rules(db: Session) -> List[AlertRule]:
     return db.query(AlertRule).order_by(AlertRule.id.asc()).all()

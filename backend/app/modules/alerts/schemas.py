@@ -5,6 +5,12 @@ from pydantic import BaseModel
 class AlertBase(BaseModel):
     node_id: int
     sensor_id: Optional[str] = None
+    name: Optional[str] = None
+    description: Optional[str] = None
+    asset_name: Optional[str] = None
+    sensor_name: Optional[str] = None
+    condition: Optional[str] = None
+    threshold: Optional[float] = None
     severity: str  # 'critical', 'warning', 'info'
     message: str
     status: str  # 'active', 'acknowledged', 'resolved'

@@ -32,9 +32,16 @@ export const RootCause: React.FC = () => {
   const [actionTaken, setActionTaken] = useState('');
   const [advisories, setAdvisories] = useState<any[]>([]);
   const [selectedAdvisoryId, setSelectedAdvisoryId] = useState<number | ''>('');
+  const [flatNodes, setFlatNodes] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const searchParams = new URLSearchParams(location.search);
+
+  useEffect(() => {
+    api.hierarchy.list(true)
+      .then(setFlatNodes)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     api.advisories.list()
@@ -92,11 +99,29 @@ export const RootCause: React.FC = () => {
       }
 
       await api.advisories.update(Number(selectedAdvisoryId), {
-        status: rcaStatus === 'resolved' ? 'resolved' : 'acknowledged',
+        status: rcaStatus,
         root_cause_description: rootCauseDescription,
         action_taken: actionTaken,
         image_path: imagePath,
       });
+
+      let targetQuery = '';
+      if (activeAdvisory) {
+        const matchingNode = flatNodes.find(n => n.sensor_metadata?.sensor_id === activeAdvisory.sensor_id)
+          || flatNodes.find(n => n.display_name === activeAdvisory.asset);
+        if (matchingNode) {
+          let siteId = '';
+          let curr = matchingNode;
+          while (curr) {
+            if (curr.node_type === 'site') {
+              siteId = curr.id.toString();
+              break;
+            }
+            curr = curr.parent_id ? flatNodes.find(n => n.id === curr.parent_id) : null;
+          }
+          targetQuery = `?siteId=${siteId}&nodeId=${matchingNode.id}`;
+        }
+      }
 
       setSelectedFile(null);
       setRootCauseDescription('');
@@ -107,7 +132,7 @@ export const RootCause: React.FC = () => {
         fileInputRef.current.value = '';
       }
 
-      navigate('/advisories');
+      navigate(`/advisories${targetQuery}`);
     } catch (err) {
       console.error('Failed to save RCA details:', err);
     }
