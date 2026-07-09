@@ -5,12 +5,12 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  push:
-    branches:
-      - main
-      - dev
-    paths:
-      - 'frontend/**'
+  # push:
+  #   branches:
+  #     - main
+  #     - dev
+  #   paths:
+  #     - 'frontend/**'
   workflow_dispatch:
 
 jobs:
