@@ -1,0 +1,51 @@
+name: Frontend Deployment Trigger
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - 'frontend/**'
+  workflow_dispatch:
+
+jobs:
+
+  # ---------------------- SETUP ----------------------
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print Environment Details
+        run: |
+          echo "🚀 Frontend Docker Build & Push Workflow"
+          echo "Branch: ${{ github.ref }}"
+
+  # ---------------------- DEV ----------------------
+  build-and-push-dev:
+    name: Dev
+    needs: setup
+    uses: ./.github/workflows/Frontend_docker_deploy.yml
+    with:
+      environment: "dev"
+      image_name: "assetwize-ui-dev"
+      acr_name: "${{ vars.ACR_NAME_DEV }}"
+    secrets:
+      azure_creds: ${{ secrets.AZURE_CREDENTIALS_DEV }}
+      api_base_url: ${{ secrets.VITE_API_BASE_URL_DEV }}
+  
+  # ---------------------- PROD ----------------------
+  # build-and-push-prod:
+  #   name: Prod
+  #   needs: setup
+  #   uses: ./.github/workflows/Frontend_docker_deploy.yml
+  #   with:
+  #     environment: "prod"
+  #     image_name: "assetwize-ui-prd"
+  #     acr_name: "${{ vars.ACR_NAME_PRD }}"
+  #   secrets:
+  #     azure_creds: ${{ secrets.AZURE_CREDENTIALS_PRD }}
+  #     api_base_url: ${{ secrets.VITE_API_BASE_URL_PRD }}

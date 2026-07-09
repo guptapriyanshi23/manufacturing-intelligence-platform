@@ -1,0 +1,49 @@
+name: Backend Deployment Trigger
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+  
+on:
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - 'backend/**'
+  workflow_dispatch:
+
+jobs:
+
+  # ---------------------- SETUP ----------------------
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print Environment Details
+        run: |
+          echo "🚀 Backend Docker Build & Push Workflow"
+          echo "Branch: ${{ github.ref }}"
+
+  # ---------------------- DEV ----------------------
+  build-and-push-dev:
+    name: Dev
+    needs: setup
+    uses: ./.github/workflows/Backend_docker_deploy.yml
+    with:
+      environment: "dev"
+      image_name: "assetwize-api-dev"
+      acr_name: "${{ vars.ACR_NAME_DEV }}"
+    secrets:
+      azure_creds: ${{ secrets.AZURE_CREDENTIALS_DEV }}
+  
+  # ---------------------- PROD ----------------------
+  # build-and-push-prod:
+  #   name: Prod
+  #   needs: setup
+  #   uses: ./.github/workflows/Backend_docker_deploy.yml
+  #   with:
+  #     environment: "prod"
+  #     image_name: "assetwize-api-prd"
+  #     acr_name: "${{ vars.ACR_NAME_PRD }}"
+  #   secrets:
+  #     azure_creds: ${{ secrets.AZURE_CREDENTIALS_PRD }}

@@ -1,0 +1,112 @@
+name: Backend Image Build and Push
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      image_name:
+        required: true
+        type: string
+      acr_name:
+        required: true
+        type: string
+    secrets:
+      azure_creds:
+        required: true
+
+jobs:
+
+  # ---------------------- Build Image ----------------------
+  build-image:
+    runs-on: ubuntu-latest
+    env:
+      ACR_NAME: ${{ inputs.acr_name }}
+    outputs:
+      next_version: ${{ steps.get_version.outputs.next_version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set version from GitHub Build ID
+        id: get_version
+        run: |
+          echo "next_version=$GITHUB_RUN_NUMBER" >> $GITHUB_OUTPUT
+
+      - name: Build backend docker image
+        run: |
+          docker build -t $ACR_NAME.azurecr.io/${{ inputs.image_name }}:v${{ steps.get_version.outputs.next_version }} ./backend
+
+      - name: Save image as artifact
+        run: |
+          docker save $ACR_NAME.azurecr.io/${{ inputs.image_name }}:v${{ steps.get_version.outputs.next_version }} -o /tmp/backend-image-${{ inputs.environment }}.tar
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-image-${{ inputs.environment }}
+          path: /tmp/backend-image-${{ inputs.environment }}.tar
+          retention-days: 30
+
+  # ---------------------- APPROVAL ----------------------
+  approval:
+    name: Approval
+    needs: build-image
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}  # 👈 Set this in GitHub UI to require manual approval
+    steps:
+      - name: Wait for approval
+        run: echo "✅ Approved for deployment"
+
+  # ---------------------- Push Image ----------------------
+  push-image:
+    runs-on: ubuntu-latest
+    needs: [build-image, approval]
+    env:
+      ACR_NAME: ${{ inputs.acr_name }}
+    outputs:
+      next_version: ${{ needs.build-image.outputs.next_version }}
+    steps:
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-image-${{ inputs.environment }}
+          path: /tmp
+
+      - name: Install Docker CLI 
+        run: |
+          if ! command -v docker &> /dev/null; then
+            echo "Docker not found. Installing..."
+            curl -fsSL https://get.docker.com -o get-docker.sh
+            sh get-docker.sh
+            sudo usermod -aG docker $(whoami)
+          else
+            echo "Docker already installed."
+          fi
+        shell: bash
+
+      - name: Install Azure CLI 
+        run: |
+          if ! command -v az &> /dev/null; then
+            echo "Azure CLI not found. Installing..."
+            curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+          else
+            echo "Azure CLI already installed."
+          fi
+        shell: bash
+
+      - name: Load Docker image
+        run: sudo docker load -i /tmp/backend-image-${{ inputs.environment }}.tar
+
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.azure_creds }}
+      
+      - name: Log in to Azure Container Registry
+        run: az acr login --name $ACR_NAME
+
+      - name: Push Docker image
+        run: docker push $ACR_NAME.azurecr.io/${{ inputs.image_name }}:v${{ needs.build-image.outputs.next_version }}
