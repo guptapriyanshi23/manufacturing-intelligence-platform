@@ -1,0 +1,120 @@
+.admin-page {
+	display: flex;
+	flex-direction: column;
+	gap: 0.9rem;
+	padding: 1rem;
+}
+
+.chart-subtitle{
+	margin-bottom: 0.75rem;
+}
+.tree-panel{
+	padding: 0;
+}
+.admin-page__tabs-card {
+	border: 1px solid #e2e8f0;
+	border-radius: 12px;
+	box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+}
+
+.admin-page__tabs {
+	.MuiTabs-indicator {
+		background: #0076a8;
+	}
+
+	.MuiTab-root {
+		text-transform: none;
+		font-size: 0.86rem;
+		font-weight: 700;
+	}
+}
+
+.admin-page__asset-layout {
+	display: grid;
+	grid-template-columns: minmax(320px, 40%) minmax(420px, 60%);
+	gap: 0.9rem;
+}
+
+.admin-card {
+	padding: 1rem;
+	border-radius: 12px;
+	border: 1px solid #e2e8f0;
+	box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+}
+
+.admin-card__title {
+//	margin: 0 0 0.75rem !important;
+	font-size: 0.9rem !important;
+	font-weight: 700 !important;
+	color: #0f172a;
+}
+
+.admin-form__grid {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.admin-form__submit {
+	width: fit-content;
+}
+
+.admin-form__error {
+	color: #b91c1c;
+	font-size: 0.75rem !important;
+	font-weight: 600 !important;
+}
+
+.admin-form__error--table {
+	margin-bottom: 0.6rem !important;
+}
+
+.admin-tree-wrap {
+	max-height: 560px;
+	overflow: auto;
+	border: 1px solid #e2e8f0;
+	border-radius: 10px;
+}
+
+.admin-table-wrap {
+	overflow: auto;
+
+	.MuiTableCell-root:first-child {
+		min-width: 240px;
+		width: 240px;
+	}
+
+	.MuiTableCell-head {
+		background: #f8fafc;
+		color: #0f172a;
+		font-weight: 700;
+		white-space: nowrap;
+	}
+
+	.MuiTableCell-root {
+		font-size: 0.78rem;
+		border-bottom: 1px solid #e2e8f0;
+		min-width: 130px;
+	}
+}
+
+.admin-table__input-row {
+	background: #fcfdff;
+}
+
+.admin-table__add-btn {
+	min-width: 34px !important;
+	padding: 0.2rem !important;
+}
+
+.severity-s1 { color: #7f1d1d; }
+.severity-s2 { color: #9f1239; }
+.severity-s3 { color: #b45309; }
+.severity-s4 { color: #854d0e; }
+.severity-s5 { color: #475569; }
+
+@media (max-width: 1100px) {
+	.admin-page__asset-layout {
+		grid-template-columns: 1fr;
+	}
+}
