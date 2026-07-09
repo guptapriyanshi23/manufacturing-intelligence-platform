@@ -3,7 +3,8 @@ from datetime import datetime
 from pydantic import BaseModel
 
 class AdvisoryBase(BaseModel):
-    tag: str
+    sensor_id: Optional[str] = None
+    sensor_name: Optional[str] = None
     asset: str
     severity: str
     description: str

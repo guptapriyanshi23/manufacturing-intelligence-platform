@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from backend.app.core.database import get_db
@@ -14,6 +14,9 @@ UPLOAD_DIR = "backend/app/static/uploads"
 
 @router.get("", response_model=List[AdvisoryResponse])
 def get_advisories(
+    node_id: Optional[int] = None,
+    status: Optional[str] = None,
+    severity: Optional[str] = None,
     current_user = Depends(check_permissions(["advisories:view"])),
     db: Session = Depends(get_db)
 ):
@@ -23,7 +26,7 @@ def get_advisories(
     from backend.app.core.security import get_allowed_node_ids
     allowed_ids = get_allowed_node_ids(current_user, db)
     
-    advisories = service.get_advisories(db)
+    advisories = service.get_advisories(db, node_id=node_id, status=status, severity=severity)
     if allowed_ids is not None:
         if not allowed_ids:
             return []

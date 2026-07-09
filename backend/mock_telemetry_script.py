@@ -114,9 +114,8 @@ def generate_history(session, sensors, hours=24):
     if n_sensors == 0:
         return
         
-    # Calculate interval per sensor to yield exactly 100 points per minute total across all sensors
-    # Total points per minute = 100 -> interval = (60 * n_sensors) / 100 seconds
-    interval_seconds = (60.0 * n_sensors) / 100.0
+    # Calculate interval per sensor to yield exactly 10 points per minute per sensor
+    interval_seconds = 6.0
     interval = timedelta(seconds=interval_seconds)
     current_time = start_time
     
@@ -219,7 +218,7 @@ def seed_thresholds_and_alerts(db, sensors):
     db.commit()
 
 
-def seed_advisories(db):
+def seed_advisories(db, sensors):
     """
     Seed mock advisories if the advisories table is empty.
     """
@@ -227,52 +226,89 @@ def seed_advisories(db):
     if not has_advisories:
         print("Seeding mock advisories...")
         now = datetime.now(timezone.utc)
-        mock_advisories = [
-            {
-                "tag": "Bearing temp",
-                "asset": "ID Fan #2",
-                "severity": "critical",
-                "description": "Bearing temperature has trended 44% above the twin baseline over the last 6 hours — consistent with advancing bearing wear. Severity has escalated S4 → S3 → S2 → S1 as the deviation sustained. The legacy 85°C alarm is only now starting to fire — the twin flagged this a full 6 hours earlier, well ahead of the 95°C trip limit.",
-                "first_detected": now - timedelta(hours=6),
-                "status": "open",
-                "image_path": None,
-                "root_cause_description": None,
-                "action_taken": None,
-                "created_at": now - timedelta(hours=6),
-                "updated_at": now - timedelta(hours=6)
-            },
-            {
-                "tag": "Spindle vibration",
-                "asset": "CNC-04 (VMC)",
-                "severity": "warning",
-                "description": "CNC Spindle temperature profile indicates minor friction. We recommend scheduling greasing within the next 48 production hours to avoid bearing wear.",
-                "first_detected": now - timedelta(days=1),
-                "status": "open",
-                "image_path": None,
-                "root_cause_description": None,
-                "action_taken": None,
-                "created_at": now - timedelta(days=1),
-                "updated_at": now - timedelta(days=1)
-            },
-            {
-                "tag": "Hydraulic pressure",
-                "asset": "Press Line 3",
-                "severity": "info",
-                "description": "Hydraulic pump 4 is maintaining maximum pressure during idle cycles. Lowering idle pressure by 1.5 bar will yield energy savings without affecting cycle start times.",
-                "first_detected": now - timedelta(days=2),
-                "status": "resolved",
-                "image_path": None,
-                "root_cause_description": "Pressure control valve sticking during idle cycle",
-                "action_taken": "Seal replaced and valve cleaned",
-                "created_at": now - timedelta(days=2),
-                "updated_at": now - timedelta(days=2)
-            }
-        ]
-        db.execute(text("""
-            INSERT INTO advisories (tag, asset, severity, description, first_detected, status, image_path, root_cause_description, action_taken, created_at, updated_at)
-            VALUES (:tag, :asset, :severity, :description, :first_detected, :status, :image_path, :root_cause_description, :action_taken, :created_at, :updated_at)
-        """), mock_advisories)
-        db.commit()
+        
+        mock_advisories = []
+        for s in sensors:
+            sensor_id = s["id"]
+            sensor_name = s["name"]
+            
+            # Find the display name of the ancestor asset node dynamically
+            asset_display_name = None
+            try:
+                asset_res = db.execute(text("""
+                    WITH RECURSIVE ancestor AS (
+                        SELECT id, parent_id, node_type, display_name
+                        FROM hierarchy_nodes
+                        WHERE name = :sensor_name
+                        UNION ALL
+                        SELECT n.id, n.parent_id, n.node_type, n.display_name
+                        FROM hierarchy_nodes n
+                        JOIN ancestor a ON n.id = a.parent_id
+                    )
+                    SELECT display_name FROM ancestor WHERE node_type = 'asset' LIMIT 1;
+                """), {"sensor_name": sensor_name}).scalar()
+                if asset_res:
+                    asset_display_name = asset_res
+            except Exception as e:
+                print(f"Warning: Could not query asset ancestor for {sensor_name}: {e}")
+                
+            if not asset_display_name:
+                asset_display_name = "Pump / Filler"  # Fallback asset name
+                
+            # Create a relevant advisory based on the sensor type
+            s_name_lower = sensor_name.lower()
+            if "temp" in s_name_lower:
+                mock_advisories.append({
+                    "sensor_id": sensor_id,
+                    "sensor_name": sensor_name,
+                    "asset": asset_display_name,
+                    "severity": "critical",
+                    "description": f"Bearing temperature on sensor {sensor_id} has trended 44% above the twin baseline over the last 6 hours — consistent with advancing bearing wear. Severity has escalated S4 → S3 → S2 → S1 as the deviation sustained. The legacy 85°C alarm is only now starting to fire — the twin flagged this a full 6 hours earlier, well ahead of the 95°C trip limit.",
+                    "first_detected": now - timedelta(hours=6),
+                    "status": "open",
+                    "image_path": None,
+                    "root_cause_description": None,
+                    "action_taken": None,
+                    "created_at": now - timedelta(hours=6),
+                    "updated_at": now - timedelta(hours=6)
+                })
+            elif "press" in s_name_lower or "prs" in s_name_lower or "unique" in sensor_id.lower() or "new_1" in s_name_lower:
+                mock_advisories.append({
+                    "sensor_id": sensor_id,
+                    "sensor_name": sensor_name,
+                    "asset": asset_display_name,
+                    "severity": "warning",
+                    "description": f"Sensor {sensor_id} ({sensor_name}) pressure profile indicates a minor 1.5 bar drop over the last 24 hours. We recommend scheduled greasing and gasket inspection within the next 48 production hours to avoid seal failure.",
+                    "first_detected": now - timedelta(days=1),
+                    "status": "open",
+                    "image_path": None,
+                    "root_cause_description": None,
+                    "action_taken": None,
+                    "created_at": now - timedelta(days=1),
+                    "updated_at": now - timedelta(days=1)
+                })
+            else:
+                mock_advisories.append({
+                    "sensor_id": sensor_id,
+                    "sensor_name": sensor_name,
+                    "asset": asset_display_name,
+                    "severity": "info",
+                    "description": f"Measurement anomaly detected on sensor {sensor_id} ({sensor_name}). The signal variance has increased by 15% over the baseline. Monitor for further deviation.",
+                    "first_detected": now - timedelta(days=2),
+                    "status": "open",
+                    "image_path": None,
+                    "root_cause_description": None,
+                    "action_taken": None,
+                    "created_at": now - timedelta(days=2),
+                    "updated_at": now - timedelta(days=2)
+                })
+                
+        if mock_advisories:
+            db.execute(text("""
+                INSERT INTO advisories (sensor_id, sensor_name, asset, severity, description, first_detected, status, image_path, root_cause_description, action_taken, created_at, updated_at)
+                VALUES (:sensor_id, :sensor_name, :asset, :severity, :description, :first_detected, :status, :image_path, :root_cause_description, :action_taken, :created_at, :updated_at)
+            """), mock_advisories)
+            db.commit()
 
 
 def seed_users_and_permissions(db):
@@ -391,113 +427,115 @@ def stream_live_telemetry(session, sensors):
 if __name__ == "__main__":
     db = SessionLocal()
     try:
-        # Auto-create the table if migrations have not been run
-        db.execute(text("""
-            CREATE TABLE IF NOT EXISTS sensor_telemetry (
-                timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
-                sensor_id VARCHAR NOT NULL,
-                sensor_name VARCHAR NOT NULL,
-                value DOUBLE PRECISION NOT NULL,
-                inserted_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-                PRIMARY KEY (timestamp, sensor_id)
-            );
-        """))
-        db.execute(text("""
-            CREATE TABLE IF NOT EXISTS sensor_thresholds (
-                sensor_id VARCHAR PRIMARY KEY,
-                alarm_limit DOUBLE PRECISION,
-                trip_limit DOUBLE PRECISION
-            );
-        """))
-        db.execute(text("""
-            CREATE TABLE IF NOT EXISTS alerts (
-                id SERIAL PRIMARY KEY,
-                sensor_id VARCHAR,
-                node_id INTEGER,
-                severity VARCHAR NOT NULL,
-                message VARCHAR NOT NULL,
-                status VARCHAR NOT NULL DEFAULT 'active',
-                timestamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-            );
-        """))
-        db.execute(text("""
-            CREATE TABLE IF NOT EXISTS advisories (
-                id SERIAL PRIMARY KEY,
-                tag VARCHAR NOT NULL,
-                asset VARCHAR NOT NULL,
-                severity VARCHAR NOT NULL,
-                description VARCHAR NOT NULL,
-                first_detected TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-                status VARCHAR NOT NULL DEFAULT 'open',
-                image_path VARCHAR,
-                root_cause_description VARCHAR,
-                action_taken VARCHAR,
-                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-                updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-            );
-        """))
-        db.execute(text("DROP TABLE IF EXISTS user_hierarchy_permissions CASCADE;"))
-        db.execute(text("DROP TABLE IF EXISTS user_permissions CASCADE;"))
-        db.execute(text("DROP TABLE IF EXISTS users CASCADE;"))
-        db.execute(text("DROP TABLE IF EXISTS permissions CASCADE;"))
-        db.commit()
-        db.execute(text("""
-            CREATE TABLE IF NOT EXISTS users (
-                id SERIAL PRIMARY KEY,
-                email VARCHAR UNIQUE NOT NULL,
-                hashed_password VARCHAR NOT NULL,
-                is_active BOOLEAN NOT NULL DEFAULT TRUE,
-                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-            );
-        """))
-        db.execute(text("""
-            CREATE TABLE IF NOT EXISTS permissions (
-                name VARCHAR PRIMARY KEY,
-                description VARCHAR
-            );
-        """))
-        db.execute(text("""
-            CREATE TABLE IF NOT EXISTS user_permissions (
-                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                permission_name VARCHAR REFERENCES permissions(name) ON DELETE CASCADE,
-                PRIMARY KEY (user_id, permission_name)
-            );
-        """))
-        db.execute(text("""
-            CREATE TABLE IF NOT EXISTS user_hierarchy_permissions (
-                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                node_id INTEGER REFERENCES hierarchy_nodes(id) ON DELETE CASCADE,
-                PRIMARY KEY (user_id, node_id)
-            );
-        """))
-        db.commit()
+        # # Auto-create the table if migrations have not been run
+        # db.execute(text("""
+        #     CREATE TABLE IF NOT EXISTS sensor_telemetry (
+        #         timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
+        #         sensor_id VARCHAR NOT NULL,
+        #         sensor_name VARCHAR NOT NULL,
+        #         value DOUBLE PRECISION NOT NULL,
+        #         inserted_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+        #         PRIMARY KEY (timestamp, sensor_id)
+        #     );
+        # """))
+        # db.execute(text("""
+        #     CREATE TABLE IF NOT EXISTS sensor_thresholds (
+        #         sensor_id VARCHAR PRIMARY KEY,
+        #         alarm_limit DOUBLE PRECISION,
+        #         trip_limit DOUBLE PRECISION
+        #     );
+        # """))
+        # db.execute(text("""
+        #     CREATE TABLE IF NOT EXISTS alerts (
+        #         id SERIAL PRIMARY KEY,
+        #         sensor_id VARCHAR,
+        #         node_id INTEGER,
+        #         severity VARCHAR NOT NULL,
+        #         message VARCHAR NOT NULL,
+        #         status VARCHAR NOT NULL DEFAULT 'active',
+        #         timestamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        #     );
+        # """))
+        # db.execute(text("DROP TABLE IF EXISTS user_hierarchy_permissions CASCADE;"))
+        # db.execute(text("DROP TABLE IF EXISTS user_permissions CASCADE;"))
+        # db.execute(text("DROP TABLE IF EXISTS users CASCADE;"))
+        # db.execute(text("DROP TABLE IF EXISTS permissions CASCADE;"))
+        # db.execute(text("DROP TABLE IF EXISTS advisories CASCADE;"))
+        # db.commit()
+        # db.execute(text("""
+        #     CREATE TABLE IF NOT EXISTS users (
+        #         id SERIAL PRIMARY KEY,
+        #         email VARCHAR UNIQUE NOT NULL,
+        #         hashed_password VARCHAR NOT NULL,
+        #         is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        #         created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        #     );
+        # """))
+        # db.execute(text("""
+        #     CREATE TABLE IF NOT EXISTS permissions (
+        #         name VARCHAR PRIMARY KEY,
+        #         description VARCHAR
+        #     );
+        # """))
+        # db.execute(text("""
+        #     CREATE TABLE IF NOT EXISTS user_permissions (
+        #         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        #         permission_name VARCHAR REFERENCES permissions(name) ON DELETE CASCADE,
+        #         PRIMARY KEY (user_id, permission_name)
+        #     );
+        # """))
+        # db.execute(text("""
+        #     CREATE TABLE IF NOT EXISTS user_hierarchy_permissions (
+        #         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        #         node_id INTEGER REFERENCES hierarchy_nodes(id) ON DELETE CASCADE,
+        #         PRIMARY KEY (user_id, node_id)
+        #     );
+        # """))
+        # db.execute(text("""
+        #     CREATE TABLE IF NOT EXISTS advisories (
+        #         id SERIAL PRIMARY KEY,
+        #         sensor_id VARCHAR,
+        #         sensor_name VARCHAR,
+        #         asset VARCHAR NOT NULL,
+        #         severity VARCHAR NOT NULL,
+        #         description VARCHAR NOT NULL,
+        #         first_detected TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+        #         status VARCHAR NOT NULL DEFAULT 'open',
+        #         image_path VARCHAR,
+        #         root_cause_description VARCHAR,
+        #         action_taken VARCHAR,
+        #         created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+        #         updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        #     );
+        # """))
+        # db.commit()
 
-        # Eagerly convert to TimescaleDB hypertable if extension is active
-        try:
-            has_timescale = db.execute(text("SELECT 1 FROM pg_extension WHERE extname = 'timescaledb'")).scalar()
-            if has_timescale:
-                db.execute(text("SELECT create_hypertable('sensor_telemetry', 'timestamp', if_not_exists => TRUE, migrate_data => TRUE);"))
-                db.commit()
-                print("TimescaleDB hypertable verified/created successfully.")
-        except Exception as e:
-            db.rollback()
-            print(f"Note: Could not convert to TimescaleDB hypertable: {e}")
+        # # Eagerly convert to TimescaleDB hypertable if extension is active
+        # try:
+        #     has_timescale = db.execute(text("SELECT 1 FROM pg_extension WHERE extname = 'timescaledb'")).scalar()
+        #     if has_timescale:
+        #         db.execute(text("SELECT create_hypertable('sensor_telemetry', 'timestamp', if_not_exists => TRUE, migrate_data => TRUE);"))
+        #         db.commit()
+        #         print("TimescaleDB hypertable verified/created successfully.")
+        # except Exception as e:
+        #     db.rollback()
+        #     print(f"Note: Could not convert to TimescaleDB hypertable: {e}")
         
         active_sensors = get_active_sensors(db)
         
-        # Seed thresholds and alerts
+        # # Seed thresholds and alerts
         # seed_thresholds_and_alerts(db, active_sensors)
         
-        # Seed advisories
-        # seed_advisories(db)
+        # # Seed advisories
+        # seed_advisories(db, active_sensors)
         
-        # Seed users and permissions
+        # # Seed users and permissions
         # seed_users_and_permissions(db)
         
         # 1. Generate 48h (2 days) historical data
         generate_history(db, active_sensors, hours=48)
         
         # 2. Start live streaming
-        stream_live_telemetry(db, active_sensors)
+        # stream_live_telemetry(db, active_sensors)
     finally:
         db.close()

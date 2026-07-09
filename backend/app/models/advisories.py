@@ -6,7 +6,8 @@ class Advisory(Base):
     __tablename__ = "advisories"
 
     id = Column(Integer, primary_key=True, index=True)
-    tag = Column(String, nullable=False)
+    sensor_id = Column(String, nullable=True)
+    sensor_name = Column(String, nullable=True)
     asset = Column(String, nullable=False)
     severity = Column(String, nullable=False)  # e.g., 'critical', 'warning', 'info'
     description = Column(String, nullable=False)

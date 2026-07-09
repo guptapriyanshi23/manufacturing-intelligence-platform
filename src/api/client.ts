@@ -95,7 +95,14 @@ export const api = {
     get: (eventId: string) => request<any>(`/root-cause/${eventId}`),
   },
   advisories: {
-    list: () => request<any[]>('/advisories'),
+    list: (filters?: { node_id?: number | null; status?: string; severity?: string }) => {
+      const params = new URLSearchParams();
+      if (filters?.node_id) params.append('node_id', filters.node_id.toString());
+      if (filters?.status) params.append('status', filters.status);
+      if (filters?.severity) params.append('severity', filters.severity);
+      const queryString = params.toString();
+      return request<any[]>(queryString ? `/advisories?${queryString}` : '/advisories');
+    },
     update: (id: number, data: any) =>
       request<any>(`/advisories/${id}`, {
         method: 'PATCH',

@@ -54,6 +54,7 @@ export const Dashboard: React.FC = () => {
   const [selectedSensorIds, setSelectedSensorIds] = useState<string[]>([]);
   const [telemetryPoints, setTelemetryPoints] = useState<TelemetryPoint[]>([]);
   const [advisories, setAdvisories] = useState<any[]>([]);
+  const [selectedNode, setSelectedNode] = useState<HierarchyNode | null>(null);
 
   const [selectedSiteId, setSelectedSiteId] = useState<number | ''>('');
 
@@ -116,7 +117,7 @@ export const Dashboard: React.FC = () => {
     const { from, to } = getDateRange(val);
     setSensorExpFrom(from); setSensorExpTo(to);
   };
-  
+
   const openSensorExpanded = (sensor: HierarchyNode) => {
     setExpandedSensor(sensor);
     const { from, to } = getDateRange('last_24h');
@@ -151,7 +152,7 @@ export const Dashboard: React.FC = () => {
     if (cached) {
       try {
         setProfile(JSON.parse(cached));
-      } catch (e) {}
+      } catch (e) { }
     }
   }, []);
 
@@ -174,6 +175,7 @@ export const Dashboard: React.FC = () => {
   }, []);
 
   const handleHierarchyChange = (node: HierarchyNode | null, isComplete: boolean) => {
+    setSelectedNode(node);
     if (!node || !isComplete) {
       setDescendantSensors([]);
       setSelectedSensorIds([]);
@@ -206,7 +208,7 @@ export const Dashboard: React.FC = () => {
     telemetryPoints
       .filter(p => p.sensor_id === sensorId)
       .map(p => ({
-        timestamp: new Date(p.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: new Date(p.timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }),
         value: p.value,
         name: p.sensor_name,
         alarmLimit: (p as any).alarm_limit,
@@ -242,7 +244,11 @@ export const Dashboard: React.FC = () => {
     .sort((a, b) => (severityPriority[a.severity] || 99) - (severityPriority[b.severity] || 99));
 
   const handleAcknowledge = async (advisoryId: number) => {
-    try { await api.advisories.update(advisoryId, { status: 'acknowledged' }); navigate('/advisories'); }
+    try {
+      await api.advisories.update(advisoryId, { status: 'acknowledged' });
+      const nodeParam = selectedNode ? `&nodeId=${selectedNode.id}` : '';
+      navigate(`/advisories?siteId=${selectedSiteId}${nodeParam}`);
+    }
     catch (error) { console.error('Failed to acknowledge advisory:', error); }
   };
 
@@ -388,45 +394,47 @@ export const Dashboard: React.FC = () => {
           <CircularProgress size={40} color="secondary" />
         </Box>
       ) : (
-        <Grid container spacing={3} sx={{ alignItems: 'flex-start' }}>
-          {/* Left: Telemetry Charts */}
-          <Grid size={{ xs: 12, lg: 8 }}>
-            <Grid container spacing={3}>
-              {descendantSensors.length === 0 ? (
-                <Grid size={12}>
-                  <Paper sx={{ p: 4, textAlign: 'center', border: '1px solid #ccc' }}>
-                    <Typography color="text.secondary">
-                      No sensors defined under the selected hierarchy level. Select a level with configured sensor metadata.
-                    </Typography>
-                  </Paper>
-                </Grid>
-              ) : telemetryPoints.length === 0 && !telemetryLoading ? (
-                <Grid size={12}>
-                  <Paper sx={{ p: 6, textAlign: 'center', border: '1px solid #ccc', borderRadius: 2 }}>
-                    <Typography variant="h6" color="text.secondary" gutterBottom sx={{ fontWeight: 600 }}>
-                      No Telemetry Data Loaded
-                    </Typography>
-                    <Typography color="text.secondary" variant="body2">
-                      Please customize your hierarchy level, time range, or active graphs and click the <strong>View</strong> button to load charts.
-                    </Typography>
-                  </Paper>
-                </Grid>
-              ) : telemetryLoading ? (
-                <Grid size={12}>
-                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
-                    <CircularProgress size={40} color="secondary" />
-                  </Box>
-                </Grid>
-              ) : (
-                descendantSensors
-                  .filter(sensor => selectedSensorIds.includes(sensor.sensor_metadata?.sensor_id || ''))
-                  .map(sensor => {
-                    const sid = sensor.sensor_metadata?.sensor_id || '';
-                    const data = getSensorDataPoints(sid);
-                    const unit = sensor.sensor_metadata?.unit || '';
-                    return (
-                      <Grid size={12} key={sensor.id}>
-                        <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc' }}>
+        <Grid container spacing={3}>
+          {descendantSensors.length === 0 ? (
+            <Grid size={12}>
+              <Paper sx={{ p: 4, textAlign: 'center', border: '1px solid #ccc' }}>
+                <Typography color="text.secondary">
+                  No sensors defined under the selected hierarchy level. Select a level with configured sensor metadata.
+                </Typography>
+              </Paper>
+            </Grid>
+          ) : telemetryPoints.length === 0 && !telemetryLoading ? (
+            <Grid size={12}>
+              <Paper sx={{ p: 6, textAlign: 'center', border: '1px solid #ccc', borderRadius: 2 }}>
+                <Typography variant="h6" color="text.secondary" gutterBottom sx={{ fontWeight: 600 }}>
+                  No Telemetry Data Loaded
+                </Typography>
+                <Typography color="text.secondary" variant="body2">
+                  Please customize your hierarchy level, time range, or active graphs and click the <strong>View</strong> button to load charts.
+                </Typography>
+              </Paper>
+            </Grid>
+          ) : telemetryLoading ? (
+            <Grid size={12}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
+                <CircularProgress size={40} color="secondary" />
+              </Box>
+            </Grid>
+          ) : (
+            descendantSensors
+              .filter(sensor => selectedSensorIds.includes(sensor.sensor_metadata?.sensor_id || ''))
+              .map(sensor => {
+                const sid = sensor.sensor_metadata?.sensor_id || '';
+                const data = getSensorDataPoints(sid);
+                const unit = sensor.sensor_metadata?.unit || '';
+                const matchingAdvisory = openAdvisories.find(a => a.sensor_id === sid);
+
+                return (
+                  <Grid size={12} key={sensor.id}>
+                    <Grid container spacing={3} alignItems="stretch">
+                      {/* Chart Area */}
+                      <Grid size={{ xs: 12, lg: matchingAdvisory ? 8 : 12 }}>
+                        <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc', height: '100%', display: 'flex', flexDirection: 'column' }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                             <Typography variant="h6" sx={{ fontWeight: 700 }}>{sensor.display_name}</Typography>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -439,7 +447,7 @@ export const Dashboard: React.FC = () => {
                             </Box>
                           </Box>
                           {data.length === 0 ? (
-                            <Box sx={{ height: 270, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed #000000', borderRadius: 1 }}>
+                            <Box sx={{ flex: 1, minHeight: 270, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed #000000', borderRadius: 1 }}>
                               <Typography variant="body2" color="text.secondary">
                                 No telemetry data received for this sensor in the last 24 hours.
                               </Typography>
@@ -451,88 +459,95 @@ export const Dashboard: React.FC = () => {
                           )}
                         </Paper>
                       </Grid>
-                    );
-                  })
-              )}
-            </Grid>
-          </Grid>
 
-          {/* Right: Advisories */}
-          <Grid size={{ xs: 12, lg: 4 }}>
-            {openAdvisories.length > 0 ? (
-              <Stack spacing={3}>
-                {openAdvisories.map((advisory) => (
-                  <Paper key={advisory.id} sx={{ p: 0, borderRadius: 2, border: '1px solid #ccc', overflow: 'hidden' }}>
-                    <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <Typography variant="h6" sx={{ color: 'secondary.main', fontWeight: 700, textTransform: 'uppercase' }}>
-                        ADVISORY
-                      </Typography>
-                      <Chip
-                        label={getSeverityLevelFull(advisory.severity)}
-                        size="small"
-                        sx={{ backgroundColor: getSeverityBgColor(advisory.severity), color: getSeverityColor(advisory.severity), fontWeight: 500, fontSize: '0.8rem', py: 2, px: 1 }}
-                      />
-                    </Box>
-                    <Box sx={{ pb: 2, px: 2, flex: 1, display: 'flex', flexDirection: 'column' }}>
-                      <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>{advisory.asset}</Typography>
-                      <Typography variant="body2" sx={{ mb: 3, opacity: 0.95, fontWeight: 500 }}>
-                        {advisory.tag} - first detected{' '}
-                        {new Date(advisory.first_detected).toLocaleDateString([], { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                      </Typography>
-                      <Typography variant="body2" sx={{ mb: 3, lineHeight: 1.6, flex: 1 }}>{advisory.description}</Typography>
-                      <Button
-                        fullWidth
-                        variant="contained"
-                        color="primary"
-                        disabled={!canAcknowledge}
-                        onClick={() => handleAcknowledge(advisory.id)}
-                        sx={{
-                          fontWeight: 600,
-                          textTransform: 'none',
-                          py: 1.5,
-                          mb: 2,
-                          '&.Mui-disabled': {
-                            backgroundColor: '#e2e8f0',
-                            color: '#94a3b8',
-                          }
-                        }}
-                      >
-                        Acknowledge
-                      </Button>
-                      <Button
-                        fullWidth
-                        variant="contained"
-                        disabled={!canRca}
-                        sx={{
-                          backgroundColor: '#000000',
-                          color: 'white',
-                          fontWeight: 600,
-                          textTransform: 'none',
-                          py: 1.5,
-                          '&:hover': {
-                            backgroundColor: '#1e293b',
-                          },
-                          '&.Mui-disabled': {
-                            backgroundColor: '#e2e8f0',
-                            color: '#94a3b8',
-                          }
-                        }}
-                        onClick={() => handleInitiateRca(advisory)}
-                      >
-                        Initiate RCA →
-                      </Button>
-                    </Box>
-                  </Paper>
-                ))}
-              </Stack>
-            ) : (
-              <Paper sx={{ p: 3, textAlign: 'center', border: '1px solid #ccc' }}>
-                <Typography color="text.secondary">No active optimization or maintenance advisories.</Typography>
-              </Paper>
-            )}
-          </Grid>
-
-
+                      {/* Matching Advisory Column */}
+                      {matchingAdvisory && (
+                        <Grid size={{ xs: 12, lg: 4 }}>
+                          <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                            <Box>
+                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                                <Typography variant="subtitle2" sx={{ color: 'secondary.main', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
+                                  ADVISORY
+                                </Typography>
+                                <Chip
+                                  label={getSeverityLevelFull(matchingAdvisory.severity)}
+                                  size="small"
+                                  sx={{ backgroundColor: getSeverityBgColor(matchingAdvisory.severity), color: getSeverityColor(matchingAdvisory.severity), fontWeight: 600, fontSize: '0.75rem', height: 24, px: 0.5 }}
+                                />
+                              </Box>
+                              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5, lineHeight: 1.2 }}>{matchingAdvisory.asset}</Typography>
+                              <Typography variant="caption" sx={{ display: 'block', mb: 1.5, color: 'text.secondary', fontWeight: 500 }}>
+                                First detected: {new Date(matchingAdvisory.first_detected).toLocaleDateString([], { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  lineHeight: 1.5,
+                                  color: 'text.primary',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 5,
+                                  WebkitBoxOrient: 'vertical'
+                                }}
+                              >
+                                {matchingAdvisory.description}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
+                              <Button
+                                fullWidth
+                                variant="contained"
+                                color="primary"
+                                size="small"
+                                disabled={!canAcknowledge}
+                                onClick={() => handleAcknowledge(matchingAdvisory.id)}
+                                sx={{
+                                  fontWeight: 600,
+                                  textTransform: 'none',
+                                  fontSize: '0.8rem',
+                                  py: 1,
+                                  '&.Mui-disabled': {
+                                    backgroundColor: '#e2e8f0',
+                                    color: '#94a3b8',
+                                  }
+                                }}
+                              >
+                                Acknowledge
+                              </Button>
+                              <Button
+                                fullWidth
+                                variant="contained"
+                                size="small"
+                                disabled={!canRca}
+                                sx={{
+                                  backgroundColor: '#000000',
+                                  color: 'white',
+                                  fontWeight: 600,
+                                  textTransform: 'none',
+                                  fontSize: '0.8rem',
+                                  py: 1,
+                                  '&:hover': {
+                                    backgroundColor: '#1e293b',
+                                  },
+                                  '&.Mui-disabled': {
+                                    backgroundColor: '#e2e8f0',
+                                    color: '#94a3b8',
+                                  }
+                                }}
+                                onClick={() => handleInitiateRca(matchingAdvisory)}
+                              >
+                                RCA →
+                              </Button>
+                            </Box>
+                          </Paper>
+                        </Grid>
+                      )}
+                    </Grid>
+                  </Grid>
+                );
+              })
+          )}
         </Grid>
       )}
 
@@ -550,7 +565,7 @@ export const Dashboard: React.FC = () => {
             const data = expandedTelemetry
               .filter(p => p.sensor_id === sid)
               .map(p => ({
-                timestamp: new Date(p.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                timestamp: new Date(p.timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }),
                 value: p.value,
                 name: p.sensor_name,
                 alarmLimit: (p as any).alarm_limit,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -35,6 +35,7 @@ import { HierarchySelector } from '../../components/Filters/HierarchySelector';
 
 export const Advisories: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
   const [hierarchyLoading, setHierarchyLoading] = useState(true);
   const [selectedSiteId, setSelectedSiteId] = useState<number | ''>('');
@@ -43,28 +44,47 @@ export const Advisories: React.FC = () => {
     return flatNodes.filter(n => n.node_type === 'site');
   }, [flatNodes]);
 
+  const queryParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const qSiteId = queryParams.get('siteId') ? Number(queryParams.get('siteId')) : '';
+  const qNodeId = queryParams.get('nodeId') ? Number(queryParams.get('nodeId')) : null;
+
   useEffect(() => {
-    if (flatNodes.length > 0 && !selectedSiteId) {
-      const sitesList = flatNodes.filter(n => n.node_type === 'site');
-      setSelectedSiteId(sitesList[0]?.id || '');
+    if (flatNodes.length > 0) {
+      if (qSiteId) {
+        setSelectedSiteId(qSiteId);
+      } else if (!selectedSiteId) {
+        const sitesList = flatNodes.filter(n => n.node_type === 'site');
+        setSelectedSiteId(sitesList[0]?.id || '');
+      }
     }
-  }, [flatNodes, selectedSiteId]);
+  }, [flatNodes, selectedSiteId, qSiteId]);
 
   const [advisories, setAdvisories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Dropdown states (selection state, not applied immediately)
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [severityFilter, setSeverityFilter] = useState<string>('');
   const [selectedNode, setSelectedNode] = useState<HierarchyNode | null>(null);
 
+  // Applied states (updates only when 'View' button is clicked)
+  const [appliedStatus, setAppliedStatus] = useState<string>('');
+  const [appliedSeverity, setAppliedSeverity] = useState<string>('');
+  const [appliedNode, setAppliedNode] = useState<HierarchyNode | null>(null);
+
+  // Sync initial query params with selection and applied states
+  useEffect(() => {
+    if (flatNodes.length > 0 && qNodeId) {
+      const matchingNode = flatNodes.find(n => n.id === qNodeId);
+      if (matchingNode) {
+        setSelectedNode(matchingNode);
+        setAppliedNode(matchingNode);
+      }
+    }
+  }, [flatNodes, qNodeId]);
+
   const [selectedAdvisory, setSelectedAdvisory] = useState<any | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
-
-  const fetchAdvisories = () => {
-    setLoading(true);
-    api.advisories.list()
-      .then((res) => { setAdvisories(res); setLoading(false); })
-      .catch((err) => { console.error('Failed to fetch advisories:', err); setLoading(false); });
-  };
 
   const [profile, setProfile] = useState<{ email: string; permissions: string[] } | null>(null);
 
@@ -81,40 +101,48 @@ export const Advisories: React.FC = () => {
   const canRca = profile?.permissions.includes('advisories:rca') ?? false;
 
   useEffect(() => {
-    fetchAdvisories();
     api.hierarchy.list(true)
       .then(setFlatNodes)
       .catch(() => setFlatNodes([]))
       .finally(() => setHierarchyLoading(false));
   }, []);
 
-  const getDescendantNames = (node: HierarchyNode): Set<string> => {
-    const names = new Set<string>();
-    const queue = [node.id];
-    while (queue.length > 0) {
-      const id = queue.shift()!;
-      flatNodes.filter(n => n.parent_id === id).forEach(child => {
-        names.add(child.display_name);
-        queue.push(child.id);
-      });
+  // Reactive effect to fetch advisories from server whenever applied filters change
+  useEffect(() => {
+    if (appliedNode === null) {
+      setAdvisories([]);
+      setLoading(false);
+      return;
     }
-    names.add(node.display_name);
-    return names;
+
+    setLoading(true);
+    api.advisories.list({
+      node_id: appliedNode.id,
+      status: appliedStatus,
+      severity: appliedSeverity,
+    })
+      .then((res) => { setAdvisories(res); setLoading(false); })
+      .catch((err) => { console.error('Failed to fetch advisories:', err); setLoading(false); });
+  }, [appliedNode, appliedStatus, appliedSeverity]);
+
+  const filteredRows = advisories;
+
+  const isAllActive = !statusFilter && !severityFilter && !selectedNode && !appliedStatus && !appliedSeverity && !appliedNode;
+
+  const handleApplyFilters = () => {
+    setAppliedStatus(statusFilter);
+    setAppliedSeverity(severityFilter);
+    setAppliedNode(selectedNode);
   };
-
-  const filteredRows = advisories.filter((row) => {
-    const statusMatch = statusFilter ? row.status === statusFilter : true;
-    const severityMatch = severityFilter ? row.severity === severityFilter : true;
-    const assetMatch = selectedNode ? getDescendantNames(selectedNode).has(row.asset) : true;
-    return statusMatch && severityMatch && assetMatch;
-  });
-
-  const isAllActive = !statusFilter && !severityFilter && !selectedNode;
 
   const handleResetFilters = () => {
     setStatusFilter('');
     setSeverityFilter('');
     setSelectedNode(null);
+    setAppliedStatus('');
+    setAppliedSeverity('');
+    setAppliedNode(null);
+    navigate('/advisories'); // Reset the query params
   };
 
   const handleRowClick = (advisory: any) => { setSelectedAdvisory(advisory); setDetailsOpen(true); };
@@ -123,7 +151,15 @@ export const Advisories: React.FC = () => {
   const handleAcknowledgeFromDetails = async (advisoryId: number) => {
     try {
       await api.advisories.update(advisoryId, { status: 'acknowledged' });
-      fetchAdvisories();
+      if (appliedNode) {
+        api.advisories.list({
+          node_id: appliedNode.id,
+          status: appliedStatus,
+          severity: appliedSeverity
+        })
+          .then(setAdvisories)
+          .catch((err) => console.error('Failed to refresh advisories:', err));
+      }
       handleCloseDetails();
     } catch (error) {
       console.error('Failed to acknowledge advisory:', error);
@@ -163,6 +199,7 @@ export const Advisories: React.FC = () => {
           <HierarchySelector
             flatNodes={flatNodes}
             onSelectionChange={(node) => setSelectedNode(node)}
+            initialNodeId={qNodeId}
             loading={hierarchyLoading}
             selectedSiteId={selectedSiteId}
           />
@@ -209,7 +246,18 @@ export const Advisories: React.FC = () => {
             </Select>
           </FormControl>
 
-            <Button
+          <Box sx={{ flexGrow: 1 }} />
+          
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={handleApplyFilters}
+            sx={{ minWidth: 100, fontWeight: 700 }}
+          >
+            View
+          </Button>
+
+          <Button
             variant={isAllActive ? 'contained' : 'outlined'}
             color="primary"
             onClick={handleResetFilters}
@@ -233,7 +281,7 @@ export const Advisories: React.FC = () => {
           <Table sx={{ minWidth: 720 }}>
             <TableHead>
               <TableRow>
-                {['Tag', 'Asset', 'Severity', 'Status', 'Action taken'].map(col => (
+                {['Sensor ID', 'Sensor Name', 'Asset', 'Severity', 'Status', 'Action taken'].map(col => (
                   <TableCell key={col} sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid #ccc' }}>
                     {col}
                   </TableCell>
@@ -241,46 +289,56 @@ export const Advisories: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredRows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  hover
-                  onClick={() => handleRowClick(row)}
-                  sx={{ cursor: 'pointer', '&:last-child td': { borderBottom: 0 } }}
-                >
-                  <TableCell sx={{ color: 'text.primary', fontWeight: 600, borderBottom: '1px solid #ccc' }}>
-                    {row.tag}
-                  </TableCell>
-                  <TableCell sx={{ color: 'text.secondary', borderBottom: '1px solid #ccc' }}>
-                    {row.asset}
-                  </TableCell>
-                  <TableCell sx={{ borderBottom: '1px solid #ccc' }}>
-                    <Chip
-                      label={row.severity.toUpperCase()}
-                      size="small"
-                      sx={{
-                        backgroundColor: getSeverityBgColor(row.severity),
-                        color: getSeverityColor(row.severity),
-                        fontWeight: 700,
-                        minWidth: 32,
-                        justifyContent: 'center',
-                      }}
-                    />
-                  </TableCell>
-                  <TableCell sx={{ borderBottom: '1px solid #ccc' }}>
-                    <StatusChip label={row.status.toUpperCase()} status={row.status} />
-                  </TableCell>
-                  <TableCell sx={{ color: 'text.secondary', borderBottom: '1px solid #ccc' }}>
-                    {row.action_taken || '—'}
+              {appliedNode === null ? (
+                <TableRow>
+                  <TableCell colSpan={6} sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
+                    Please select a hierarchy node and click the <strong>View</strong> button to display advisories.
                   </TableCell>
                 </TableRow>
-              ))}
-              {filteredRows.length === 0 && (
+              ) : filteredRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
+                  <TableCell colSpan={6} sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
                     No advisories match the current filter.
                   </TableCell>
                 </TableRow>
+              ) : (
+                filteredRows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    hover
+                    onClick={() => handleRowClick(row)}
+                    sx={{ cursor: 'pointer', '&:last-child td': { borderBottom: 0 } }}
+                  >
+                    <TableCell sx={{ color: 'text.primary', fontWeight: 600, borderBottom: '1px solid #ccc' }}>
+                      {row.sensor_id || '—'}
+                    </TableCell>
+                    <TableCell sx={{ color: 'text.primary', fontWeight: 600, borderBottom: '1px solid #ccc' }}>
+                      {row.sensor_name || '—'}
+                    </TableCell>
+                    <TableCell sx={{ color: 'text.secondary', borderBottom: '1px solid #ccc' }}>
+                      {row.asset}
+                    </TableCell>
+                    <TableCell sx={{ borderBottom: '1px solid #ccc' }}>
+                      <Chip
+                        label={row.severity.toUpperCase()}
+                        size="small"
+                        sx={{
+                          backgroundColor: getSeverityBgColor(row.severity),
+                          color: getSeverityColor(row.severity),
+                          fontWeight: 700,
+                          minWidth: 32,
+                          justifyContent: 'center',
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell sx={{ borderBottom: '1px solid #ccc' }}>
+                      <StatusChip label={row.status.toUpperCase()} status={row.status} />
+                    </TableCell>
+                    <TableCell sx={{ color: 'text.secondary', borderBottom: '1px solid #ccc' }}>
+                      {row.action_taken || '—'}
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
@@ -315,10 +373,16 @@ export const Advisories: React.FC = () => {
 
             <DialogContent sx={{ p: 3, mt: 2 }}>
               <Stack spacing={3}>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>Parameter Tag</Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedAdvisory.tag}</Typography>
-                </Box>
+                <Stack direction="row" spacing={4}>
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>Sensor ID</Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedAdvisory.sensor_id || '—'}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>Sensor Name</Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedAdvisory.sensor_name || '—'}</Typography>
+                  </Box>
+                </Stack>
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>Anomaly Description</Typography>
                   <Typography variant="body1" sx={{ lineHeight: 1.6 }}>{selectedAdvisory.description}</Typography>
