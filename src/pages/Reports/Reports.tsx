@@ -15,11 +15,12 @@ import type { HierarchyNode } from '../../types/hierarchy';
 import { HierarchySelector } from '../../components/Filters/HierarchySelector';
 
 const TIME_RANGE_OPTIONS = [
-  { value: 'last_1h', label: 'Last Hour' },
+  { value: 'last_1h', label: 'Last 1 Hour' },
   { value: 'last_8h', label: 'Last 8 Hours' },
   { value: 'last_24h', label: 'Last 24 Hours' },
   { value: 'last_7d', label: 'Last Week' },
   { value: 'last_30d', label: 'Last 30 Days' },
+  { value: 'custom', label: 'Custom' },
 ];
 
 const getDateRange = (rangeValue: string) => {
@@ -67,9 +68,13 @@ export const Reports: React.FC = () => {
 
   const handleTimeRangeChange = (val: string) => {
     setTimeRange(val);
-    const { from, to } = getDateRange(val);
-    setFromDate(from);
-    setToDate(to);
+
+    // Don't auto-update dates for custom range
+    if (val !== 'custom') {
+      const { from, to } = getDateRange(val);
+      setFromDate(from);
+      setToDate(to);
+    }
   };
 
   const total = advisories.length;
@@ -147,6 +152,7 @@ export const Reports: React.FC = () => {
             type="datetime-local"
             size="small"
             value={fromDate}
+            disabled={timeRange !== 'custom'}
             onChange={(e) => setFromDate(e.target.value)}
             slotProps={{ inputLabel: { shrink: true } }}
             sx={{ minWidth: 200 }}
@@ -156,6 +162,7 @@ export const Reports: React.FC = () => {
             type="datetime-local"
             size="small"
             value={toDate}
+            disabled={timeRange !== 'custom'}
             onChange={(e) => setToDate(e.target.value)}
             slotProps={{ inputLabel: { shrink: true } }}
             sx={{ minWidth: 200 }}

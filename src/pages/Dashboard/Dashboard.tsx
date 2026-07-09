@@ -17,11 +17,12 @@ import { PageHeader } from '../../components/Cards/PageHeader';
 import { HierarchySelector } from '../../components/Filters/HierarchySelector';
 
 const TIME_RANGE_OPTIONS = [
-  { value: 'last_1h', label: 'Last Hour' },
+  { value: 'last_1h', label: 'Last 1 Hour' },
   { value: 'last_8h', label: 'Last 8 Hours' },
   { value: 'last_24h', label: 'Last 24 Hours' },
   { value: 'last_7d', label: 'Last Week' },
   { value: 'last_30d', label: 'Last 30 Days' },
+  { value: 'custom', label: 'Custom' },
 ];
 
 const getDateRange = (rangeValue: string) => {
@@ -92,9 +93,13 @@ export const Dashboard: React.FC = () => {
 
   const handleTimeRangeChange = (val: string) => {
     setTimeRange(val);
-    const { from, to } = getDateRange(val);
-    setFromDate(from);
-    setToDate(to);
+
+    // Don't auto-update dates for custom range
+    if (val !== 'custom') {
+      const { from, to } = getDateRange(val);
+      setFromDate(from);
+      setToDate(to);
+    }
   };
 
   const getHoursFromRange = () => {
@@ -120,8 +125,8 @@ export const Dashboard: React.FC = () => {
 
   const openSensorExpanded = (sensor: HierarchyNode) => {
     setExpandedSensor(sensor);
-    const { from, to } = getDateRange('last_24h');
-    setSensorExpTimeRange('last_24h'); setSensorExpFrom(from); setSensorExpTo(to);
+    const { from, to } = getDateRange(timeRange);
+    setSensorExpTimeRange(timeRange); setSensorExpFrom(from); setSensorExpTo(to);
     setExpandedGranularity('auto');
   };
 
@@ -287,8 +292,12 @@ export const Dashboard: React.FC = () => {
           </Select>
         </FormControl>
 
-        <TextField label="From" type="datetime-local" size="small" value={from} onChange={(e) => onFromChange(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ minWidth: 200 }} />
-        <TextField label="To" type="datetime-local" size="small" value={to} onChange={(e) => onToChange(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ minWidth: 200 }} />
+        <TextField label="From" type="datetime-local" size="small" value={from} 
+          onChange={(e) => onFromChange(e.target.value)} disabled={sensorExpTimeRange !== 'custom'}
+          slotProps={{ inputLabel: { shrink: true } }} sx={{ minWidth: 200 }} />
+        <TextField label="To" type="datetime-local" size="small" value={to} 
+          onChange={(e) => onToChange(e.target.value)} disabled={sensorExpTimeRange !== 'custom'}
+          slotProps={{ inputLabel: { shrink: true } }} sx={{ minWidth: 200 }} />
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         {extraRight}
@@ -342,12 +351,14 @@ export const Dashboard: React.FC = () => {
                 </FormControl>
                 <TextField
                   label="From" type="datetime-local" size="small" value={fromDate}
+                  disabled={timeRange !== 'custom'}
                   onChange={(e) => setFromDate(e.target.value)}
                   slotProps={{ inputLabel: { shrink: true } }}
                   sx={{ minWidth: 200 }}
                 />
                 <TextField
                   label="To" type="datetime-local" size="small" value={toDate}
+                  disabled={timeRange !== 'custom'}
                   onChange={(e) => setToDate(e.target.value)}
                   slotProps={{ inputLabel: { shrink: true } }}
                   sx={{ minWidth: 200 }}
