@@ -31,8 +31,8 @@ jobs:
     uses: ./.github/workflows/Backend_docker_deploy.yml
     with:
       environment: "dev"
-      image_name: "assetwize-api-dev"
-      acr_name: "${{ vars.ACR_NAME_DEV }}"
+      image_name: "${{ fromJson(vars.APP_INFO_DEV).application_name}}-api-dev"
+      acr_name: "${{ fromJson(vars.APP_INFO_DEV).api_acr_name}}"
     secrets:
       azure_creds: ${{ secrets.AZURE_CREDENTIALS_DEV }}
   
@@ -43,7 +43,7 @@ jobs:
   #   uses: ./.github/workflows/Backend_docker_deploy.yml
   #   with:
   #     environment: "prod"
-  #     image_name: "assetwize-api-prd"
-  #     acr_name: "${{ vars.ACR_NAME_PRD }}"
+  #     image_name: "${{ fromJson(vars.APP_INFO_PRD).application_name}}-api-prd"
+  #     acr_name: "${{ fromJson(vars.APP_INFO_PRD).api_acr_name}}"
   #   secrets:
   #     azure_creds: ${{ secrets.AZURE_CREDENTIALS_PRD }}
