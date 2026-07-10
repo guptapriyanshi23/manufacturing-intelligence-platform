@@ -106,10 +106,18 @@ export const HierarchySelector: React.FC<HierarchySelectorProps> = ({
     const newSelections = [...selections.slice(0, levelIndex), value, ...new Array(presentLevels.length - levelIndex - 1).fill('')];
     setSelections(newSelections);
 
-    const selectedNode = value ? flatNodes.find(n => n.id === value) ?? null : null;
+    let lastSelectedId: number | '' = '';
+    for (let j = newSelections.length - 1; j >= 0; j--) {
+      if (newSelections[j] !== '') {
+        lastSelectedId = newSelections[j];
+        break;
+      }
+    }
+    const selectedNode = lastSelectedId ? flatNodes.find(n => n.id === lastSelectedId) ?? null : null;
+
     const mandatoryIdx = presentLevels.indexOf(MANDATORY_UP_TO);
     const isComplete = mandatoryIdx === -1
-      ? !!value
+      ? !!lastSelectedId
       : newSelections.slice(0, mandatoryIdx + 1).every(s => s !== '');
 
     onSelectionChange(selectedNode, isComplete);
@@ -140,7 +148,7 @@ export const HierarchySelector: React.FC<HierarchySelectorProps> = ({
               label={getLevelLabel(level)}
               onChange={(e) => handleChange(i, e.target.value as number | '')}
             >
-              {!isMandatory && <MenuItem value=""><em>All</em></MenuItem>}
+              <MenuItem value=""><em>None</em></MenuItem>
               {options.map(n => (
                 <MenuItem key={n.id} value={n.id}>{n.display_name}</MenuItem>
               ))}

@@ -48,6 +48,13 @@ app.mount("/static", StaticFiles(directory="backend/app/static"), name="static")
 def startup_event():
     try:
         Base.metadata.create_all(bind=engine)
+        from backend.app.core.database import SessionLocal
+        from backend.app.modules.alerts.service import ensure_alert_columns
+        db = SessionLocal()
+        try:
+            ensure_alert_columns(db)
+        finally:
+            db.close()
     except Exception as e:
         print(f"Warning: Database tables could not be initialized on startup: {e}")
 

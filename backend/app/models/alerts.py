@@ -16,6 +16,12 @@ class Alert(Base):
     id = Column(Integer, primary_key=True, index=True)
     sensor_id = Column(String, nullable=True, index=True)
     node_id = Column(Integer, nullable=True, index=True)
+    name = Column(String, nullable=True)
+    description = Column(String, nullable=True)
+    asset_name = Column(String, nullable=True)
+    sensor_name = Column(String, nullable=True)
+    condition = Column(String, nullable=True)
+    threshold = Column(Float, nullable=True)
     severity = Column(String, nullable=False)  # 'critical', 'warning', 'info'
     message = Column(String, nullable=False)
     status = Column(String, nullable=False, default="active")  # 'active', 'acknowledged', 'resolved'

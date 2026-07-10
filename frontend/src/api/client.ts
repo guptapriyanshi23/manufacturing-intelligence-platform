@@ -82,12 +82,24 @@ export const api = {
   },
   dashboard: {
     getSummary: () => request<any>('/dashboard/summary'),
-    getTelemetry: (sensorIds: string[], hours: number = 24, granularity?: string) => {
+    getTelemetry: (
+      sensorIds: string[],
+      hours: number = 24,
+      granularity?: string,
+      startTime?: string,
+      endTime?: string
+    ) => {
       const params = new URLSearchParams();
       sensorIds.forEach(id => params.append('sensor_ids', id));
       params.append('hours', hours.toString());
       if (granularity) {
         params.append('granularity', granularity);
+      }
+      if (startTime) {
+        params.append('start_time', startTime);
+      }
+      if (endTime) {
+        params.append('end_time', endTime);
       }
       return request<any[]>(`/dashboard/telemetry?${params.toString()}`);
     },

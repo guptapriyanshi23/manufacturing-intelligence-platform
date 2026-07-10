@@ -56,6 +56,8 @@ export const Dashboard: React.FC = () => {
   const [telemetryPoints, setTelemetryPoints] = useState<TelemetryPoint[]>([]);
   const [advisories, setAdvisories] = useState<any[]>([]);
   const [selectedNode, setSelectedNode] = useState<HierarchyNode | null>(null);
+  const [appliedSensors, setAppliedSensors] = useState<HierarchyNode[]>([]);
+  const [appliedSensorIds, setAppliedSensorIds] = useState<string[]>([]);
 
   const [selectedSiteId, setSelectedSiteId] = useState<number | ''>('');
 
@@ -90,6 +92,9 @@ export const Dashboard: React.FC = () => {
   const [timeRange, setTimeRange] = useState('last_24h');
   const [fromDate, setFromDate] = useState(initRange.from);
   const [toDate, setToDate] = useState(initRange.to);
+  const [appliedTimeRange, setAppliedTimeRange] = useState('last_24h');
+  const [appliedFromDate, setAppliedFromDate] = useState(initRange.from);
+  const [appliedToDate, setAppliedToDate] = useState(initRange.to);
 
   const handleTimeRangeChange = (val: string) => {
     setTimeRange(val);
@@ -144,11 +149,20 @@ export const Dashboard: React.FC = () => {
       return map[sensorExpTimeRange] ?? 24;
     };
 
-    api.dashboard.getTelemetry([sid], getExpHours(), expandedGranularity === 'auto' ? undefined : expandedGranularity)
+    const customStart = sensorExpTimeRange === 'custom' ? new Date(sensorExpFrom).toISOString() : undefined;
+    const customEnd = sensorExpTimeRange === 'custom' ? new Date(sensorExpTo).toISOString() : undefined;
+
+    api.dashboard.getTelemetry(
+      [sid],
+      getExpHours(),
+      expandedGranularity === 'auto' ? undefined : expandedGranularity,
+      customStart,
+      customEnd
+    )
       .then(setExpandedTelemetry)
       .catch(() => setExpandedTelemetry([]))
       .finally(() => setExpandedTelemetryLoading(false));
-  }, [expandedSensor, sensorExpTimeRange, expandedGranularity]);
+  }, [expandedSensor, sensorExpTimeRange, expandedGranularity, sensorExpFrom, sensorExpTo]);
 
   const [profile, setProfile] = useState<{ email: string; permissions: string[] } | null>(null);
 
@@ -181,7 +195,7 @@ export const Dashboard: React.FC = () => {
 
   const handleHierarchyChange = (node: HierarchyNode | null, isComplete: boolean) => {
     setSelectedNode(node);
-    if (!node || !isComplete) {
+    if (!node) {
       setDescendantSensors([]);
       setSelectedSensorIds([]);
       return;
@@ -197,32 +211,143 @@ export const Dashboard: React.FC = () => {
     }
     if (node.node_type === 'sensor') sensors.push(node);
     setDescendantSensors(sensors);
-    setSelectedSensorIds(sensors.map(s => s.sensor_metadata?.sensor_id).filter(Boolean) as string[]);
+    
+    // Automatically select all active graphs if selected till component,
+    // otherwise (asset or above) leave deselected by default.
+    if (node.node_type === 'component') {
+      setSelectedSensorIds(sensors.map(s => s.sensor_metadata?.sensor_id).filter(Boolean) as string[]);
+    } else {
+      setSelectedSensorIds([]);
+    }
   };
 
   const handleViewClick = () => {
-    if (selectedSensorIds.length === 0) { setTelemetryPoints([]); return; }
+    if (selectedSensorIds.length === 0) {
+      setTelemetryPoints([]);
+      setAppliedSensors([]);
+      setAppliedSensorIds([]);
+      return;
+    }
     setTelemetryLoading(true);
-    api.dashboard.getTelemetry(selectedSensorIds, getHoursFromRange())
-      .then(setTelemetryPoints)
-      .catch(() => setTelemetryPoints([]))
+    const customStart = timeRange === 'custom' ? new Date(fromDate).toISOString() : undefined;
+    const customEnd = timeRange === 'custom' ? new Date(toDate).toISOString() : undefined;
+    api.dashboard.getTelemetry(selectedSensorIds, getHoursFromRange(), undefined, customStart, customEnd)
+      .then((res) => {
+        setTelemetryPoints(res);
+        setAppliedSensors(descendantSensors);
+        setAppliedSensorIds(selectedSensorIds);
+        setAppliedTimeRange(timeRange);
+        setAppliedFromDate(fromDate);
+        setAppliedToDate(toDate);
+      })
+      .catch(() => {
+        setTelemetryPoints([]);
+        setAppliedSensors([]);
+        setAppliedSensorIds([]);
+      })
       .finally(() => setTelemetryLoading(false));
   };
 
-  const getSensorDataPoints = (sensorId: string) =>
-    telemetryPoints
-      .filter(p => p.sensor_id === sensorId)
-      .map(p => ({
-        timestamp: new Date(p.timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }),
-        value: p.value,
-        name: p.sensor_name,
-        alarmLimit: (p as any).alarm_limit,
-        tripLimit: (p as any).trip_limit,
-      }));
+  const getBucketedDataPoints = (
+    points: TelemetryPoint[],
+    sensorId: string,
+    start: Date,
+    end: Date,
+    granularityStr?: string
+  ) => {
+    const sensorPoints = points.filter(p => p.sensor_id === sensorId);
+    if (sensorPoints.length === 0) return [];
+
+    let intervalMs = 10 * 60 * 1000; // default 10m
+    const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+
+    if (granularityStr && granularityStr !== 'auto') {
+      const secondsMap: Record<string, number> = {
+        '1m': 60,
+        '5m': 300,
+        '10m': 600,
+        '1h': 3600,
+        '6h': 21600,
+        '1d': 86400,
+      };
+      if (secondsMap[granularityStr]) {
+        intervalMs = secondsMap[granularityStr] * 1000;
+      } else if (granularityStr === 'raw') {
+        intervalMs = 60 * 1000; // raw approx 1m
+      }
+    } else {
+      if (hours <= 2) {
+        intervalMs = 60 * 1000; // 1m
+      } else if (hours <= 24) {
+        intervalMs = 10 * 60 * 1000; // 10m
+      } else if (hours <= 168) {
+        intervalMs = 60 * 60 * 1000; // 1h
+      } else {
+        intervalMs = 6 * 60 * 60 * 1000; // 6h
+      }
+    }
+
+    const timePointsMap = new Map<number, any>();
+    sensorPoints.forEach(p => {
+      const pTime = new Date(p.timestamp).getTime();
+      const bucketTime = Math.floor(pTime / intervalMs) * intervalMs;
+      timePointsMap.set(bucketTime, p);
+    });
+
+    const bucketedPoints: any[] = [];
+    const startBucket = Math.floor(start.getTime() / intervalMs) * intervalMs;
+    const endBucket = Math.floor(end.getTime() / intervalMs) * intervalMs;
+
+    for (let t = startBucket; t <= endBucket; t += intervalMs) {
+      const existing = timePointsMap.get(t);
+      const tDate = new Date(t);
+      const timestampStr = tDate.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+
+      if (existing) {
+        bucketedPoints.push({
+          timestamp: timestampStr,
+          value: existing.value,
+          name: existing.sensor_name,
+          alarmLimit: (existing as any).alarm_limit,
+          tripLimit: (existing as any).trip_limit,
+        });
+      } else {
+        bucketedPoints.push({
+          timestamp: timestampStr,
+          value: 0,
+          name: sensorPoints[0].sensor_name,
+          alarmLimit: (sensorPoints[0] as any).alarm_limit,
+          tripLimit: (sensorPoints[0] as any).trip_limit,
+        });
+      }
+    }
+
+    return bucketedPoints;
+  };
+
+  const getSensorDataPoints = (sensorId: string) => {
+    const now = new Date();
+    const getAppliedHoursFromRange = () => {
+      const map: Record<string, number> = { last_1h: 1, last_8h: 8, last_24h: 24, last_7d: 168, last_30d: 720 };
+      return map[appliedTimeRange] ?? 24;
+    };
+    let start = new Date(now.getTime() - getAppliedHoursFromRange() * 60 * 60 * 1000);
+    let end = now;
+    if (appliedTimeRange === 'custom') {
+      start = new Date(appliedFromDate);
+      end = new Date(appliedToDate);
+    }
+    return getBucketedDataPoints(telemetryPoints, sensorId, start, end);
+  };
 
   const handleDropdownSelectChange = (event: any) => {
     const value = event.target.value;
-    setSelectedSensorIds(typeof value === 'string' ? value.split(',') : value);
+    const arrayValue = typeof value === 'string' ? value.split(',') : value;
+    if (arrayValue.includes('__clear_all__')) {
+      setSelectedSensorIds([]);
+    } else {
+      setSelectedSensorIds(arrayValue);
+    }
   };
 
   const renderLineChart = (data: any[], sensor: HierarchyNode, height: number) => {
@@ -319,9 +444,10 @@ export const Dashboard: React.FC = () => {
               labelId="site-select-label"
               value={selectedSiteId}
               label="Site"
-              onChange={(e) => setSelectedSiteId(e.target.value as number)}
+              onChange={(e) => setSelectedSiteId(e.target.value as number | '')}
               disabled={hierarchyLoading}
             >
+              <MenuItem value=""><em>None</em></MenuItem>
               {sites.map(s => (
                 <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
               ))}
@@ -373,6 +499,9 @@ export const Dashboard: React.FC = () => {
                     label="Filter Active Graphs"
                     renderValue={(selected) => `Active Graphs: ${(selected as string[]).length}`}
                   >
+                    <MenuItem value="__clear_all__">
+                      <ListItemText primary="Clear All" sx={{ color: 'text.secondary', fontStyle: 'italic' }} />
+                    </MenuItem>
                     {descendantSensors.map((sensor) => {
                       const sid = sensor.sensor_metadata?.sensor_id || '';
                       if (!sid) return null;
@@ -406,15 +535,7 @@ export const Dashboard: React.FC = () => {
         </Box>
       ) : (
         <Grid container spacing={3}>
-          {descendantSensors.length === 0 ? (
-            <Grid size={12}>
-              <Paper sx={{ p: 4, textAlign: 'center', border: '1px solid #ccc' }}>
-                <Typography color="text.secondary">
-                  No sensors defined under the selected hierarchy level. Select a level with configured sensor metadata.
-                </Typography>
-              </Paper>
-            </Grid>
-          ) : telemetryPoints.length === 0 && !telemetryLoading ? (
+          {appliedSensors.length === 0 && telemetryPoints.length === 0 && !telemetryLoading ? (
             <Grid size={12}>
               <Paper sx={{ p: 6, textAlign: 'center', border: '1px solid #ccc', borderRadius: 2 }}>
                 <Typography variant="h6" color="text.secondary" gutterBottom sx={{ fontWeight: 600 }}>
@@ -431,9 +552,28 @@ export const Dashboard: React.FC = () => {
                 <CircularProgress size={40} color="secondary" />
               </Box>
             </Grid>
+          ) : appliedSensors.length === 0 ? (
+            <Grid size={12}>
+              <Paper sx={{ p: 4, textAlign: 'center', border: '1px solid #ccc' }}>
+                <Typography color="text.secondary">
+                  No sensors defined under the selected hierarchy level. Select a level with configured sensor metadata.
+                </Typography>
+              </Paper>
+            </Grid>
           ) : (
-            descendantSensors
-              .filter(sensor => selectedSensorIds.includes(sensor.sensor_metadata?.sensor_id || ''))
+            appliedSensors
+              .filter(sensor => appliedSensorIds.includes(sensor.sensor_metadata?.sensor_id || ''))
+              .sort((a, b) => {
+                const aSid = a.sensor_metadata?.sensor_id || '';
+                const bSid = b.sensor_metadata?.sensor_id || '';
+                const aAdvisory = openAdvisories.find(adv => adv.sensor_id === aSid);
+                const bAdvisory = openAdvisories.find(adv => adv.sensor_id === bSid);
+                
+                const aPriority = aAdvisory ? (severityPriority[aAdvisory.severity] || 99) : 99;
+                const bPriority = bAdvisory ? (severityPriority[bAdvisory.severity] || 99) : 99;
+                
+                return aPriority - bPriority;
+              })
               .map(sensor => {
                 const sid = sensor.sensor_metadata?.sensor_id || '';
                 const data = getSensorDataPoints(sid);
@@ -444,7 +584,7 @@ export const Dashboard: React.FC = () => {
                   <Grid size={12} key={sensor.id}>
                     <Grid container spacing={3} alignItems="stretch">
                       {/* Chart Area */}
-                      <Grid size={{ xs: 12, lg: matchingAdvisory ? 8 : 12 }}>
+                      <Grid size={{ xs: 12, lg: 8 }}>
                         <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc', height: '100%', display: 'flex', flexDirection: 'column' }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                             <Typography variant="h6" sx={{ fontWeight: 700 }}>{sensor.display_name}</Typography>
@@ -573,15 +713,20 @@ export const Dashboard: React.FC = () => {
         <DialogContent sx={{ p: 3 }}>
           {expandedSensor && (() => {
             const sid = expandedSensor.sensor_metadata?.sensor_id || '';
-            const data = expandedTelemetry
-              .filter(p => p.sensor_id === sid)
-              .map(p => ({
-                timestamp: new Date(p.timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }),
-                value: p.value,
-                name: p.sensor_name,
-                alarmLimit: (p as any).alarm_limit,
-                tripLimit: (p as any).trip_limit,
-              }));
+            const getExpStartEnd = () => {
+              const now = new Date();
+              const map: Record<string, number> = { last_1h: 1, last_8h: 8, last_24h: 24, last_7d: 168, last_30d: 720 };
+              const hours = map[sensorExpTimeRange] ?? 24;
+              let sTime = new Date(now.getTime() - hours * 60 * 60 * 1000);
+              let eTime = now;
+              if (sensorExpTimeRange === 'custom') {
+                sTime = new Date(sensorExpFrom);
+                eTime = new Date(sensorExpTo);
+              }
+              return { start: sTime, end: eTime };
+            };
+            const { start, end } = getExpStartEnd();
+            const data = getBucketedDataPoints(expandedTelemetry, sid, start, end, expandedGranularity);
             const unit = expandedSensor.sensor_metadata?.unit || '';
             return (
               <>

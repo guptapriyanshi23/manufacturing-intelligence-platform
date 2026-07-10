@@ -51,38 +51,45 @@ const getDateRange = (rangeValue: string) => {
 const demoAlerts = [
   {
     id: 101,
-    alertName: 'Compressor 1 Temp Alert',
-    asset: 'Compressor 1',
-    sensor: 'Temperature',
-    condition: 'Greater than',
-    threshold: '85',
+    name: 'Spindle Overheating',
+    description: 'Bearing temperature exceeded normal operating limit of 80°C.',
+    asset_name: 'CNC Milling Center A',
+    sensor_name: 'Spindle Temperature Sensor',
+    condition: 'bearing_temperature > 80',
+    threshold: 80,
     severity: 'critical',
-    status: 'open',
+    status: 'active',
     timestamp: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
+    node_id: 3,
   },
   {
     id: 102,
-    alertName: 'Pump 5 Pressure Spike',
-    asset: 'Pump 5',
-    sensor: 'Pressure',
-    condition: 'Greater than or equal',
-    threshold: '120',
+    name: 'High Axis Vibration',
+    description: 'Vibration levels on the Y-Axis exceeded warning threshold of 2.5 mm/s².',
+    asset_name: 'CNC Milling Center A',
+    sensor_name: 'Spindle Vibration Y-Axis',
+    condition: 'spindle_vibration > 2.5',
+    threshold: 2.5,
     severity: 'warning',
-    status: 'open',
+    status: 'active',
     timestamp: new Date(Date.now() - 1000 * 60 * 42).toISOString(),
+    node_id: 3,
   },
   {
     id: 103,
-    alertName: 'Assembly Line Vibration',
-    asset: 'Assembly Line',
-    sensor: 'Vibration',
-    condition: 'Less than',
-    threshold: '8',
+    name: 'Voltage Sag Detected',
+    description: 'Arc voltage dropped below 18V during active weld.',
+    asset_name: 'Robotic Welder Cell 7',
+    sensor_name: 'Welding Power Arc Voltage',
+    condition: 'arc_voltage < 18',
+    threshold: 18,
     severity: 'info',
     status: 'acknowledged',
     timestamp: new Date(Date.now() - 1000 * 60 * 80).toISOString(),
+    node_id: 6,
   },
 ];
+
 export const Alerts: React.FC = () => {
   const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
   const [hierarchyLoading, setHierarchyLoading] = useState(true);
@@ -108,6 +115,15 @@ export const Alerts: React.FC = () => {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [showActiveOnly, setShowActiveOnly] = useState(false);
 
+  // Active filter state selection
+  const [selectedNode, setSelectedNode] = useState<HierarchyNode | null>(null);
+
+  // Applied filter states
+  const [appliedNode, setAppliedNode] = useState<HierarchyNode | null>(null);
+  const [appliedFromDate, setAppliedFromDate] = useState(initial.from);
+  const [appliedToDate, setAppliedToDate] = useState(initial.to);
+  const [appliedTimeRange, setAppliedTimeRange] = useState('last_24h');
+
   useEffect(() => {
     api.hierarchy.list(true)
       .then(setFlatNodes)
@@ -132,7 +148,77 @@ export const Alerts: React.FC = () => {
     }
   };
 
-  const filteredAlerts = showActiveOnly ? alerts.filter(a => a.status === 'open' || a.status === 'active') : alerts;
+  const handleHierarchyChange = (node: HierarchyNode | null) => {
+    setSelectedNode(node);
+  };
+
+  const handleViewClick = () => {
+    setAppliedNode(selectedNode);
+    setAppliedFromDate(fromDate);
+    setAppliedToDate(toDate);
+    setAppliedTimeRange(timeRange);
+  };
+
+  const filteredAlerts = useMemo(() => {
+    let result = [...alerts];
+
+    // Helper to get descendant node IDs and sensor IDs
+    const getDescendants = (nodeId: number) => {
+      const nodeIds = new Set<number>();
+      const sensorIds = new Set<string>();
+      const queue = [nodeId];
+      
+      while (queue.length > 0) {
+        const id = queue.shift()!;
+        nodeIds.add(id);
+        
+        const node = flatNodes.find(n => n.id === id);
+        if (node?.sensor_metadata?.sensor_id) {
+          sensorIds.add(node.sensor_metadata.sensor_id);
+        }
+        
+        flatNodes
+          .filter(n => n.parent_id === id)
+          .forEach(n => queue.push(n.id));
+      }
+      
+      return { nodeIds, sensorIds };
+    };
+
+    // 1. Filter by Active status
+    if (showActiveOnly) {
+      result = result.filter(a => a.status === 'active' || a.status === 'open');
+    }
+
+    // 2. Filter by Site
+    if (selectedSiteId) {
+      const { nodeIds, sensorIds } = getDescendants(Number(selectedSiteId));
+      result = result.filter(a => 
+        nodeIds.has(a.node_id) || 
+        (a.sensor_id && sensorIds.has(a.sensor_id))
+      );
+    }
+
+    // 3. Filter by Selected Hierarchy Node
+    if (appliedNode) {
+      const { nodeIds, sensorIds } = getDescendants(appliedNode.id);
+      result = result.filter(a => 
+        nodeIds.has(a.node_id) || 
+        (a.sensor_id && sensorIds.has(a.sensor_id))
+      );
+    }
+
+    // 4. Filter by Time Range / Dates
+    const start = new Date(appliedFromDate).getTime();
+    const end = new Date(appliedToDate).getTime();
+    result = result.filter(a => {
+      const t = new Date(a.timestamp).getTime();
+      return t >= start && t <= end;
+    });
+
+    return result;
+  }, [alerts, showActiveOnly, selectedSiteId, appliedNode, appliedFromDate, appliedToDate, flatNodes]);
+
   const allSelected = filteredAlerts.length > 0 && selectedIds.length === filteredAlerts.length;
   const someSelected = selectedIds.length > 0 && !allSelected;
 
@@ -174,7 +260,7 @@ export const Alerts: React.FC = () => {
         <Box sx={{ mb: 3 }}>
             <HierarchySelector
               flatNodes={flatNodes}
-              onSelectionChange={() => {}}
+              onSelectionChange={handleHierarchyChange}
               loading={hierarchyLoading}
               selectedSiteId={selectedSiteId}
             />
@@ -213,7 +299,7 @@ export const Alerts: React.FC = () => {
             slotProps={{ inputLabel: { shrink: true } }}
             sx={{ minWidth: 200 }}
           />
-          <Button variant="contained" color="secondary" sx={{ minWidth: 90, fontWeight: 600, flexShrink: 0 }}>
+          <Button variant="contained" color="secondary" onClick={handleViewClick} sx={{ minWidth: 90, fontWeight: 600, flexShrink: 0 }}>
             View
           </Button>
           <Box sx={{ flex: 1 }} />
@@ -261,7 +347,7 @@ export const Alerts: React.FC = () => {
                 <TableCell padding="checkbox" sx={{ borderBottom: '1px solid #ccc' }}>
                   <Checkbox indeterminate={someSelected} checked={allSelected} onChange={handleSelectAll} color="primary" />
                 </TableCell>
-                {['Alert Name', 'Asset', 'Sensor', 'Condition', 'Threshold', 'Severity', 'Status', 'Detected At'].map(col => (
+                {['Alert Name', 'Alert Description', 'Asset Name', 'Sensor Name', 'Condition', 'Threshold', 'Severity', 'Status', 'Detected At'].map(col => (
                   <TableCell key={col} sx={{ fontWeight: 700, borderBottom: '1px solid #ccc' }}>{col}</TableCell>
                 ))}
               </TableRow>
@@ -278,9 +364,10 @@ export const Alerts: React.FC = () => {
                   <TableCell padding="checkbox" sx={{ borderBottom: '1px solid #ccc' }}>
                     <Checkbox checked={selectedIds.includes(row.id)} color="primary" onClick={(e) => e.stopPropagation()} onChange={() => handleSelectRow(row.id)} />
                   </TableCell>
-                  <TableCell sx={{ fontWeight: 600, borderBottom: '1px solid #ccc' }}>{row.alertName}</TableCell>
-                  <TableCell sx={{ borderBottom: '1px solid #ccc' }}>{row.asset}</TableCell>
-                  <TableCell sx={{ borderBottom: '1px solid #ccc' }}>{row.sensor}</TableCell>
+                  <TableCell sx={{ fontWeight: 600, borderBottom: '1px solid #ccc' }}>{row.name}</TableCell>
+                  <TableCell sx={{ borderBottom: '1px solid #ccc' }}>{row.description}</TableCell>
+                  <TableCell sx={{ borderBottom: '1px solid #ccc' }}>{row.asset_name}</TableCell>
+                  <TableCell sx={{ borderBottom: '1px solid #ccc' }}>{row.sensor_name}</TableCell>
                   <TableCell sx={{ borderBottom: '1px solid #ccc' }}>{row.condition}</TableCell>
                   <TableCell sx={{ borderBottom: '1px solid #ccc' }}>{row.threshold}</TableCell>
                   <TableCell sx={{ borderBottom: '1px solid #ccc' }}>
@@ -296,7 +383,7 @@ export const Alerts: React.FC = () => {
               ))}
               {filteredAlerts.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
+                  <TableCell colSpan={10} sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
                     No alerts found.
                   </TableCell>
                 </TableRow>

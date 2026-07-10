@@ -418,10 +418,84 @@ def stream_live_telemetry(session, sensors):
             index = (index + 1) % N
             time.sleep(0.6) # 0.6 seconds sleep = 100 points per minute total
             
-    except KeyboardInterrupt:
-        print("\nStreaming stopped by user.")
     except Exception as e:
         print(f"Streaming error: {e}")
+
+
+def seed_alerts(db):
+    from backend.app.modules.alerts.service import ensure_alert_columns
+    from backend.app.models.alerts import Alert
+
+    # Ensure all new columns exist in the database table
+    ensure_alert_columns(db)
+
+    # Check if alerts are already seeded
+    try:
+        if db.query(Alert).count() > 0:
+            return
+    except Exception as e:
+        print(f"Error checking alerts count: {e}. Attempting to run column migration first...")
+        db.rollback()
+        ensure_alert_columns(db)
+        if db.query(Alert).count() > 0:
+            return
+
+    mock_alerts = [
+        {
+            "node_id": 3,
+            "sensor_id": "SEN-TEMP-842",
+            "name": "Spindle Overheating",
+            "description": "Bearing temperature exceeded normal operating limit of 80°C.",
+            "asset_name": "CNC Milling Center A",
+            "sensor_name": "Spindle Temperature Sensor",
+            "condition": "bearing_temperature > 80",
+            "threshold": 80.0,
+            "severity": "critical",
+            "status": "active",
+        },
+        {
+            "node_id": 3,
+            "sensor_id": "SEN-VIB-911",
+            "name": "High Axis Vibration",
+            "description": "Vibration levels on the Y-Axis exceeded warning threshold of 2.5 mm/s².",
+            "asset_name": "CNC Milling Center A",
+            "sensor_name": "Spindle Vibration Y-Axis",
+            "condition": "spindle_vibration > 2.5",
+            "threshold": 2.5,
+            "severity": "warning",
+            "status": "active",
+        },
+        {
+            "node_id": 6,
+            "sensor_id": "SEN-VOLT-402",
+            "name": "Voltage Sag Detected",
+            "description": "Arc voltage dropped below 18V during active weld.",
+            "asset_name": "Robotic Welder Cell 7",
+            "sensor_name": "Welding Power Arc Voltage",
+            "condition": "arc_voltage < 18",
+            "threshold": 18.0,
+            "severity": "info",
+            "status": "acknowledged",
+        },
+    ]
+
+    for ma in mock_alerts:
+        db_alert = Alert(
+            node_id=ma["node_id"],
+            sensor_id=ma["sensor_id"],
+            name=ma["name"],
+            description=ma["description"],
+            asset_name=ma["asset_name"],
+            sensor_name=ma["sensor_name"],
+            condition=ma["condition"],
+            threshold=ma["threshold"],
+            severity=ma["severity"],
+            status=ma["status"],
+            message=ma["description"] # Keep message for compatibility
+        )
+        db.add(db_alert)
+    db.commit()
+    print("Alerts table successfully seeded with mock entries.")
 
 
 if __name__ == "__main__":
@@ -509,7 +583,7 @@ if __name__ == "__main__":
         #     );
         # """))
         # db.commit()
-
+ 
         # # Eagerly convert to TimescaleDB hypertable if extension is active
         # try:
         #     has_timescale = db.execute(text("SELECT 1 FROM pg_extension WHERE extname = 'timescaledb'")).scalar()
@@ -523,17 +597,11 @@ if __name__ == "__main__":
         
         active_sensors = get_active_sensors(db)
         
-        # # Seed thresholds and alerts
-        # seed_thresholds_and_alerts(db, active_sensors)
-        
-        # # Seed advisories
-        # seed_advisories(db, active_sensors)
-        
-        # # Seed users and permissions
-        # seed_users_and_permissions(db)
+        # Seed alerts
+        seed_alerts(db)
         
         # 1. Generate 48h (2 days) historical data
-        generate_history(db, active_sensors, hours=48)
+        # generate_history(db, active_sensors, hours=48)
         
         # 2. Start live streaming
         # stream_live_telemetry(db, active_sensors)

@@ -47,18 +47,6 @@ export const Advisories: React.FC = () => {
   const queryParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const qSiteId = queryParams.get('siteId') ? Number(queryParams.get('siteId')) : '';
   const qNodeId = queryParams.get('nodeId') ? Number(queryParams.get('nodeId')) : null;
-
-  useEffect(() => {
-    if (flatNodes.length > 0) {
-      if (qSiteId) {
-        setSelectedSiteId(qSiteId);
-      } else if (!selectedSiteId) {
-        const sitesList = flatNodes.filter(n => n.node_type === 'site');
-        setSelectedSiteId(sitesList[0]?.id || '');
-      }
-    }
-  }, [flatNodes, selectedSiteId, qSiteId]);
-
   const [advisories, setAdvisories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -71,17 +59,45 @@ export const Advisories: React.FC = () => {
   const [appliedStatus, setAppliedStatus] = useState<string>('');
   const [appliedSeverity, setAppliedSeverity] = useState<string>('');
   const [appliedNode, setAppliedNode] = useState<HierarchyNode | null>(null);
-
-  // Sync initial query params with selection and applied states
   useEffect(() => {
-    if (flatNodes.length > 0 && qNodeId) {
-      const matchingNode = flatNodes.find(n => n.id === qNodeId);
+    if (flatNodes.length === 0) return;
+
+    let siteIdVal = qSiteId;
+    let nodeIdVal = qNodeId;
+    let statusVal = '';
+    let severityVal = '';
+
+    const saved = localStorage.getItem('advisories_applied_filters');
+    if (saved) {
+      try {
+        const filters = JSON.parse(saved);
+        if (!siteIdVal && filters.siteId) siteIdVal = filters.siteId;
+        if (!nodeIdVal && filters.nodeId) nodeIdVal = filters.nodeId;
+        if (filters.status) statusVal = filters.status;
+        if (filters.severity) severityVal = filters.severity;
+      } catch (e) {}
+    }
+
+    if (siteIdVal) {
+      setSelectedSiteId(siteIdVal);
+    } else {
+      const sitesList = flatNodes.filter(n => n.node_type === 'site');
+      setSelectedSiteId(sitesList[0]?.id || '');
+    }
+
+    if (nodeIdVal) {
+      const matchingNode = flatNodes.find(n => n.id === nodeIdVal);
       if (matchingNode) {
         setSelectedNode(matchingNode);
         setAppliedNode(matchingNode);
       }
     }
-  }, [flatNodes, qNodeId]);
+
+    setStatusFilter(statusVal);
+    setAppliedStatus(statusVal);
+    setSeverityFilter(severityVal);
+    setAppliedSeverity(severityVal);
+  }, [flatNodes, qSiteId, qNodeId]);
 
   const [selectedAdvisory, setSelectedAdvisory] = useState<any | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -133,6 +149,13 @@ export const Advisories: React.FC = () => {
     setAppliedStatus(statusFilter);
     setAppliedSeverity(severityFilter);
     setAppliedNode(selectedNode);
+
+    localStorage.setItem('advisories_applied_filters', JSON.stringify({
+      siteId: selectedSiteId,
+      status: statusFilter,
+      severity: severityFilter,
+      nodeId: selectedNode ? selectedNode.id : null
+    }));
   };
 
   const handleResetFilters = () => {
@@ -142,6 +165,7 @@ export const Advisories: React.FC = () => {
     setAppliedStatus('');
     setAppliedSeverity('');
     setAppliedNode(null);
+    localStorage.removeItem('advisories_applied_filters');
     navigate('/advisories'); // Reset the query params
   };
 

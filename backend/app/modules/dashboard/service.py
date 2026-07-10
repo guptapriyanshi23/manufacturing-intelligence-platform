@@ -4,8 +4,12 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from backend.app.modules.dashboard.schemas import DashboardSummaryResponse, MetricItem, PerformanceData
 
-def get_sensor_telemetry(db: Session, sensor_ids: List[str], hours: int = 24, granularity: str = None):
-    start_time = datetime.now(timezone.utc) - timedelta(hours=hours)
+def get_sensor_telemetry(db: Session, sensor_ids: List[str], hours: int = 24, granularity: str = None, start_time: datetime = None, end_time: datetime = None):
+    if not start_time:
+        start_time = datetime.now(timezone.utc) - timedelta(hours=hours)
+    if not end_time:
+        end_time = datetime.now(timezone.utc)
+        
     if not sensor_ids:
         return []
     
@@ -20,11 +24,14 @@ def get_sensor_telemetry(db: Session, sensor_ids: List[str], hours: int = 24, gr
 
     # 2. Determine granularity bucket
     if not granularity:
-        if hours <= 2:
+        # Calculate hours from start_time and end_time
+        time_diff = end_time - start_time
+        calc_hours = time_diff.total_seconds() / 3600
+        if calc_hours <= 2:
             granularity = 'raw'
-        elif hours <= 24:
+        elif calc_hours <= 24:
             granularity = '10m'
-        elif hours <= 168:
+        elif calc_hours <= 168:
             granularity = '1h'
         else:
             granularity = '6h'
@@ -34,10 +41,10 @@ def get_sensor_telemetry(db: Session, sensor_ids: List[str], hours: int = 24, gr
         query = text("""
             SELECT timestamp, sensor_id, sensor_name, value 
             FROM sensor_telemetry 
-            WHERE sensor_id IN :sensor_ids AND timestamp >= :start_time
+            WHERE sensor_id IN :sensor_ids AND timestamp >= :start_time AND timestamp <= :end_time
             ORDER BY timestamp ASC
         """)
-        result = db.execute(query, {"sensor_ids": tuple(sensor_ids), "start_time": start_time}).fetchall()
+        result = db.execute(query, {"sensor_ids": tuple(sensor_ids), "start_time": start_time, "end_time": end_time}).fetchall()
     else:
         # Map granularity string to seconds
         seconds_map = {
@@ -57,11 +64,11 @@ def get_sensor_telemetry(db: Session, sensor_ids: List[str], hours: int = 24, gr
                 sensor_name,
                 AVG(value) as value
             FROM sensor_telemetry 
-            WHERE sensor_id IN :sensor_ids AND timestamp >= :start_time
+            WHERE sensor_id IN :sensor_ids AND timestamp >= :start_time AND timestamp <= :end_time
             GROUP BY bucket, sensor_id, sensor_name
             ORDER BY bucket ASC
         """)
-        result = db.execute(query, {"sensor_ids": tuple(sensor_ids), "start_time": start_time, "seconds": seconds}).fetchall()
+        result = db.execute(query, {"sensor_ids": tuple(sensor_ids), "start_time": start_time, "end_time": end_time, "seconds": seconds}).fetchall()
         
     output = []
     for row in result:
