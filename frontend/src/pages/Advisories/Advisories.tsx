@@ -280,7 +280,7 @@ export const Advisories: React.FC = () => {
           >
             View
           </Button>
-
+          {/*
           <Button
             variant={isAllActive ? 'contained' : 'outlined'}
             color="primary"
@@ -289,6 +289,7 @@ export const Advisories: React.FC = () => {
           >
             All
           </Button>
+          */}
 
         </Box>
       </Paper>
