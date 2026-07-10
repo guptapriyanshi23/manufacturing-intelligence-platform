@@ -39,8 +39,10 @@ jobs:
       - name: Build frontend docker image
         run: |
           docker build \
+            -f frontend/Dockerfile \
             --build-arg VITE_API_BASE_URL=${{ secrets.api_base_url }} \
-            -t $ACR_NAME.azurecr.io/${{ inputs.image_name }}:v${{ steps.get_version.outputs.next_version }} ./frontend
+            -t $ACR_NAME.azurecr.io/${{ inputs.image_name }}:v${{ steps.get_version.outputs.next_version }} \
+            .
 
       - name: Save image as artifact
         run: |

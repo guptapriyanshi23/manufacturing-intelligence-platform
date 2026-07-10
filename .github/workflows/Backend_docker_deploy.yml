@@ -36,7 +36,10 @@ jobs:
 
       - name: Build backend docker image
         run: |
-          docker build -t $ACR_NAME.azurecr.io/${{ inputs.image_name }}:v${{ steps.get_version.outputs.next_version }} ./backend
+          docker build \
+            -f backend/Dockerfile \
+            -t $ACR_NAME.azurecr.io/${{ inputs.image_name }}:v${{ steps.get_version.outputs.next_version }} \
+            .
 
       - name: Save image as artifact
         run: |
