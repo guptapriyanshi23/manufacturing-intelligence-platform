@@ -360,9 +360,9 @@ export const Dashboard: React.FC = () => {
           <YAxis stroke={theme.palette.text.secondary} style={{ fontSize: 10 }} />
           <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #ccc', borderRadius: 6, fontSize: 12 }} />
           <Legend verticalAlign="top" height={36} />
-          <Line name={`${sensor.display_name} (${unit})`} type="monotone" dataKey="value" stroke="#92d400" strokeWidth={2} dot={false} />
-          <Line name="Alarm Limit" type="monotone" dataKey="alarmLimit" stroke="#F59E0B" strokeWidth={2} strokeDasharray="5 5" dot={false} />
-          <Line name="Trip Limit" type="monotone" dataKey="tripLimit" stroke="#EF4444" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+          <Line name={`${sensor.display_name} (${unit})`} type="monotone" dataKey="value" stroke="#2563EB" strokeWidth={2} dot={false} />
+          <Line name="Safe Limit" type="monotone" dataKey="alarmLimit" stroke="#16A34A" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+          <Line name="Threshold" type="monotone" dataKey="tripLimit" stroke="#DC2626" strokeWidth={2} strokeDasharray="5 5" dot={false} />
         </LineChart>
       </ResponsiveContainer>
     );
