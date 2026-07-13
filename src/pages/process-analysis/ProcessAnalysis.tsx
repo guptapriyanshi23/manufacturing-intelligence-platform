@@ -332,15 +332,16 @@ const ProcessAnalysis: React.FC<ProcessAnalysisProps> = ({ alert: alertProp }) =
                     xAxis={[{ data: timeLabels, scaleType: 'point' }]}
                     yAxis={[{ min: 50, max: 100 }]}
                     series={[
-                      { data: actualData, label: 'Actual', color: '#ff8c00', showMark: true },
-                      { data: predictedTwinData, label: 'Predicted Twin', color: '#14b8a6', showMark: false },
-                      { data: alarmLimitData, label: 'Alarm Limit', color: '#26890D', showMark: false, curve: 'linear' },
-                      { data: tripLimitData, label: 'Trip Limit', color: '#0088FE', showMark: false, curve: 'linear' },
+                      { data: actualData, label: 'Actual', color: '#26890D', showMark: true },
+                      { data: predictedTwinData, label: 'Predicted Twin', color: '#657bfa', showMark: false },
+                      { data: alarmLimitData, label: 'Alarm Limit', color: '#ff8c00', showMark: false, curve: 'linear' },
+                      { data: tripLimitData, label: 'Trip Limit', color: 'red', showMark: false, curve: 'linear' },
                       {
                         data: criticalPoints,
                         label: 'S1 Critical',
                         color: '#dc2626',
                         showMark: true,
+                        shape: 'star',
                         type: 'line',
                       },
                     ]}
@@ -359,8 +360,67 @@ const ProcessAnalysis: React.FC<ProcessAnalysisProps> = ({ alert: alertProp }) =
                     className="process-analysis__s1-label"
                     sx={{
                       position: 'absolute',
-                      top: '25%',
-                      left: '50%',
+                      top: '35%',
+                      left: '56%',
+                      transform: 'translate(-50%, -50%)',
+                      backgroundColor: '#dc2626',
+                      color: '#ffffff',
+                      padding: '4px 12px',
+                      borderRadius: '12px',
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                      boxShadow: '0 2px 8px rgba(220, 38, 38, 0.4)',
+                      zIndex: 10,
+                      border: '2px solid #991b1b',
+                    }}
+                  >
+                    S1 CRITICAL
+                  </Box>
+                </Box>
+              </Card>
+
+              <Card className="process-analysis__chart-card">
+                <Box className="process-analysis__chart-header" sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography className="process-analysis__chart-title">
+                    Bearing temperature - <span className="chart-subtitle">actual vs trip limit</span>
+                  </Typography>
+                  <Chip label="S1 - Critical" sx={{ backgroundColor: '#fecdd3', color: '#7f1d1d', fontWeight: 600 }} size="small" />
+                </Box>
+
+                <Box sx={{ height: 300, position: 'relative' }}>
+                  <LineChart
+                    height={300}
+                    xAxis={[{ data: timeLabels, scaleType: 'point' }]}
+                    yAxis={[{ min: 50, max: 100 }]}
+                    series={[
+                      { data: actualData, label: 'Actual', color: '#26890D', showMark: true },
+                      { data: tripLimitData, label: 'Trip Limit', color: 'red', showMark: false, curve: 'linear' },
+                      {
+                        data: criticalPoints,
+                        label: 'S1 Critical',
+                        color: '#dc2626',
+                        showMark: true,
+                        shape: 'star',
+                        type: 'line',
+                      },
+                    ]}
+                    slotProps={{ legend: { position: { vertical: 'top', horizontal: 'center' } } }}
+                    sx={{
+                      '& .MuiLineElement-series-2': {
+                        strokeWidth: 0,
+                      },
+                      '& .MuiMarkElement-series-2': {
+                        r: 10,
+                      },
+                    }}
+                  />
+                   {/* S1 Critical Label */}
+                  <Box
+                    className="process-analysis__s1-label"
+                    sx={{
+                      position: 'absolute',
+                      top: '35%',
+                      left: '56%',
                       transform: 'translate(-50%, -50%)',
                       backgroundColor: '#dc2626',
                       color: '#ffffff',
@@ -411,10 +471,10 @@ const ProcessAnalysis: React.FC<ProcessAnalysisProps> = ({ alert: alertProp }) =
                         xAxis={[{ data: timeLabels, scaleType: 'point' }]}
                         yAxis={[{ min: 50, max: 100 }]}
                         series={[
-                          { data: paramActualData, label: 'Actual', color: '#ff8c00', showMark: true },
-                          { data: paramPredictedTwinData, label: 'Predicted Twin', color: '#14b8a6', showMark: false },
-                          { data: paramAlarmLimitData, label: 'Alarm Limit', color: '#26890D', showMark: false, curve: 'linear' },
-                          { data: paramTripLimitData, label: 'Trip Limit', color: '#0088FE', showMark: false, curve: 'linear' },
+                          { data: paramActualData, label: 'Actual', color: '#26890D', showMark: true },
+                          { data: paramPredictedTwinData, label: 'Predicted Twin', color: '#657bfa', showMark: false },
+                          { data: paramAlarmLimitData, label: 'Alarm Limit', color: '#ff8c00', showMark: false, curve: 'linear' },
+                          { data: paramTripLimitData, label: 'Trip Limit', color: 'red', showMark: false, curve: 'linear' },
                         ]}
                         slotProps={{ legend: { position: { vertical: 'top', horizontal: 'center' } } }}
                       />
