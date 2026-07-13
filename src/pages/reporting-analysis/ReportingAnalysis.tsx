@@ -190,7 +190,7 @@ const ReportingAnalysis: React.FC = () => {
             </Button>
           </Box>
 
-          {/* <Card className="reporting-analysis__chart-card">
+         <Card className="reporting-analysis__chart-card">
             <Typography className="reporting-analysis__chart-title">Early RCA</Typography>
 
             <Box className="reporting-analysis__severity-bars">
@@ -212,7 +212,7 @@ const ReportingAnalysis: React.FC = () => {
                 );
               })}
             </Box>
-          </Card> */}
+          </Card> 
         </>
       )}
     </Box>
