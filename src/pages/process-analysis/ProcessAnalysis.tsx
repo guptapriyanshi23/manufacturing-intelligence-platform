@@ -72,6 +72,8 @@ const ProcessAnalysis: React.FC<ProcessAnalysisProps> = ({ alert: alertProp }) =
   const [selectedCharts, setSelectedCharts] = useState<string[]>(['Bearing temperature']);
   const alert = alertProp || (location.state as { alert?: AlertSummary })?.alert || null;
   const [isRcaModalOpen, setIsRcaModalOpen] = useState(false);
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
   const [uploadedImageNames, setUploadedImageNames] = useState<string[]>([]);
   const [uploadedImagePreviewUrls, setUploadedImagePreviewUrls] = useState<string[]>([]);
   const [rootCauseDescription, setRootCauseDescription] = useState('');
@@ -286,8 +288,8 @@ const ProcessAnalysis: React.FC<ProcessAnalysisProps> = ({ alert: alertProp }) =
             </div>
           </div>
 
-          {/* Chart Selection Dropdown */}
-          <Box sx={{ mb: 2 }}>
+          {/* Chart Selection Dropdown + Date Filters */}
+          <Box sx={{ mb: 2, display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
             <Autocomplete
               multiple
               options={CHART_OPTIONS}
@@ -302,14 +304,33 @@ const ProcessAnalysis: React.FC<ProcessAnalysisProps> = ({ alert: alertProp }) =
                 </li>
               )}
               renderInput={(params) => (
-                <TextField 
-                  {...params} 
-                  label="Browse other parameters" 
-                  placeholder={selectedCharts.length > 0 ? `${selectedCharts.length} parameter(s) selected` : "Choose variables"} 
-                  size="small" 
+                <TextField
+                  {...params}
+                  label="Browse other parameters"
+                  placeholder={selectedCharts.length > 0 ? `${selectedCharts.length} parameter(s) selected` : 'Choose variables'}
+                  size="small"
                 />
               )}
-              sx={{ maxWidth: 600 }}
+              sx={{ maxWidth: 300, flex: '1 1 300px' }}
+            />
+            <TextField
+              label="Start Date"
+              type="date"
+              size="small"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              slotProps={{ inputLabel: { shrink: true } }}
+              sx={{ minWidth: 160 }}
+            />
+            <TextField
+              label="End Date"
+              type="date"
+              size="small"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              slotProps={{ inputLabel: { shrink: true } }}
+              //inputProps={{ min: startDate }}
+              sx={{ minWidth: 160 }}
             />
           </Box>
 
