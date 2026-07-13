@@ -75,7 +75,7 @@ export const Advisories: React.FC = () => {
         if (!nodeIdVal && filters.nodeId) nodeIdVal = filters.nodeId;
         if (filters.status) statusVal = filters.status;
         if (filters.severity) severityVal = filters.severity;
-      } catch (e) {}
+      } catch (e) { }
     }
 
     if (siteIdVal) {
@@ -109,7 +109,7 @@ export const Advisories: React.FC = () => {
     if (cached) {
       try {
         setProfile(JSON.parse(cached));
-      } catch (e) {}
+      } catch (e) { }
     }
   }, []);
 
@@ -276,7 +276,7 @@ export const Advisories: React.FC = () => {
           </FormControl>
 
           <Box sx={{ flexGrow: 1 }} />
-          
+
           <Button
             variant="contained"
             color="secondary"
@@ -475,7 +475,7 @@ export const Advisories: React.FC = () => {
                   Initiate RCA
                 </Button>
               )}
-              <Button variant="outlined" color='secondary' sx={{ textTransform: 'none', fontWeight: 600 }}  onClick={handleCloseDetails} >
+              <Button variant="outlined" color='secondary' sx={{ textTransform: 'none', fontWeight: 600 }} onClick={handleCloseDetails} >
                 Close
               </Button>
             </DialogActions>
