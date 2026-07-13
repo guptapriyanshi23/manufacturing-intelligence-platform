@@ -140,15 +140,17 @@ export const HierarchySelector: React.FC<HierarchySelectorProps> = ({
             disabled={isDisabled}
             required={isMandatory}
           >
-            <InputLabel>
+            <InputLabel shrink>
               {getLevelLabel(level)}
             </InputLabel>
             <Select
               value={selections[i] ?? ''}
               label={getLevelLabel(level)}
               onChange={(e) => handleChange(i, e.target.value as number | '')}
+              displayEmpty
+              renderValue={selections[i] === '' || selections[i] === undefined ? () => <span style={{ color: '#9e9e9e' }}>Select</span> : undefined}
             >
-              <MenuItem value=""><em>None</em></MenuItem>
+              <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
               {options.map(n => (
                 <MenuItem key={n.id} value={n.id}>{n.display_name}</MenuItem>
               ))}

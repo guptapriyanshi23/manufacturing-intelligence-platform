@@ -79,6 +79,10 @@ export const api = {
     deleteRule: (id: number) => request<void>(`/alerts/rules/${id}`, {
       method: 'DELETE',
     }),
+    update: (id: number, data: { status: string }) => request<any>(`/alerts/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
   },
   dashboard: {
     getSummary: () => request<any>('/dashboard/summary'),

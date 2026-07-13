@@ -191,7 +191,20 @@ export const Admin: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedNodeId = searchParams.get('selectedNodeId');
   const selectedNodeName = searchParams.get('selectedNodeName');
-  const [activeTab, setActiveTab] = useState(0);
+  const tabParam = searchParams.get('tab');
+  const initialTab = tabParam === 'permissions' ? 2 : (tabParam === 'alerts' ? 1 : 0);
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'permissions') {
+      setActiveTab(2);
+    } else if (tab === 'alerts') {
+      setActiveTab(1);
+    } else if (tab === 'hierarchy') {
+      setActiveTab(0);
+    }
+  }, [searchParams]);
   const [loading, setLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [deleteSuccess, setDeleteSuccess] = useState(false);
@@ -851,13 +864,13 @@ export const Admin: React.FC = () => {
                         <TableCell>{conditionText}</TableCell>
                         <TableCell>
                           <Chip label={rule.severity.toUpperCase()} size="small"
-                            sx={{ backgroundColor: getSeverityBgColor(rule.severity), color: getSeverityColor(rule.severity), fontWeight: 600, fontSize: 11 }}
+                            sx={{ backgroundColor: getSeverityBgColor(rule.severity), color: getSeverityColor(rule.severity), fontWeight: 600, fontSize: 11, borderRadius: '4px' }}
                           />
                         </TableCell>
                         <TableCell>{pendingText}</TableCell>
                         <TableCell>
                           <Chip label={rule.status} size="small"
-                            sx={{ backgroundColor: rule.status === 'Active' ? '#e8f5e9' : '#f5f5f5', color: rule.status === 'Active' ? '#2e7d32' : '#757575', fontWeight: 600, fontSize: 11 }}
+                            sx={{ backgroundColor: rule.status === 'Active' ? '#e8f5e9' : '#f5f5f5', color: rule.status === 'Active' ? '#2e7d32' : '#757575', fontWeight: 600, fontSize: 11, borderRadius: '4px' }}
                           />
                         </TableCell>
                       </TableRow>
@@ -1147,7 +1160,7 @@ export const Admin: React.FC = () => {
                     <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>Severity</Typography>
                     <Box sx={{ mt: 0.5 }}>
                       <Chip label={selectedRuleDetails.severity.toUpperCase()} size="small"
-                        sx={{ backgroundColor: getSeverityBgColor(selectedRuleDetails.severity), color: getSeverityColor(selectedRuleDetails.severity), fontWeight: 600, fontSize: 11 }}
+                        sx={{ backgroundColor: getSeverityBgColor(selectedRuleDetails.severity), color: getSeverityColor(selectedRuleDetails.severity), fontWeight: 600, fontSize: 11, borderRadius: '4px' }}
                       />
                     </Box>
                   </Grid>

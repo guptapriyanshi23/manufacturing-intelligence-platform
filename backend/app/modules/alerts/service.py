@@ -100,3 +100,12 @@ def delete_alert_rule(db: Session, rule_id: int) -> bool:
     db.delete(db_rule)
     db.commit()
     return True
+
+def update_alert_status(db: Session, alert_id: int, status: str) -> Alert:
+    db_alert = db.query(Alert).filter(Alert.id == alert_id).first()
+    if not db_alert:
+        return None
+    db_alert.status = status
+    db.commit()
+    db.refresh(db_alert)
+    return db_alert

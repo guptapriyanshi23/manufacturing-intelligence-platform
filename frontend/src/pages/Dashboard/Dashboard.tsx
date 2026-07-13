@@ -397,15 +397,29 @@ export const Dashboard: React.FC = () => {
     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         <FormControl size="small" sx={{ minWidth: 160 }}>
-          <InputLabel>Time Range</InputLabel>
-          <Select value={tr} label="Time Range" onChange={(e) => onTrChange(e.target.value)}>
+          <InputLabel shrink>Time Range</InputLabel>
+          <Select
+            value={tr}
+            label="Time Range"
+            onChange={(e) => onTrChange(e.target.value)}
+            displayEmpty
+            renderValue={tr === '' ? () => <span style={{ color: '#9e9e9e' }}>Select</span> : undefined}
+          >
+            <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
             {TIME_RANGE_OPTIONS.map(o => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
           </Select>
         </FormControl>
 
         <FormControl size="small" sx={{ minWidth: 160 }}>
-          <InputLabel>Granularity</InputLabel>
-          <Select value={granularity} label="Granularity" onChange={(e) => onGranularityChange(e.target.value)}>
+          <InputLabel shrink>Granularity</InputLabel>
+          <Select
+            value={granularity}
+            label="Granularity"
+            onChange={(e) => onGranularityChange(e.target.value)}
+            displayEmpty
+            renderValue={granularity === '' ? () => <span style={{ color: '#9e9e9e' }}>Select</span> : undefined}
+          >
+            <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
             <MenuItem value="auto">Auto</MenuItem>
             <MenuItem value="raw">Raw Data</MenuItem>
             <MenuItem value="1m">1 Minute</MenuItem>
@@ -439,15 +453,17 @@ export const Dashboard: React.FC = () => {
         subtitle="Anomalous tags are shown by default, stacked one below the other. Use the dropdown to browse any other parameter on this asset — anomaly or not."
         actions={
           <FormControl size="small" sx={{ minWidth: 350, bgcolor: 'white', }}>
-            <InputLabel id="site-select-label">Site</InputLabel>
+            <InputLabel id="site-select-label" shrink>Site</InputLabel>
             <Select
               labelId="site-select-label"
               value={selectedSiteId}
               label="Site"
               onChange={(e) => setSelectedSiteId(e.target.value as number | '')}
               disabled={hierarchyLoading}
+              displayEmpty
+              renderValue={selectedSiteId === '' ? () => <span style={{ color: '#9e9e9e' }}>Select</span> : undefined}
             >
-              <MenuItem value=""><em>None</em></MenuItem>
+              <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
               {sites.map(s => (
                 <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
               ))}
@@ -470,8 +486,15 @@ export const Dashboard: React.FC = () => {
             <Grid size={12}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
                 <FormControl size="small" sx={{ minWidth: 160 }}>
-                  <InputLabel>Time Range</InputLabel>
-                  <Select value={timeRange} label="Time Range" onChange={(e) => handleTimeRangeChange(e.target.value)}>
+                  <InputLabel shrink>Time Range</InputLabel>
+                  <Select
+                    value={timeRange}
+                    label="Time Range"
+                    onChange={(e) => handleTimeRangeChange(e.target.value)}
+                    displayEmpty
+                    renderValue={timeRange === '' ? () => <span style={{ color: '#9e9e9e' }}>Select</span> : undefined}
+                  >
+                    <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
                     {TIME_RANGE_OPTIONS.map(o => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
                   </Select>
                 </FormControl>
@@ -491,13 +514,17 @@ export const Dashboard: React.FC = () => {
                 />
                 <Box sx={{ flex: 1 }} />
                 <FormControl size="small" sx={{ minWidth: 220 }} disabled={descendantSensors.length === 0}>
-                  <InputLabel id="sensor-filter-dropdown-label">Filter Active Graphs</InputLabel>
+                  <InputLabel id="sensor-filter-dropdown-label" shrink>Filter Active Graphs</InputLabel>
                   <Select
                     labelId="sensor-filter-dropdown-label"
                     multiple value={selectedSensorIds}
                     onChange={handleDropdownSelectChange}
                     label="Filter Active Graphs"
-                    renderValue={(selected) => `Active Graphs: ${(selected as string[]).length}`}
+                    displayEmpty
+                    renderValue={(selected) => {
+                      const arr = selected as string[];
+                      return arr.length === 0 ? <span style={{ color: '#9e9e9e' }}>Select</span> : `Active Graphs: ${arr.length}`;
+                    }}
                   >
                     <MenuItem value="__clear_all__">
                       <ListItemText primary="Clear All" sx={{ color: 'text.secondary', fontStyle: 'italic' }} />
@@ -612,7 +639,7 @@ export const Dashboard: React.FC = () => {
                       </Grid>
 
                       {/* Matching Advisory Column */}
-                      {matchingAdvisory && (
+                      {matchingAdvisory ? (
                         <Grid size={{ xs: 12, lg: 4 }}>
                           <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                             <Box>
@@ -623,7 +650,7 @@ export const Dashboard: React.FC = () => {
                                 <Chip
                                   label={getSeverityLevelFull(matchingAdvisory.severity)}
                                   size="small"
-                                  sx={{ backgroundColor: getSeverityBgColor(matchingAdvisory.severity), color: getSeverityColor(matchingAdvisory.severity), fontWeight: 600, fontSize: '0.75rem', height: 24, px: 0.5 }}
+                                  sx={{ backgroundColor: getSeverityBgColor(matchingAdvisory.severity), color: getSeverityColor(matchingAdvisory.severity), fontWeight: 600, fontSize: '0.75rem', height: 24, px: 0.5, borderRadius: '4px' }}
                                 />
                               </Box>
                               <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5, lineHeight: 1.2 }}>{matchingAdvisory.asset}</Typography>
@@ -691,6 +718,17 @@ export const Dashboard: React.FC = () => {
                                 RCA →
                               </Button>
                             </Box>
+                          </Paper>
+                        </Grid>
+                      ) : (
+                        <Grid size={{ xs: 12, lg: 4 }}>
+                          <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', bgcolor: '#f8fafc', borderStyle: 'dashed' }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1 }}>
+                              No Advisory
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center' }}>
+                              This sensor is operating within safe parameters. No active advisories.
+                            </Typography>
                           </Paper>
                         </Grid>
                       )}

@@ -70,3 +70,14 @@ def delete_alert_rule(id: int, db: Session = Depends(get_db)):
     if not success:
         raise HTTPException(status_code=404, detail="Alert rule not found")
     return {}
+
+@router.patch("/{id}", response_model=AlertResponse, dependencies=[Depends(get_current_user)])
+def update_alert(id: int, status_in: dict, db: Session = Depends(get_db)):
+    """
+    Update status of an alert (e.g. acknowledge).
+    """
+    from fastapi import HTTPException
+    alert = service.update_alert_status(db, id, status_in.get("status", "acknowledged"))
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return alert

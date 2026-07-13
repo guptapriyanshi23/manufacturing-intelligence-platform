@@ -11,7 +11,11 @@ import {
   ListItemIcon,
   CircularProgress,
   Tooltip,
-  Button
+  Button,
+  IconButton,
+  Menu,
+  MenuItem,
+  Divider
 } from '@mui/material';
 import { api } from '../api/client';
 import {
@@ -21,7 +25,8 @@ import {
   Lightbulb as AdvisoriesIcon,
   Assessment as ReportsIcon,
   Settings as AdminIcon,
-  AccountCircle as AccountCircleIcon
+  AccountCircle as AccountCircleIcon,
+  Logout as LogoutIcon
 } from '@mui/icons-material';
 import { TreeView } from '../components/Tree/TreeView';
 import type { HierarchyNode } from '../types/hierarchy';
@@ -44,6 +49,16 @@ export const MainLayout: React.FC = () => {
   const [nodes, setNodes] = useState<HierarchyNode[]>([]);
   const [loadingNodes, setLoadingNodes] = useState(true);
   const [profile, setProfile] = useState<{ email: string; permissions: string[] } | null>(null);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const openMenu = Boolean(anchorEl);
+
+  const handleProfileClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleProfileClose = () => {
+    setAnchorEl(null);
+  };
 
   useEffect(() => {
     const cached = localStorage.getItem('user_profile');
@@ -163,20 +178,76 @@ export const MainLayout: React.FC = () => {
 
             {/* Profile Info and Logout */}
             {profile && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1,  borderLeft: '1px solid #e0e0e0', pl: 2 }}>
-                <AccountCircleIcon fontSize="medium" sx={{ color: 'text.secondary' }} />
-                <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                  {profile.email}
-                </Typography>
-                <Button
+              <Box sx={{ display: 'flex', alignItems: 'center', borderLeft: '1px solid #e0e0e0', pl: 2 }}>
+                <IconButton
+                  onClick={handleProfileClick}
                   size="small"
-                  variant="outlined"
-                  color="error"
-                  onClick={handleLogout}
-                  sx={{ ml: 2, textTransform: 'none', py: 0.5 }}
+                  sx={{ color: 'text.secondary' }}
+                  aria-controls={openMenu ? 'profile-menu' : undefined}
+                  aria-haspopup="true"
+                  aria-expanded={openMenu ? 'true' : undefined}
                 >
-                  Logout
-                </Button>
+                  <AccountCircleIcon fontSize="large" />
+                </IconButton>
+                <Menu
+                  id="profile-menu"
+                  anchorEl={anchorEl}
+                  open={openMenu}
+                  onClose={handleProfileClose}
+                  onClick={handleProfileClose}
+                  transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                  anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                  slotProps={{
+                    paper: {
+                      elevation: 3,
+                      sx: {
+                        overflow: 'visible',
+                        filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.15))',
+                        mt: 1.5,
+                        minWidth: 220,
+                        border: '1px solid #ccc',
+                      },
+                    }
+                  }}
+                >
+                  <Box sx={{ px: 2, py: 1.5 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, display: 'block' }}>
+                      Logged in as
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.primary', wordBreak: 'break-all', mt: 0.5 }}>
+                      {profile.email}
+                    </Typography>
+                  </Box>
+                  <Divider />
+                  
+                  {profile.permissions.includes('admin:view') && (
+                    <MenuItem
+                      onClick={() => {
+                        handleProfileClose();
+                        navigate('/admin?tab=permissions');
+                      }}
+                      sx={{ py: 1 }}
+                    >
+                      <ListItemIcon>
+                        <AdminIcon fontSize="small" />
+                      </ListItemIcon>
+                      <Typography variant="body2">Permissions</Typography>
+                    </MenuItem>
+                  )}
+                  
+                  <MenuItem
+                    onClick={() => {
+                      handleProfileClose();
+                      handleLogout();
+                    }}
+                    sx={{ color: 'error.main', py: 1 }}
+                  >
+                    <ListItemIcon sx={{ color: 'error.main' }}>
+                      <LogoutIcon fontSize="small" />
+                    </ListItemIcon>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>Logout</Typography>
+                  </MenuItem>
+                </Menu>
               </Box>
             )}
           </Box>

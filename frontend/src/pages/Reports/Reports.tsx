@@ -37,6 +37,17 @@ export const Reports: React.FC = () => {
   const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
   const [hierarchyLoading, setHierarchyLoading] = useState(true);
   const [selectedSiteId, setSelectedSiteId] = useState<number | ''>('');
+  const [selectedNode, setSelectedNode] = useState<HierarchyNode | null>(null);
+
+  // Applied filter states
+  const [appliedSiteId, setAppliedSiteId] = useState<number | ''>('');
+  const [appliedNode, setAppliedNode] = useState<HierarchyNode | null>(null);
+  const [timeRange, setTimeRange] = useState('last_24h');
+  const initial = getDateRange('last_24h');
+  const [fromDate, setFromDate] = useState(initial.from);
+  const [toDate, setToDate] = useState(initial.to);
+  const [appliedFromDate, setAppliedFromDate] = useState(initial.from);
+  const [appliedToDate, setAppliedToDate] = useState(initial.to);
 
   const sites = useMemo(() => {
     return flatNodes.filter(n => n.node_type === 'site');
@@ -45,16 +56,14 @@ export const Reports: React.FC = () => {
   useEffect(() => {
     if (flatNodes.length > 0 && !selectedSiteId) {
       const sitesList = flatNodes.filter(n => n.node_type === 'site');
-      setSelectedSiteId(sitesList[0]?.id || '');
+      const firstSiteId = sitesList[0]?.id || '';
+      setSelectedSiteId(firstSiteId);
+      setAppliedSiteId(firstSiteId);
     }
   }, [flatNodes, selectedSiteId]);
 
   const [advisories, setAdvisories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState('last_24h');
-  const initial = getDateRange('last_24h');
-  const [fromDate, setFromDate] = useState(initial.from);
-  const [toDate, setToDate] = useState(initial.to);
 
   useEffect(() => {
     api.advisories.list()
@@ -77,17 +86,79 @@ export const Reports: React.FC = () => {
     }
   };
 
-  const total = advisories.length;
-  const openCount = advisories.filter(a => a.status === 'open').length;
-  const ackCount = advisories.filter(a => a.status === 'acknowledged').length;
-  const resolvedCount = advisories.filter(a => a.status === 'resolved').length;
-  const inProgressCount = advisories.filter(a => a.status === 'in_progress').length;
+  const handleViewClick = () => {
+    setAppliedSiteId(selectedSiteId);
+    setAppliedNode(selectedNode);
+    setAppliedFromDate(fromDate);
+    setAppliedToDate(toDate);
+  };
+
+  const filteredAdvisories = useMemo(() => {
+    let result = [...advisories];
+
+    // Helper to get descendant node IDs and sensor IDs
+    const getDescendants = (nodeId: number) => {
+      const nodeIds = new Set<number>();
+      const sensorIds = new Set<string>();
+      const queue = [nodeId];
+      
+      while (queue.length > 0) {
+        const id = queue.shift()!;
+        nodeIds.add(id);
+        
+        const node = flatNodes.find(n => n.id === id);
+        if (node?.sensor_metadata?.sensor_id) {
+          sensorIds.add(node.sensor_metadata.sensor_id);
+        }
+        
+        flatNodes
+          .filter(n => n.parent_id === id)
+          .forEach(n => queue.push(n.id));
+      }
+      
+      return { nodeIds, sensorIds };
+    };
+
+    // 1. Filter by Site
+    if (appliedSiteId) {
+      const { nodeIds, sensorIds } = getDescendants(Number(appliedSiteId));
+      result = result.filter(a => 
+        nodeIds.has(a.node_id) || 
+        (a.sensor_id && sensorIds.has(a.sensor_id))
+      );
+    }
+
+    // 2. Filter by Selected Hierarchy Node
+    if (appliedNode) {
+      const { nodeIds, sensorIds } = getDescendants(appliedNode.id);
+      result = result.filter(a => 
+        nodeIds.has(a.node_id) || 
+        (a.sensor_id && sensorIds.has(a.sensor_id))
+      );
+    }
+
+    // 3. Filter by Time Range / Dates
+    const start = new Date(appliedFromDate).getTime();
+    const end = new Date(appliedToDate).getTime();
+    result = result.filter(a => {
+      const t = new Date(a.first_detected).getTime();
+      return t >= start && t <= end;
+    });
+
+    return result;
+  }, [advisories, appliedSiteId, appliedNode, appliedFromDate, appliedToDate, flatNodes]);
+
+  const total = filteredAdvisories.length;
+  const openCount = filteredAdvisories.filter(a => a.status === 'open').length;
+  const ackCount = filteredAdvisories.filter(a => a.status === 'acknowledged').length;
+  const resolvedCount = filteredAdvisories.filter(a => a.status === 'resolved').length;
+  const inProgressCount = filteredAdvisories.filter(a => a.status === 'in_progress').length;
   const pct = (n: number) => total > 0 ? `${Math.round((n / total) * 100)}%` : '0%';
 
   const severityChartData = Object.keys(SEVERITY_LEVEL_MAP)
     .map(sev => ({
       severity: getSeverityLevel(sev),
-      count: advisories.filter(a => a.severity === sev).length,
+      count: filteredAdvisories.filter(a => a.severity === sev).length,
       originalSeverity: sev,
     }))
     .filter((d, i, arr) => arr.findIndex(x => x.severity === d.severity) === i)
@@ -107,14 +178,17 @@ export const Reports: React.FC = () => {
         subtitle="Generate Advisory summaries - for a single asset, a set of equipment or an entire process line."
         actions={
           <FormControl size="small" sx={{ minWidth: 350, bgcolor: 'white',  }}>
-            <InputLabel id="site-select-label">Site</InputLabel>
+            <InputLabel id="site-select-label" shrink>Site</InputLabel>
             <Select
               labelId="site-select-label"
               value={selectedSiteId}
               label="Site"
               onChange={(e) => setSelectedSiteId(e.target.value as number)}
               disabled={hierarchyLoading}
+              displayEmpty
+              renderValue={selectedSiteId === '' ? () => <span style={{ color: '#9e9e9e' }}>Select</span> : undefined}
             >
+              <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
               {sites.map(s => (
                 <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
               ))}
@@ -128,20 +202,23 @@ export const Reports: React.FC = () => {
         <Box sx={{ mb: 3 }}>
           <HierarchySelector
             flatNodes={flatNodes}
-            onSelectionChange={() => { }}
+            onSelectionChange={(node) => setSelectedNode(node)}
             loading={hierarchyLoading}
             selectedSiteId={selectedSiteId}
           />
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <FormControl size="small" sx={{ minWidth: 160 }}>
-            <InputLabel id="time-range-label">Time Range</InputLabel>
+            <InputLabel id="time-range-label" shrink>Time Range</InputLabel>
             <Select
               labelId="time-range-label"
               value={timeRange}
               label="Time Range"
               onChange={(e) => handleTimeRangeChange(e.target.value)}
+              displayEmpty
+              renderValue={timeRange === '' ? () => <span style={{ color: '#9e9e9e' }}>Select</span> : undefined}
             >
+              <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
               {TIME_RANGE_OPTIONS.map(o => (
                 <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
               ))}
@@ -167,7 +244,8 @@ export const Reports: React.FC = () => {
             slotProps={{ inputLabel: { shrink: true } }}
             sx={{ minWidth: 200 }}
           />
-          <Button variant="contained" color="secondary" sx={{ minWidth: 90, fontWeight: 600, flexShrink: 0 }}>
+          <Box sx={{ flex: 1 }} />
+          <Button onClick={handleViewClick} variant="contained" color="secondary" sx={{ minWidth: 90, fontWeight: 600, flexShrink: 0 }}>
             View
           </Button>
           <Button variant="contained" color="secondary" startIcon={<DownloadIcon />} sx={{ fontWeight: 600, flexShrink: 0 }}>

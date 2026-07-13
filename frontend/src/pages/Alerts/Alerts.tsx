@@ -227,9 +227,16 @@ export const Alerts: React.FC = () => {
   const handleSelectRow = (id: number) =>
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
-  const handleAcknowledge = () => {
-    setAlerts(prev => prev.map(a => selectedIds.includes(a.id) ? { ...a, status: 'acknowledged' } : a));
-    setSelectedIds([]);
+  const handleAcknowledge = async () => {
+    try {
+      await Promise.all(
+        selectedIds.map(id => api.alerts.update(id, { status: 'acknowledged' }))
+      );
+      setAlerts(prev => prev.map(a => selectedIds.includes(a.id) ? { ...a, status: 'acknowledged' } : a));
+      setSelectedIds([]);
+    } catch (err) {
+      console.error("Failed to acknowledge alerts:", err);
+    }
   };
 
   return (
@@ -239,14 +246,17 @@ export const Alerts: React.FC = () => {
         subtitle="Critical warnings, system diagnostics, and failure states needing immediate attention."
         actions={
           <FormControl size="small" sx={{ minWidth: 350, bgcolor: 'white', }}>
-            <InputLabel id="site-select-label">Site</InputLabel>
+            <InputLabel id="site-select-label" shrink>Site</InputLabel>
             <Select
               labelId="site-select-label"
               value={selectedSiteId}
               label="Site"
               onChange={(e) => setSelectedSiteId(e.target.value as number)}
               disabled={hierarchyLoading}
+              displayEmpty
+              renderValue={selectedSiteId === '' ? () => <span style={{ color: '#9e9e9e' }}>Select</span> : undefined}
             >
+              <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
               {sites.map(s => (
                 <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
               ))}
@@ -267,13 +277,16 @@ export const Alerts: React.FC = () => {
           </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <FormControl size="small" sx={{ minWidth: 160 }}>
-            <InputLabel id="time-range-label">Time Range</InputLabel>
+            <InputLabel id="time-range-label" shrink>Time Range</InputLabel>
             <Select
               labelId="time-range-label"
               value={timeRange}
               label="Time Range"
               onChange={(e) => handleTimeRangeChange(e.target.value)}
+              displayEmpty
+              renderValue={timeRange === '' ? () => <span style={{ color: '#9e9e9e' }}>Select</span> : undefined}
             >
+              <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
               {TIME_RANGE_OPTIONS.map(o => (
                 <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
               ))}
@@ -299,9 +312,6 @@ export const Alerts: React.FC = () => {
             slotProps={{ inputLabel: { shrink: true } }}
             sx={{ minWidth: 200 }}
           />
-          <Button variant="contained" color="secondary" onClick={handleViewClick} sx={{ minWidth: 90, fontWeight: 600, flexShrink: 0 }}>
-            View
-          </Button>
           <Box sx={{ flex: 1 }} />
           <FormControlLabel
             control={
@@ -314,6 +324,9 @@ export const Alerts: React.FC = () => {
             }
             label={<Typography variant="body2">Show Active Alerts</Typography>}
           />
+          <Button variant="contained" color="secondary" onClick={handleViewClick} sx={{ minWidth: 90, fontWeight: 600, flexShrink: 0 }}>
+            View
+          </Button>
         </Box>
       </Paper>
 
@@ -371,7 +384,7 @@ export const Alerts: React.FC = () => {
                   <TableCell sx={{ borderBottom: '1px solid #ccc' }}>{row.condition}</TableCell>
                   <TableCell sx={{ borderBottom: '1px solid #ccc' }}>{row.threshold}</TableCell>
                   <TableCell sx={{ borderBottom: '1px solid #ccc' }}>
-                    <Chip label={row.severity.toUpperCase()} size="small" sx={{ backgroundColor: getSeverityBgColor(row.severity), color: getSeverityColor(row.severity), fontWeight: 700 }} />
+                    <Chip label={row.severity.toUpperCase()} size="small" sx={{ backgroundColor: getSeverityBgColor(row.severity), color: getSeverityColor(row.severity), fontWeight: 700, borderRadius: '4px' }} />
                   </TableCell>
                   <TableCell sx={{ borderBottom: '1px solid #ccc' }}>
                     <StatusChip label={row.status.toUpperCase()} status={row.status} />

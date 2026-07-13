@@ -202,14 +202,17 @@ export const Advisories: React.FC = () => {
         subtitle="Active system advisories for equipment health, severity tracking, and remediation actions. Click any row to view full details."
         actions={
           <FormControl size="small" sx={{ minWidth: 350, bgcolor: 'white', }}>
-            <InputLabel id="site-select-label">Site</InputLabel>
+            <InputLabel id="site-select-label" shrink>Site</InputLabel>
             <Select
               labelId="site-select-label"
               value={selectedSiteId}
               label="Site"
               onChange={(e) => setSelectedSiteId(e.target.value as number)}
               disabled={hierarchyLoading}
+              displayEmpty
+              renderValue={selectedSiteId === '' ? () => <span style={{ color: '#9e9e9e' }}>Select</span> : undefined}
             >
+              <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
               {sites.map(s => (
                 <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
               ))}
@@ -230,18 +233,19 @@ export const Advisories: React.FC = () => {
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
 
-          <FormControl sx={{ minWidth: 220 }} size="small">
-            <InputLabel id="status-filter-label">Status</InputLabel>
+          <FormControl sx={{ flex: 1, minWidth: 0 }} size="small">
+            <InputLabel id="status-filter-label" shrink>Status</InputLabel>
             <Select
               labelId="status-filter-label"
               value={statusFilter}
               label="Status"
               onChange={(e: SelectChangeEvent) => setStatusFilter(e.target.value)}
+              displayEmpty
               renderValue={(selected) =>
-                selected ? selected.charAt(0).toUpperCase() + selected.slice(1) : 'Status'
+                selected ? (selected === 'in_progress' ? 'In Progress' : selected.charAt(0).toUpperCase() + selected.slice(1)) : <span style={{ color: '#9e9e9e' }}>Select</span>
               }
             >
-              <MenuItem value=""><em>None</em></MenuItem>
+              <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
               {statusOptions.map((option) => (
                 <MenuItem key={option} value={option}>
                   {option === 'in_progress' ? 'In Progress' : option.charAt(0).toUpperCase() + option.slice(1)}
@@ -250,18 +254,19 @@ export const Advisories: React.FC = () => {
             </Select>
           </FormControl>
 
-          <FormControl sx={{ minWidth: 220 }} size="small">
-            <InputLabel id="severity-filter-label">Severity</InputLabel>
+          <FormControl sx={{ flex: 1, minWidth: 0 }} size="small">
+            <InputLabel id="severity-filter-label" shrink>Severity</InputLabel>
             <Select
               labelId="severity-filter-label"
               value={severityFilter}
               label="Severity"
               onChange={(e: SelectChangeEvent) => setSeverityFilter(e.target.value)}
+              displayEmpty
               renderValue={(selected) =>
-                selected ? selected.charAt(0).toUpperCase() + selected.slice(1) : 'Severity'
+                selected ? selected.charAt(0).toUpperCase() + selected.slice(1) : <span style={{ color: '#9e9e9e' }}>Select</span>
               }
             >
-              <MenuItem value=""><em>None</em></MenuItem>
+              <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
               {severityOptions.map((option) => (
                 <MenuItem key={option} value={option}>
                   {option.charAt(0).toUpperCase() + option.slice(1)}
@@ -281,15 +286,6 @@ export const Advisories: React.FC = () => {
             View
           </Button>
 
-          <Button
-            variant={isAllActive ? 'contained' : 'outlined'}
-            color="primary"
-            onClick={handleResetFilters}
-            sx={{ minWidth: 90, fontWeight: 600, flexShrink: 0 }}
-          >
-            All
-          </Button>
-
         </Box>
       </Paper>
 
@@ -305,7 +301,7 @@ export const Advisories: React.FC = () => {
           <Table sx={{ minWidth: 720 }}>
             <TableHead>
               <TableRow>
-                {['Sensor ID', 'Sensor Name', 'Asset', 'Severity', 'Status', 'Action taken'].map(col => (
+                {['Sensor Name', 'Asset', 'Severity', 'Status', 'Action taken'].map(col => (
                   <TableCell key={col} sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid #ccc' }}>
                     {col}
                   </TableCell>
@@ -315,13 +311,13 @@ export const Advisories: React.FC = () => {
             <TableBody>
               {appliedNode === null ? (
                 <TableRow>
-                  <TableCell colSpan={6} sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
+                  <TableCell colSpan={5} sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
                     Please select a hierarchy node and click the <strong>View</strong> button to display advisories.
                   </TableCell>
                 </TableRow>
               ) : filteredRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
+                  <TableCell colSpan={5} sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
                     No advisories match the current filter.
                   </TableCell>
                 </TableRow>
@@ -333,9 +329,6 @@ export const Advisories: React.FC = () => {
                     onClick={() => handleRowClick(row)}
                     sx={{ cursor: 'pointer', '&:last-child td': { borderBottom: 0 } }}
                   >
-                    <TableCell sx={{ color: 'text.primary', fontWeight: 600, borderBottom: '1px solid #ccc' }}>
-                      {row.sensor_id || '—'}
-                    </TableCell>
                     <TableCell sx={{ color: 'text.primary', fontWeight: 600, borderBottom: '1px solid #ccc' }}>
                       {row.sensor_name || '—'}
                     </TableCell>
@@ -352,6 +345,7 @@ export const Advisories: React.FC = () => {
                           fontWeight: 700,
                           minWidth: 32,
                           justifyContent: 'center',
+                          borderRadius: '4px',
                         }}
                       />
                     </TableCell>
@@ -389,6 +383,7 @@ export const Advisories: React.FC = () => {
                     backgroundColor: getSeverityBgColor(selectedAdvisory.severity),
                     color: getSeverityColor(selectedAdvisory.severity),
                     fontWeight: 700,
+                    borderRadius: '4px',
                   }}
                 />
                 <StatusChip label={selectedAdvisory.status.toUpperCase()} status={selectedAdvisory.status} />
@@ -397,16 +392,10 @@ export const Advisories: React.FC = () => {
 
             <DialogContent sx={{ p: 3, mt: 2 }}>
               <Stack spacing={3}>
-                <Stack direction="row" spacing={4}>
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>Sensor ID</Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedAdvisory.sensor_id || '—'}</Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>Sensor Name</Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedAdvisory.sensor_name || '—'}</Typography>
-                  </Box>
-                </Stack>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>Sensor Name</Typography>
+                  <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedAdvisory.sensor_name || '—'}</Typography>
+                </Box>
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>Anomaly Description</Typography>
                   <Typography variant="body1" sx={{ lineHeight: 1.6 }}>{selectedAdvisory.description}</Typography>
@@ -426,7 +415,7 @@ export const Advisories: React.FC = () => {
                 {selectedAdvisory.action_taken && (
                   <Box>
                     <Typography variant="subtitle2" color="text.secondary" gutterBottom>Action Taken</Typography>
-                    <Typography variant="body1" sx={{ p: 2, bgcolor: 'rgba(34, 197, 94, 0.08)', border: '1px solid #bbf7d0', borderRadius: 1 }}>
+                    <Typography variant="body1" sx={{ p: 2, bgcolor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 1 }}>
                       {selectedAdvisory.action_taken}
                     </Typography>
                   </Box>

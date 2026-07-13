@@ -167,16 +167,16 @@ export const RootCause: React.FC = () => {
             <CardContent sx={{ p: 3 }}>
               <Stack spacing={3}>
                 <FormControl fullWidth size="small">
-                  <InputLabel id="advisory-select-label">Active Advisory Target</InputLabel>
+                  <InputLabel id="advisory-select-label" shrink>Active Advisory Target</InputLabel>
                   <Select
                     labelId="advisory-select-label"
                     value={selectedAdvisoryId}
                     label="Active Advisory Target"
                     onChange={handleAdvisorySelect}
+                    displayEmpty
+                    renderValue={selectedAdvisoryId === '' ? () => <span style={{ color: '#9e9e9e' }}>Select</span> : undefined}
                   >
-                    <MenuItem value="">
-                      <em>None - Select an Advisory</em>
-                    </MenuItem>
+                    <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
                     {advisories
                       .filter((a) => a.status !== 'resolved' || a.id === selectedAdvisoryId)
                       .map((a) => (
