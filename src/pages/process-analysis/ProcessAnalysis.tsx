@@ -333,7 +333,7 @@ const ProcessAnalysis: React.FC<ProcessAnalysisProps> = ({ alert: alertProp }) =
                     yAxis={[{ min: 50, max: 100 }]}
                     series={[
                       { data: actualData, label: 'Actual', color: '#26890D', showMark: true },
-                      { data: predictedTwinData, label: 'Predicted Twin', color: '#657bfa', showMark: false },
+                      // { data: predictedTwinData, label: 'Predicted Twin', color: '#657bfa', showMark: false },
                       { data: alarmLimitData, label: 'Alarm Limit', color: '#ff8c00', showMark: false, curve: 'linear' },
                       { data: tripLimitData, label: 'Trip Limit', color: 'red', showMark: false, curve: 'linear' },
                       {
@@ -472,7 +472,7 @@ const ProcessAnalysis: React.FC<ProcessAnalysisProps> = ({ alert: alertProp }) =
                         yAxis={[{ min: 50, max: 100 }]}
                         series={[
                           { data: paramActualData, label: 'Actual', color: '#26890D', showMark: true },
-                          { data: paramPredictedTwinData, label: 'Predicted Twin', color: '#657bfa', showMark: false },
+                          // { data: paramPredictedTwinData, label: 'Predicted Twin', color: '#657bfa', showMark: false },
                           { data: paramAlarmLimitData, label: 'Alarm Limit', color: '#ff8c00', showMark: false, curve: 'linear' },
                           { data: paramTripLimitData, label: 'Trip Limit', color: 'red', showMark: false, curve: 'linear' },
                         ]}
