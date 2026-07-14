@@ -59,6 +59,73 @@ def resolve_advisory_details(db: Session, adv) -> dict:
         "created_at": adv.created_at,
         "updated_at": adv.updated_at
     }
+def resolve_all_advisories(db: Session, advisories: List) -> List[dict]:
+    if not advisories:
+        return []
+    nodes = db.query(HierarchyNode).all()
+    node_map = {n.id: n for n in nodes}
+    
+    adv_ids = [a.id for a in advisories]
+    rcas = db.query(RCA).filter(RCA.advisory_id.in_(adv_ids)).all() if adv_ids else []
+    rca_map = {r.advisory_id: r for r in rcas}
+
+    asset_cache = {}
+    def get_asset_name(node_id: int) -> str:
+        if not node_id:
+            return "N/A"
+        if node_id in asset_cache:
+            return asset_cache[node_id]
+        
+        curr_id = node_id
+        visited = set()
+        while curr_id and curr_id not in visited:
+            visited.add(curr_id)
+            n = node_map.get(curr_id)
+            if not n:
+                break
+            if n.node_type == 'asset':
+                asset_cache[node_id] = n.display_name
+                return n.display_name
+            curr_id = n.parent_id
+            
+        asset_cache[node_id] = "N/A"
+        return "N/A"
+
+    result = []
+    for adv in advisories:
+        sensor_name = "N/A"
+        sensor_id = None
+        asset_name = "N/A"
+        
+        if adv.node_id:
+            node = node_map.get(adv.node_id)
+            if node:
+                sensor_name = node.display_name
+                if node.sensor_metadata:
+                    sensor_id = node.sensor_metadata.sensor_id
+                asset_name = get_asset_name(adv.node_id)
+                
+        rca = rca_map.get(adv.id)
+        rca_desc = rca.root_cause_description if rca else None
+        rca_action = rca.action_taken if rca else None
+
+        result.append({
+            "id": adv.id,
+            "node_id": adv.node_id,
+            "sensor_id": sensor_id,
+            "sensor_name": sensor_name,
+            "asset": asset_name,
+            "severity": adv.severity,
+            "description": adv.description,
+            "first_detected": adv.first_detected,
+            "status": adv.status,
+            "image_path": adv.image_path,
+            "root_cause_description": rca_desc,
+            "action_taken": rca_action,
+            "created_at": adv.created_at,
+            "updated_at": adv.updated_at
+        })
+    return result
 
 @router.get("", response_model=List[AdvisoryResponse])
 def get_advisories(
@@ -79,7 +146,7 @@ def get_advisories(
         if not allowed_ids:
             return []
         advisories = [a for a in advisories if a.node_id in allowed_ids]
-    return [resolve_advisory_details(db, a) for a in advisories]
+    return resolve_all_advisories(db, advisories)
 
 @router.patch("/{advisory_id}", response_model=AdvisoryResponse)
 def update_advisory(

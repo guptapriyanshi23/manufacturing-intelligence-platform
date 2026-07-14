@@ -102,7 +102,9 @@ export const api = {
     ) => {
       const params = new URLSearchParams();
       sensorIds.forEach(id => params.append('sensor_ids', id));
-      params.append('hours', hours.toString());
+      if (!startTime && !endTime) {
+        params.append('hours', hours.toString());
+      }
       if (granularity) {
         params.append('granularity', granularity);
       }

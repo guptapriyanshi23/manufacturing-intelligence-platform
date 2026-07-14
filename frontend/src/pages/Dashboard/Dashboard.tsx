@@ -6,7 +6,7 @@ import {
   IconButton, Dialog, DialogContent, TextField,
 } from '@mui/material';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceDot,
 } from 'recharts';
 import { OpenInFull as ExpandIcon, Close as CloseIcon } from '@mui/icons-material';
 import { PageContainer } from '../../components/Cards/PageContainer';
@@ -56,6 +56,7 @@ export const Dashboard: React.FC = () => {
   const [selectedSensorIds, setSelectedSensorIds] = useState<string[]>([]);
   const [telemetryPoints, setTelemetryPoints] = useState<TelemetryPoint[]>([]);
   const [advisories, setAdvisories] = useState<any[]>([]);
+  const [advisoriesFetched, setAdvisoriesFetched] = useState(false);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [selectedNode, setSelectedNode] = useState<HierarchyNode | null>(null);
   const [appliedSensors, setAppliedSensors] = useState<HierarchyNode[]>([]);
@@ -102,17 +103,17 @@ export const Dashboard: React.FC = () => {
       const result: HierarchyNode[] = [];
       const queue = [nodeId];
       const visited = new Set<number>();
-      
+
       while (queue.length > 0) {
         const id = queue.shift()!;
         if (visited.has(id)) continue;
         visited.add(id);
-        
+
         const node = flatNodes.find(n => n.id === id);
         if (node) {
           result.push(node);
         }
-        
+
         flatNodes
           .filter(n => n.parent_id === id)
           .forEach(n => queue.push(n.id));
@@ -163,7 +164,7 @@ export const Dashboard: React.FC = () => {
     } else if (node.node_type === 'component') {
       setSelectedComponentId(node.id);
       setAppliedComponentId(node.id);
-      
+
       // Walk up to find parent asset
       let parent: HierarchyNode | undefined = node.parent_id ? flatNodes.find(n => n.id === node.parent_id) : undefined;
       while (parent && parent.node_type !== 'asset') {
@@ -202,9 +203,11 @@ export const Dashboard: React.FC = () => {
   const [appliedTimeRange, setAppliedTimeRange] = useState('last_24h');
   const [appliedFromDate, setAppliedFromDate] = useState(initRange.from);
   const [appliedToDate, setAppliedToDate] = useState(initRange.to);
+  const [isTimeOverridden, setIsTimeOverridden] = useState(false);
 
   const handleTimeRangeChange = (val: string) => {
     setTimeRange(val);
+    setIsTimeOverridden(true);
 
     // Don't auto-update dates for custom range
     if (val !== 'custom') {
@@ -288,8 +291,14 @@ export const Dashboard: React.FC = () => {
   const fetchAdvisories = () => {
     const filters = initialNodeId ? { node_id: initialNodeId } : undefined;
     api.advisories.list(filters)
-      .then((res) => setAdvisories(res))
-      .catch((err) => console.error('Failed to load advisories:', err));
+      .then((res) => {
+        setAdvisories(res);
+        setAdvisoriesFetched(true);
+      })
+      .catch((err) => {
+        console.error('Failed to load advisories:', err);
+        setAdvisoriesFetched(true);
+      });
   };
 
   useEffect(() => {
@@ -306,6 +315,57 @@ export const Dashboard: React.FC = () => {
       .catch(() => setFlatNodes([]))
       .finally(() => setHierarchyLoading(false));
   }, []);
+
+  const getAdvisoryTimeWindow = (adv: any) => {
+    const detectedTime = new Date(adv.first_detected).getTime();
+    const now = Date.now();
+    
+    let startTime: number;
+    let endTime: number;
+    
+    const fourHoursMs = 4 * 60 * 60 * 1000;
+    const eightHoursMs = 8 * 60 * 60 * 1000;
+    
+    if (detectedTime + fourHoursMs > now) {
+      endTime = now;
+      startTime = now - eightHoursMs;
+    } else {
+      startTime = detectedTime - fourHoursMs;
+      endTime = detectedTime + fourHoursMs;
+    }
+    const formatLocalIST = (ms: number) => {
+      const dateObj = new Date(ms);
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+      const parts = formatter.formatToParts(dateObj);
+      const partMap = Object.fromEntries(parts.map(p => [p.type, p.value]));
+      return `${partMap.year}-${partMap.month}-${partMap.day}T${partMap.hour}:${partMap.minute}`;
+    };
+
+    return {
+      from: new Date(startTime).toISOString(),
+      to: new Date(endTime).toISOString(),
+      fromLocal: formatLocalIST(startTime),
+      toLocal: formatLocalIST(endTime)
+    };
+  };
+
+  useEffect(() => {
+    if (activeAdvisory) {
+      const window = getAdvisoryTimeWindow(activeAdvisory);
+      setTimeRange('custom');
+      setFromDate(window.fromLocal);
+      setToDate(window.toLocal);
+      setIsTimeOverridden(false);
+    }
+  }, [activeAdvisory]);
 
   const handleViewClick = () => {
     let activeNodeId = initialNodeId;
@@ -327,12 +387,12 @@ export const Dashboard: React.FC = () => {
     const sensors: HierarchyNode[] = [];
     const queue = [activeNodeId];
     const visited = new Set<number>();
-    
+
     while (queue.length > 0) {
       const currentId = queue.shift()!;
       if (visited.has(currentId)) continue;
       visited.add(currentId);
-      
+
       const node = flatNodes.find(n => n.id === currentId);
       if (node) {
         if (node.node_type === 'sensor') {
@@ -356,8 +416,14 @@ export const Dashboard: React.FC = () => {
     }
 
     setTelemetryLoading(true);
-    const customStart = timeRange === 'custom' ? new Date(fromDate).toISOString() : undefined;
-    const customEnd = timeRange === 'custom' ? new Date(toDate).toISOString() : undefined;
+    let customStart = timeRange === 'custom' ? new Date(fromDate).toISOString() : undefined;
+    let customEnd = timeRange === 'custom' ? new Date(toDate).toISOString() : undefined;
+
+    if (activeAdvisory && !isTimeOverridden) {
+      const win = getAdvisoryTimeWindow(activeAdvisory);
+      customStart = win.from;
+      customEnd = win.to;
+    }
 
     api.dashboard.getTelemetry(sensorIds, getHoursFromRange(), undefined, customStart, customEnd)
       .then((res) => {
@@ -382,17 +448,18 @@ export const Dashboard: React.FC = () => {
 
   // Auto-run view click when initialNodeId is provided via URL
   useEffect(() => {
+    if (!advisoriesFetched) return;
     if (initialNodeId && flatNodes.length > 0 && !telemetryLoading && telemetryPoints.length === 0) {
       // Find descendant sensors under the initial node
       const sensors: HierarchyNode[] = [];
       const queue = [initialNodeId];
       const visited = new Set<number>();
-      
+
       while (queue.length > 0) {
         const currentId = queue.shift()!;
         if (visited.has(currentId)) continue;
         visited.add(currentId);
-        
+
         const node = flatNodes.find(n => n.id === currentId);
         if (node) {
           if (node.node_type === 'sensor') {
@@ -407,8 +474,15 @@ export const Dashboard: React.FC = () => {
       const sensorIds = sensors.map(s => s.sensor_metadata?.sensor_id).filter(Boolean) as string[];
       if (sensorIds.length > 0) {
         setTelemetryLoading(true);
-        const customStart = timeRange === 'custom' ? new Date(fromDate).toISOString() : undefined;
-        const customEnd = timeRange === 'custom' ? new Date(toDate).toISOString() : undefined;
+        let customStart = timeRange === 'custom' ? new Date(fromDate).toISOString() : undefined;
+        let customEnd = timeRange === 'custom' ? new Date(toDate).toISOString() : undefined;
+
+        if (activeAdvisory && !isTimeOverridden) {
+          const win = getAdvisoryTimeWindow(activeAdvisory);
+          customStart = win.from;
+          customEnd = win.to;
+        }
+
         api.dashboard.getTelemetry(sensorIds, getHoursFromRange(), undefined, customStart, customEnd)
           .then((res) => {
             setTelemetryPoints(res);
@@ -416,9 +490,16 @@ export const Dashboard: React.FC = () => {
             setAppliedSensorIds(sensorIds);
             setAppliedAssetId(selectedAssetId);
             setAppliedComponentId(selectedComponentId);
-            setAppliedTimeRange(timeRange);
-            setAppliedFromDate(fromDate);
-            setAppliedToDate(toDate);
+            if (activeAdvisory && !isTimeOverridden) {
+              const win = getAdvisoryTimeWindow(activeAdvisory);
+              setAppliedTimeRange('custom');
+              setAppliedFromDate(win.fromLocal);
+              setAppliedToDate(win.toLocal);
+            } else {
+              setAppliedTimeRange(timeRange);
+              setAppliedFromDate(fromDate);
+              setAppliedToDate(toDate);
+            }
           })
           .catch(() => {
             setTelemetryPoints([]);
@@ -428,17 +509,20 @@ export const Dashboard: React.FC = () => {
           .finally(() => setTelemetryLoading(false));
       }
     }
-  }, [initialNodeId, flatNodes]);
+  }, [initialNodeId, flatNodes, activeAdvisory, isTimeOverridden, advisoriesFetched]);
 
   const getBucketedDataPoints = (
     points: TelemetryPoint[],
-    sensorId: string,
+    sensor: HierarchyNode,
     start: Date,
     end: Date,
     granularityStr?: string
   ) => {
+    const sensorId = sensor.sensor_metadata?.sensor_id || '';
     const sensorPoints = points.filter(p => p.sensor_id === sensorId);
-    if (sensorPoints.length === 0) return [];
+
+    const alarmLimit = sensor.sensor_metadata?.alarm_limit ?? 0;
+    const tripLimit = sensor.sensor_metadata?.trip_limit ?? 0;
 
     let intervalMs = 10 * 60 * 1000; // default 10m
     const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
@@ -483,23 +567,25 @@ export const Dashboard: React.FC = () => {
     for (let t = startBucket; t <= endBucket; t += intervalMs) {
       const existing = timePointsMap.get(t);
       const tDate = new Date(t);
-      const timestampStr = tDate.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+      const timestampStr = tDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
 
       if (existing) {
         bucketedPoints.push({
           timestamp: timestampStr,
+          timestampMs: t,
           value: existing.value,
           name: existing.sensor_name,
-          alarmLimit: (existing as any).alarm_limit,
-          tripLimit: (existing as any).trip_limit,
+          alarmLimit: 80,
+          tripLimit: 95,
         });
       } else {
         bucketedPoints.push({
           timestamp: timestampStr,
-          value: 0,
-          name: sensorPoints[0].sensor_name,
-          alarmLimit: (sensorPoints[0] as any).alarm_limit,
-          tripLimit: (sensorPoints[0] as any).trip_limit,
+          timestampMs: t,
+          value: 0, // Plot at 0 if no telemetry data is present
+          name: sensorPoints[0]?.sensor_name || sensor.display_name,
+          alarmLimit: 80,
+          tripLimit: 95,
         });
       }
     }
@@ -507,7 +593,7 @@ export const Dashboard: React.FC = () => {
     return bucketedPoints;
   };
 
-  const getSensorDataPoints = (sensorId: string) => {
+  const getSensorDataPoints = (sensor: HierarchyNode) => {
     const now = new Date();
     const getAppliedHoursFromRange = () => {
       const map: Record<string, number> = { last_1h: 1, last_8h: 8, last_24h: 24, last_7d: 168, last_30d: 720 };
@@ -519,7 +605,7 @@ export const Dashboard: React.FC = () => {
       start = new Date(appliedFromDate);
       end = new Date(appliedToDate);
     }
-    return getBucketedDataPoints(telemetryPoints, sensorId, start, end);
+    return getBucketedDataPoints(telemetryPoints, sensor, start, end);
   };
 
   const handleDropdownSelectChange = (event: any) => {
@@ -532,11 +618,43 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  const getAdvisoryTimestampStr = (adv: any) => {
+    if (!adv) return null;
+    const tDate = new Date(adv.first_detected);
+    return tDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+  };
+
+  const getAdvisoryMatchingPoint = (data: any[], adv: any) => {
+    if (!adv || data.length === 0) return null;
+    const advMs = new Date(adv.first_detected).getTime();
+    
+    // Check if the advisory time is within the bounds of the current chart X-axis range
+    const startMs = data[0].timestampMs || 0;
+    const endMs = data[data.length - 1].timestampMs || 0;
+    if (advMs < startMs || advMs > endMs) {
+      return null;
+    }
+    
+    let closestPt = data[0];
+    let minDiff = Math.abs((data[0].timestampMs || 0) - advMs);
+    
+    for (let i = 1; i < data.length; i++) {
+      const diff = Math.abs((data[i].timestampMs || 0) - advMs);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestPt = data[i];
+      }
+    }
+    return closestPt;
+  };
+
   const renderLineChart = (data: any[], sensor: HierarchyNode, height: number) => {
     const unit = sensor.sensor_metadata?.unit || '';
+    const advPoint = activeAdvisory ? getAdvisoryMatchingPoint(data, activeAdvisory) : null;
+
     return (
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+        <LineChart data={data} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.1)" />
           <XAxis dataKey="timestamp" stroke={theme.palette.text.secondary} style={{ fontSize: 10 }} />
           <YAxis stroke={theme.palette.text.secondary} style={{ fontSize: 10 }} />
@@ -545,6 +663,17 @@ export const Dashboard: React.FC = () => {
           <Line name={`${sensor.display_name} (${unit})`} type="monotone" dataKey="value" stroke="#2563EB" strokeWidth={2} dot={false} />
           <Line name="Safe Limit" type="monotone" dataKey="alarmLimit" stroke="#16A34A" strokeWidth={2} strokeDasharray="5 5" dot={false} />
           <Line name="Threshold" type="monotone" dataKey="tripLimit" stroke="#DC2626" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+          {advPoint && (
+            <ReferenceDot
+              x={advPoint.timestamp}
+              y={advPoint.value}
+              r={7}
+              fill="#FF1744"
+              stroke="#FFFFFF"
+              strokeWidth={3}
+              label={{ value: '⚠ Advisory Triggered', position: 'top', fill: '#FF1744', fontSize: 11, fontWeight: 700 }}
+            />
+          )}
         </LineChart>
       </ResponsiveContainer>
     );
@@ -613,10 +742,10 @@ export const Dashboard: React.FC = () => {
           </Select>
         </FormControl>
 
-        <TextField label="From" type="datetime-local" size="small" value={from} 
+        <TextField label="From" type="datetime-local" size="small" value={from}
           onChange={(e) => onFromChange(e.target.value)} disabled={sensorExpTimeRange !== 'custom'}
           slotProps={{ inputLabel: { shrink: true } }} sx={{ minWidth: 200 }} />
-        <TextField label="To" type="datetime-local" size="small" value={to} 
+        <TextField label="To" type="datetime-local" size="small" value={to}
           onChange={(e) => onToChange(e.target.value)} disabled={sensorExpTimeRange !== 'custom'}
           slotProps={{ inputLabel: { shrink: true } }} sx={{ minWidth: 200 }} />
       </Box>
@@ -655,18 +784,18 @@ export const Dashboard: React.FC = () => {
                 <TextField
                   label="From" type="datetime-local" size="small" value={fromDate}
                   disabled={timeRange !== 'custom'}
-                  onChange={(e) => setFromDate(e.target.value)}
+                  onChange={(e) => { setFromDate(e.target.value); setIsTimeOverridden(true); }}
                   slotProps={{ inputLabel: { shrink: true } }}
                   sx={{ minWidth: 200 }}
                 />
                 <TextField
                   label="To" type="datetime-local" size="small" value={toDate}
                   disabled={timeRange !== 'custom'}
-                  onChange={(e) => setToDate(e.target.value)}
+                  onChange={(e) => { setToDate(e.target.value); setIsTimeOverridden(true); }}
                   slotProps={{ inputLabel: { shrink: true } }}
                   sx={{ minWidth: 200 }}
                 />
-                
+
                 <FormControl size="small" sx={{ minWidth: 200 }}>
                   <InputLabel shrink>Asset</InputLabel>
                   <Select
@@ -756,15 +885,15 @@ export const Dashboard: React.FC = () => {
                     const bSid = b.sensor_metadata?.sensor_id || '';
                     const aAdvisory = openAdvisories.find(adv => adv.sensor_id === aSid);
                     const bAdvisory = openAdvisories.find(adv => adv.sensor_id === bSid);
-                    
+
                     const aPriority = aAdvisory ? (severityPriority[aAdvisory.severity] || 99) : 99;
                     const bPriority = bAdvisory ? (severityPriority[bAdvisory.severity] || 99) : 99;
-                    
+
                     return aPriority - bPriority;
                   })
                   .map(sensor => {
                     const sid = sensor.sensor_metadata?.sensor_id || '';
-                    const data = getSensorDataPoints(sid);
+                    const data = getSensorDataPoints(sensor);
                     const unit = sensor.sensor_metadata?.unit || '';
                     const matchingAdvisory = openAdvisories.find(a => a.sensor_id === sid);
 
@@ -772,12 +901,12 @@ export const Dashboard: React.FC = () => {
                       <Grid size={12} key={sensor.id}>
                         <Grid container spacing={3} alignItems="stretch">
                           {/* Chart Area */}
-                          <Grid size={{ xs: 12, lg: matchingAdvisory ? 8 : 12 }}>
+                          <Grid size={12}>
                             <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc', height: '100%', display: 'flex', flexDirection: 'column' }}>
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                 <Typography variant="h6" sx={{ fontWeight: 700 }}>{sensor.display_name}</Typography>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                  {data.length > 0 && (
+                                  {data.length > 0 && data[data.length - 1].value !== null && (
                                     <Chip label={`Current: ${data[data.length - 1].value} ${unit}`} color="secondary" size="small" sx={{ fontWeight: 600 }} />
                                   )}
                                   <IconButton size="small" onClick={() => openSensorExpanded(sensor)} title="Expand">
@@ -785,57 +914,11 @@ export const Dashboard: React.FC = () => {
                                   </IconButton>
                                 </Box>
                               </Box>
-                              {data.length === 0 ? (
-                                <Box sx={{ flex: 1, minHeight: 270, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed #000000', borderRadius: 1 }}>
-                                  <Typography variant="body2" color="text.secondary">
-                                    No telemetry data received for this sensor in the last 24 hours.
-                                  </Typography>
-                                </Box>
-                              ) : (
-                                <Box sx={{ width: '100%', height: 270 }}>
-                                  {renderLineChart(data, sensor, 270)}
-                                </Box>
-                              )}
+                              <Box sx={{ width: '100%', height: 270 }}>
+                                {renderLineChart(data, sensor, 270)}
+                              </Box>
                             </Paper>
                           </Grid>
-
-                          {/* Matching Advisory Column */}
-                          {matchingAdvisory && (
-                            <Grid size={{ xs: 12, lg: 4 }}>
-                              <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                                <Box>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-                                    <Typography variant="subtitle2" sx={{ color: 'secondary.main', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
-                                      ADVISORY
-                                    </Typography>
-                                    <Chip
-                                      label={getSeverityLevelFull(matchingAdvisory.severity)}
-                                      size="small"
-                                      sx={{ backgroundColor: getSeverityBgColor(matchingAdvisory.severity), color: getSeverityColor(matchingAdvisory.severity), fontWeight: 600, fontSize: '0.75rem', height: 24, px: 0.5, borderRadius: '4px' }}
-                                    />
-                                  </Box>
-                                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5, lineHeight: 1.2 }}>{matchingAdvisory.asset}</Typography>
-                                  <Typography variant="caption" sx={{ display: 'block', mb: 1.5, color: 'text.secondary', fontWeight: 500 }}>
-                                    First detected: {new Date(matchingAdvisory.first_detected).toLocaleDateString([], { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                  </Typography>
-                                  <Typography
-                                    variant="body2"
-                                    sx={{
-                                      lineHeight: 1.5,
-                                      color: 'text.primary',
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis',
-                                      display: '-webkit-box',
-                                      WebkitLineClamp: 5,
-                                      WebkitBoxOrient: 'vertical'
-                                    }}
-                                  >
-                                    {matchingAdvisory.description}
-                                  </Typography>
-                                </Box>
-                              </Paper>
-                            </Grid>
-                          )}
                         </Grid>
                       </Grid>
                     );
@@ -847,35 +930,36 @@ export const Dashboard: React.FC = () => {
           {/* Right Side: Sticky Detailed Advisory Panel */}
           {activeAdvisory && (
             <Grid size={4}>
-              <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc', position: 'sticky', top: 90, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="subtitle2" sx={{ color: 'secondary.main', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
-                    ADVISORY INFO
-                  </Typography>
-                  <Chip
-                    label={getSeverityLevelFull(activeAdvisory.severity)}
-                    size="small"
-                    sx={{ backgroundColor: getSeverityBgColor(activeAdvisory.severity), color: getSeverityColor(activeAdvisory.severity), fontWeight: 700, borderRadius: '4px' }}
-                  />
-                </Box>
-                <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.2 }}>{activeAdvisory.asset || 'Equipment Advisory'}</Typography>
-                
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600 }}>ASSET / COMPONENT</Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{activeAdvisory.asset || 'N/A'} — {activeAdvisory.sensor_name || 'N/A'}</Typography>
+              <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc', position: 'sticky', top: 90, display: 'flex', flexDirection: 'column', height: 364 }}>
+                {/* Scrollable Content Area */}
+                <Box sx={{ flex: 1, overflowY: 'auto', pr: 0.5, display: 'flex', flexDirection: 'column', gap: 2, mb: 1 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Box>
+                      <Typography variant="subtitle2" sx={{ color: 'secondary.main', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
+                        ADVISORY INFO
+                      </Typography>
+                      <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.2, mt: 0.5 }}>{activeAdvisory.asset || 'Equipment Advisory'}</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.5 }}>
+                      <Chip
+                        label={getSeverityLevelFull(activeAdvisory.severity)}
+                        size="small"
+                        sx={{ backgroundColor: getSeverityBgColor(activeAdvisory.severity), color: getSeverityColor(activeAdvisory.severity), fontWeight: 700, borderRadius: '4px' }}
+                      />
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, textAlign: 'right' }}>
+                        {new Date(activeAdvisory.first_detected).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600 }}>ADVISORY MESSAGE</Typography>
+                    <Typography variant="body2" sx={{ lineHeight: 1.5, mt: 0.5 }}>{activeAdvisory.description}</Typography>
+                  </Box>
                 </Box>
 
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600 }}>DETECTED AT</Typography>
-                  <Typography variant="body2">{new Date(activeAdvisory.first_detected).toLocaleString()}</Typography>
-                </Box>
-
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600 }}>ADVISORY MESSAGE</Typography>
-                  <Typography variant="body2" sx={{ lineHeight: 1.5, mt: 0.5 }}>{activeAdvisory.description}</Typography>
-                </Box>
-
-                <Box sx={{ mt: 1, display: 'flex', gap: 2 }}>
+                {/* Sticked Action Buttons Box */}
+                <Box sx={{ display: 'flex', gap: 2, pt: 1.5, borderTop: '1px solid #eee' }}>
                   <Button
                     fullWidth
                     variant="outlined"

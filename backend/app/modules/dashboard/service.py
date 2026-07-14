@@ -13,14 +13,6 @@ def get_sensor_telemetry(db: Session, sensor_ids: List[str], hours: int = 24, gr
     if not sensor_ids:
         return []
     
-    # 1. Query sensor thresholds
-    thresh_query = text("""
-        SELECT sensor_id, alarm_limit, trip_limit 
-        FROM sensor_thresholds 
-        WHERE sensor_id IN :sensor_ids
-    """)
-    thresh_result = db.execute(thresh_query, {"sensor_ids": tuple(sensor_ids)}).fetchall()
-    thresholds_map = {row[0]: (row[1], row[2]) for row in thresh_result}
 
     # 2. Determine granularity bucket
     if not granularity:
@@ -73,14 +65,11 @@ def get_sensor_telemetry(db: Session, sensor_ids: List[str], hours: int = 24, gr
     output = []
     for row in result:
         sid = row[1]
-        alarm_lim, trip_lim = thresholds_map.get(sid, (None, None))
         output.append({
             "timestamp": row[0].isoformat() if row[0] else None,
             "sensor_id": sid,
             "sensor_name": row[2],
-            "value": round(row[3], 2) if row[3] is not None else None,
-            "alarm_limit": alarm_lim,
-            "trip_limit": trip_lim
+            "value": round(row[3], 2) if row[3] is not None else None
         })
     return output
 
