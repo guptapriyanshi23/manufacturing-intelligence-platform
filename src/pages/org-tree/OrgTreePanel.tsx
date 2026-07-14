@@ -38,6 +38,7 @@ interface OrgTreePanelProps {
   title?: string;
   onDeleteNode?: (node: OrgTreeNode) => void;
   canDeleteNode?: (node: OrgTreeNode) => boolean;
+  onAlertClick?: (machineId: string) => void;
 }
 
 /* ── Tree Data ── */
@@ -59,8 +60,20 @@ const BASE_TREE_NODES: OrgTreeNode[] = [
         key: 'plant-2', label: 'Plant Uitilities', type: 'plant',
         data: { type: 'plant', plantId: 'plant-2' }, defaultExpanded: true,
         children: [
-          { key: 'p2-m1', label: 'ID Fan #1', type: 'machine', data: { type: 'machine', plantId: 'plant-2', machineId: 'p2-m1' } },
-          { key: 'p2-m2', label: 'ID Fan #2', type: 'machine', data: { type: 'machine', plantId: 'plant-2', machineId: 'p2-m2' } },
+          {
+            key: 'p2-m1', label: 'ID Fan #1', type: 'machine', data: { type: 'machine', plantId: 'plant-2', machineId: 'p2-m1' },
+            children: [
+              { key: 'p2-m1-alert-1', label: 'Bearing Vibration', type: 'alert', data: { type: 'alert', plantId: 'plant-2', machineId: 'p2-m1', alertId: 'fan1-alert-1' } },
+            ],
+          },
+          {
+            key: 'p2-m2', label: 'ID Fan #2', type: 'machine', data: { type: 'machine', plantId: 'plant-2', machineId: 'p2-m2' },
+            children: [
+              { key: 'p2-m2-alert-1', label: 'Bearing Vibration', type: 'alert', data: { type: 'alert', plantId: 'plant-2', machineId: 'p2-m2', alertId: 'fan2-alert-1' } },
+              { key: 'p2-m2-alert-2', label: 'Bearing Temperature', type: 'alert', data: { type: 'alert', plantId: 'plant-2', machineId: 'p2-m2', alertId: 'fan2-alert-2' } },
+              { key: 'p2-m2-alert-3', label: 'Motor Current', type: 'alert', data: { type: 'alert', plantId: 'plant-2', machineId: 'p2-m2', alertId: 'fan2-alert-3' } },
+            ],
+          },
           { key: 'p2-m3', label: 'Boiler Feed Pump', type: 'machine', data: { type: 'machine', plantId: 'plant-2', machineId: 'p2-m3' } },
           { key: 'p2-m4', label: 'PA Fan', type: 'machine', data: { type: 'machine', plantId: 'plant-2', machineId: 'p2-m4' } },
         ],
@@ -126,15 +139,19 @@ interface TreeRowProps {
   onSelect: (node: OrgTreeNode) => void;
   onDeleteNode?: (node: OrgTreeNode) => void;
   canDeleteNode?: (node: OrgTreeNode) => boolean;
+  onAlertClick?: (machineId: string) => void;
 }
 
-const TreeRow: React.FC<TreeRowProps> = ({ node, depth, selectedKey, onSelect, onDeleteNode, canDeleteNode }) => {
+const TreeRow: React.FC<TreeRowProps> = ({ node, depth, selectedKey, onSelect, onDeleteNode, canDeleteNode, onAlertClick }) => {
   const [expanded, setExpanded] = useState(node.defaultExpanded ?? false);
   const hasChildren = !!node.children?.length;
   const isSelected = selectedKey === node.key;
 
   const handleClick = () => {
     onSelect(node);
+    if (node.type === 'alert' && node.data.machineId && onAlertClick) {
+      onAlertClick(node.data.machineId);
+    }
   };
 
   const handleChevronClick = (e: React.MouseEvent) => {
@@ -211,6 +228,7 @@ const TreeRow: React.FC<TreeRowProps> = ({ node, depth, selectedKey, onSelect, o
                 onSelect={onSelect}
                 onDeleteNode={onDeleteNode}
                 canDeleteNode={canDeleteNode}
+                onAlertClick={onAlertClick}
               />
             ))}
           </List>
@@ -221,7 +239,7 @@ const TreeRow: React.FC<TreeRowProps> = ({ node, depth, selectedKey, onSelect, o
 };
 
 /* ── OrgTreePanel ── */
-const OrgTreePanel: React.FC<OrgTreePanelProps> = ({ onNodeSelected, alerts = [], nodes, title = 'Organization', onDeleteNode, canDeleteNode }) => {
+const OrgTreePanel: React.FC<OrgTreePanelProps> = ({ onNodeSelected, alerts = [], nodes, title = 'Organization', onDeleteNode, canDeleteNode, onAlertClick }) => {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const treeNodes = React.useMemo(() => nodes ?? buildTreeNodes(alerts), [alerts, nodes]);
 
@@ -243,6 +261,7 @@ const OrgTreePanel: React.FC<OrgTreePanelProps> = ({ onNodeSelected, alerts = []
             onSelect={handleSelect}
             onDeleteNode={onDeleteNode}
             canDeleteNode={canDeleteNode}
+            onAlertClick={onAlertClick}
           />
         ))}
       </List>

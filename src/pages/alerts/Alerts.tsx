@@ -192,13 +192,16 @@ const Alerts: React.FC = () => {
     setSelectedAsset('all');
     setSelectedTag('all');
 
-    if (node.data.type === 'alert' && node.data.alertId) {
-      const matchedAlert = ALL_ALERTS.find(
-        (alert) => alert.id === node.data.alertId && alert.machineId === node.data.machineId,
-      );
-      if (matchedAlert) {
-        navigate('/twin-dashboard', { state: { alert: matchedAlert } });
-      }
+    if ((node.data.type === 'alert' || node.data.type === 'machine' || node.data.type === 'sensor') && node.data.machineId) {
+      navigate('/twin-dashboard', {
+        state: {
+          machineId: node.data.machineId,
+          plantId: node.data.plantId,
+          machineName: node.label,
+          sensorName: node.label,
+          nodeLabel: node.label,
+        },
+      });
     }
   };
 

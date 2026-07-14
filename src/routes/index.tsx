@@ -22,6 +22,7 @@ const AppRoutes: React.FC = () => {
           <Route path="/org-tree" element={<OrgTree />} />
           <Route path="/advisory-summary" element={<AdvisorySummary />} />
           <Route path="/twin-dashboard" element={<ProcessAnalysis />} />
+          <Route path="/twin-dashboard/:sensorId" element={<ProcessAnalysis />} />
           <Route path="/reports" element={<ReportingAnalysis />} />
           <Route path="/admin" element={<Admin />} />
         </Route>

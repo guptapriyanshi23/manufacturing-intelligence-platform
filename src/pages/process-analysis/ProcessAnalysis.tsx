@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import CloseIcon from '@mui/icons-material/Close';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import { Autocomplete, Box, Button, Card, Checkbox, Chip, IconButton, Modal, TextField, Typography } from '@mui/material';
@@ -43,6 +43,15 @@ const PLANT_LABELS: Record<string, string> = {
   'plant-2': 'Plant Uitilities',
 };
 
+const MACHINE_LABELS: Record<string, string> = {
+  'p1-m1': 'CNC-04',
+  'p1-m2': 'CNC-07',
+  'p2-m1': 'ID Fan #1',
+  'p2-m2': 'ID Fan #2',
+  'p2-m3': 'Boiler Feed Pump',
+  'p2-m4': 'PA Fan',
+};
+
 const ALL_ALERTS: AlertSummary[] = [
   { id: '6', assetTag: 'Bearing Vibration', severity: 'S1 - High Severity', description: 'Compressor pressure spike outside safe operating region.', machineName: 'ID Fan #2', plantId: 'plant-2', machineId: 'p2-m1', timestamp: new Date('2026-07-02T10:30:00'), status: 'Unresolved' },
   { id: '7', assetTag: 'Bearing Temperature', severity: 'S2 - High Severity', description: 'Rotor vibration envelope crossed warning boundary.', machineName: 'ID Fan #2', plantId: 'plant-2', machineId: 'p2-m1', timestamp: new Date('2026-07-02T11:00:00'), status: 'Unresolved' },
@@ -67,10 +76,19 @@ function fmtTime(date: Date) {
 const ProcessAnalysis: React.FC<ProcessAnalysisProps> = ({ alert: alertProp }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { sensorId } = useParams();
   const [selectedNode, setSelectedNode] = useState<OrgTreeNode | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedCharts, setSelectedCharts] = useState<string[]>(['Bearing temperature']);
-  const alert = alertProp || (location.state as { alert?: AlertSummary })?.alert || null;
+  const routeState = (location.state as {
+    alert?: AlertSummary;
+    machineId?: string;
+    plantId?: string;
+    machineName?: string;
+    sensorName?: string;
+    nodeLabel?: string;
+  } | null) ?? {};
+  const alert = alertProp || routeState.alert || null;
   const [isRcaModalOpen, setIsRcaModalOpen] = useState(false);
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
@@ -84,23 +102,58 @@ const ProcessAnalysis: React.FC<ProcessAnalysisProps> = ({ alert: alertProp }) =
     return () => clearInterval(timer);
   }, []);
 
+  const currentMachineLabel = useMemo(() => {
+    if (selectedNode?.label) return selectedNode.label;
+    if (routeState.machineName) return routeState.machineName;
+    if (routeState.sensorName) return routeState.sensorName;
+    if (routeState.nodeLabel) return routeState.nodeLabel;
+    if (routeState.machineId) return MACHINE_LABELS[routeState.machineId] ?? routeState.machineId;
+    if (sensorId) return sensorId;
+    return '';
+  }, [selectedNode, routeState.machineName, routeState.sensorName, routeState.nodeLabel, routeState.machineId, sensorId]);
+
+  const currentPlantLabel = useMemo(() => {
+    const plantId = selectedNode?.data.plantId ?? routeState.plantId;
+    return PLANT_LABELS[plantId ?? ''] ?? plantId ?? '';
+  }, [selectedNode, routeState.plantId]);
+
   const breadcrumb = useMemo(() => {
-    if (alert && !selectedNode) {
-      // Breadcrumb for navigated alert
-      const plantLabel = PLANT_LABELS[alert.plantId ?? ''] ?? alert.plantId ?? '';
-      const crumbs = ['Organization'];
-      if (plantLabel) crumbs.push(plantLabel);
-      if (alert.machineName) crumbs.push(alert.machineName);
-      if (alert.assetTag) crumbs.push(alert.assetTag);
+    const crumbs = ['Organization'];
+
+    if (currentPlantLabel) {
+      crumbs.push(currentPlantLabel);
+    }
+
+    if (alert && !selectedNode && currentMachineLabel) {
+      crumbs.push(currentMachineLabel);
+      if (alert.assetTag) {
+        crumbs.push(alert.assetTag);
+      }
       return crumbs;
     }
-    if (!selectedNode) return ['Organization'];
-    const { type, plantId } = selectedNode.data;
-    if (type === 'plant') return ['Organization', selectedNode.label];
-    if (type === 'machine') return ['Organization', PLANT_LABELS[plantId ?? ''] ?? plantId ?? '', selectedNode.label];
-    if (type === 'alert') return ['Organization', PLANT_LABELS[plantId ?? ''] ?? plantId ?? '', selectedNode.label];
-    return ['Organization'];
-  }, [selectedNode, alert]);
+
+    if (selectedNode) {
+      const { type } = selectedNode.data;
+      if (type === 'plant') {
+        return ["Organization", selectedNode.label];
+      }
+      if (type === 'machine' || type === 'alert' || type === 'sensor') {
+        if (selectedNode.label) {
+          crumbs.push(selectedNode.label);
+        }
+        if (alert?.assetTag && type === 'alert') {
+          crumbs.push(alert.assetTag);
+        }
+        return crumbs;
+      }
+    }
+
+    if (currentMachineLabel) {
+      crumbs.push(currentMachineLabel);
+    }
+
+    return crumbs;
+  }, [selectedNode, alert, currentPlantLabel, currentMachineLabel]);
 
   const orgAlertCounts = useMemo(() => ALL_ALERTS, []);
 
@@ -202,14 +255,30 @@ const ProcessAnalysis: React.FC<ProcessAnalysisProps> = ({ alert: alertProp }) =
   const handleNodeSelected = (node: OrgTreeNode) => {
     setSelectedNode(node);
 
+    const routeState: { alert?: AlertSummary; machineId?: string; plantId?: string } = {};
+
     if (node.data.type === 'alert' && node.data.alertId) {
       const matchedAlert = ALL_ALERTS.find(
         (alert) => alert.id === node.data.alertId && alert.machineId === node.data.machineId,
       );
+
       if (matchedAlert) {
-        navigate('/process-analysis', { state: { alert: matchedAlert } });
+        routeState.alert = matchedAlert;
       }
     }
+
+    if (node.data.machineId) {
+      routeState.machineId = node.data.machineId;
+      routeState.plantId = node.data.plantId;
+    }
+
+    if (routeState.alert || routeState.machineId) {
+      navigate('/twin-dashboard', { state: routeState });
+    }
+  };
+
+  const handleBack = () => {
+    navigate('/alerts');
   };
 
   const handleAcknowledge = () => {
@@ -262,10 +331,15 @@ const ProcessAnalysis: React.FC<ProcessAnalysisProps> = ({ alert: alertProp }) =
         {/* ── Right Panel ── */}
         <section className="right-panel">
           {/* Page Title */}
-          <div className="page-title">
-            <BarChartIcon sx={{ color: '#0076A8' }} />
-            <h1>Twin Dashboard</h1>
-          </div>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 1 }}>
+            <div className="page-title">
+              <BarChartIcon sx={{ color: '#0076A8' }} />
+              <h1>Twin Dashboard</h1>
+            </div>
+            <Button variant="outlined" size="small" onClick={handleBack}>
+              ← Back
+            </Button>
+          </Box>
 
           {/* Breadcrumb Bar */}
           <div className="breadcrumb-bar">
