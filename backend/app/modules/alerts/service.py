@@ -3,17 +3,46 @@ from sqlalchemy.orm import Session
 from backend.app.models.alerts import Alert, AlertRule
 from backend.app.modules.alerts.schemas import AlertCreate, AlertRuleCreate
 
-def get_alerts(db: Session) -> List[Alert]:
-    return db.query(Alert).order_by(Alert.timestamp.desc()).all()
+from typing import List, Optional
+
+def get_alerts(
+    db: Session,
+    node_id: Optional[int] = None,
+    severity: Optional[str] = None,
+    status: Optional[str] = None
+) -> List[Alert]:
+    query = db.query(Alert)
+    
+    if status:
+        query = query.filter(Alert.status == status)
+    if severity:
+        severity_map = {"critical": 1, "high": 2, "warning": 3, "medium": 3, "low": 4, "info": 5, "informational": 5}
+        severity_int = severity_map.get(severity.lower()) or (int(severity) if severity.isdigit() else None)
+        if severity_int:
+            query = query.filter(Alert.severity == severity_int)
+            
+    if node_id:
+        from sqlalchemy import text
+        descendants_query = text("""
+            WITH RECURSIVE descendants AS (
+                SELECT id FROM hierarchy_nodes WHERE id = :node_id
+                UNION ALL
+                SELECT h.id FROM hierarchy_nodes h
+                JOIN descendants d ON h.parent_id = d.id
+            )
+            SELECT id FROM descendants;
+        """)
+        rows = db.execute(descendants_query, {"node_id": node_id}).fetchall()
+        descendant_ids = [row[0] for row in rows]
+        query = query.filter(Alert.node_id.in_(descendant_ids))
+
+    return query.order_by(Alert.timestamp.desc()).all()
 
 def create_alert(db: Session, alert_in: AlertCreate) -> Alert:
     db_alert = Alert(
         node_id=alert_in.node_id,
-        sensor_id=alert_in.sensor_id,
         name=alert_in.name,
         description=alert_in.description,
-        asset_name=alert_in.asset_name,
-        sensor_name=alert_in.sensor_name,
         condition=alert_in.condition,
         threshold=alert_in.threshold,
         severity=alert_in.severity,

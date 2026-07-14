@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Grid, Typography, Paper, Box, useTheme, Chip, Checkbox, CircularProgress,
@@ -45,8 +45,9 @@ export const Dashboard: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const searchParams = new URLSearchParams(location.search);
-  const initialNodeId = searchParams.get('selectedNodeId') ? Number(searchParams.get('selectedNodeId')) : null;
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const initialNodeId = location.state?.selectedNodeId ? Number(location.state.selectedNodeId) : (searchParams.get('selectedNodeId') ? Number(searchParams.get('selectedNodeId')) : null);
+  const alertId = location.state?.alertId ? Number(location.state.alertId) : (searchParams.get('alertId') ? Number(searchParams.get('alertId')) : null);
 
   const [hierarchyLoading, setHierarchyLoading] = useState(true);
   const [telemetryLoading, setTelemetryLoading] = useState(false);
@@ -55,11 +56,18 @@ export const Dashboard: React.FC = () => {
   const [selectedSensorIds, setSelectedSensorIds] = useState<string[]>([]);
   const [telemetryPoints, setTelemetryPoints] = useState<TelemetryPoint[]>([]);
   const [advisories, setAdvisories] = useState<any[]>([]);
+  const [alerts, setAlerts] = useState<any[]>([]);
   const [selectedNode, setSelectedNode] = useState<HierarchyNode | null>(null);
   const [appliedSensors, setAppliedSensors] = useState<HierarchyNode[]>([]);
   const [appliedSensorIds, setAppliedSensorIds] = useState<string[]>([]);
 
   const [selectedSiteId, setSelectedSiteId] = useState<number | ''>('');
+
+  // Dropdown filter states
+  const [selectedAssetId, setSelectedAssetId] = useState<number | ''>('');
+  const [selectedComponentId, setSelectedComponentId] = useState<number | ''>('');
+  const [appliedAssetId, setAppliedAssetId] = useState<number | ''>('');
+  const [appliedComponentId, setAppliedComponentId] = useState<number | ''>('');
 
   const sites = React.useMemo(() => {
     return flatNodes.filter(n => n.node_type === 'site');
@@ -87,6 +95,105 @@ export const Dashboard: React.FC = () => {
       }
     }
   }, [flatNodes, initialNodeId]);
+
+  // Helper to get descendant nodes of a given node ID
+  const getDescendantNodes = React.useMemo(() => {
+    return (nodeId: number): HierarchyNode[] => {
+      const result: HierarchyNode[] = [];
+      const queue = [nodeId];
+      const visited = new Set<number>();
+      
+      while (queue.length > 0) {
+        const id = queue.shift()!;
+        if (visited.has(id)) continue;
+        visited.add(id);
+        
+        const node = flatNodes.find(n => n.id === id);
+        if (node) {
+          result.push(node);
+        }
+        
+        flatNodes
+          .filter(n => n.parent_id === id)
+          .forEach(n => queue.push(n.id));
+      }
+      return result;
+    };
+  }, [flatNodes]);
+
+  // Nodes corresponding to the hierarchy selected in the side panel
+  const descendantsOfSidePanel = React.useMemo(() => {
+    if (!initialNodeId) return flatNodes;
+    return getDescendantNodes(initialNodeId);
+  }, [initialNodeId, flatNodes, getDescendantNodes]);
+
+  // Asset dropdown options
+  const availableAssets = React.useMemo(() => {
+    return descendantsOfSidePanel.filter(n => n.node_type === 'asset');
+  }, [descendantsOfSidePanel]);
+
+  // Component dropdown options
+  const availableComponents = React.useMemo(() => {
+    if (selectedAssetId) {
+      return getDescendantNodes(Number(selectedAssetId)).filter(n => n.node_type === 'component');
+    }
+    return descendantsOfSidePanel.filter(n => n.node_type === 'component');
+  }, [selectedAssetId, descendantsOfSidePanel, getDescendantNodes]);
+
+  // Autopopulate and sync dropdown selections based on the side panel hierarchy node selection in Dashboard
+  React.useEffect(() => {
+    if (flatNodes.length === 0) return;
+
+    if (!initialNodeId) {
+      setSelectedAssetId('');
+      setAppliedAssetId('');
+      setSelectedComponentId('');
+      setAppliedComponentId('');
+      return;
+    }
+
+    const node = flatNodes.find(n => n.id === initialNodeId);
+    if (!node) return;
+
+    if (node.node_type === 'asset') {
+      setSelectedAssetId(node.id);
+      setAppliedAssetId(node.id);
+      setSelectedComponentId('');
+      setAppliedComponentId('');
+    } else if (node.node_type === 'component') {
+      setSelectedComponentId(node.id);
+      setAppliedComponentId(node.id);
+      
+      // Walk up to find parent asset
+      let parent: HierarchyNode | undefined = node.parent_id ? flatNodes.find(n => n.id === node.parent_id) : undefined;
+      while (parent && parent.node_type !== 'asset') {
+        parent = parent.parent_id ? flatNodes.find(n => n.id === parent.parent_id) : undefined;
+      }
+      if (parent) {
+        setSelectedAssetId(parent.id);
+        setAppliedAssetId(parent.id);
+      } else {
+        setSelectedAssetId('');
+        setAppliedAssetId('');
+      }
+    } else {
+      // If it's site, area, line, etc., clear selected values if they are no longer within the new scope
+      if (selectedAssetId && !availableAssets.some(a => a.id === selectedAssetId)) {
+        setSelectedAssetId('');
+        setAppliedAssetId('');
+      }
+      if (selectedComponentId && !availableComponents.some(c => c.id === selectedComponentId)) {
+        setSelectedComponentId('');
+        setAppliedComponentId('');
+      }
+    }
+  }, [initialNodeId, flatNodes, availableAssets, availableComponents]);
+
+  // Find active advisory details if initialNodeId is present
+  const activeAdvisory = React.useMemo(() => {
+    if (!initialNodeId || advisories.length === 0) return null;
+    return advisories.find(a => a.node_id === initialNodeId) || advisories[0] || null;
+  }, [initialNodeId, advisories]);
 
   const initRange = getDateRange('last_24h');
   const [timeRange, setTimeRange] = useState('last_24h');
@@ -179,12 +286,19 @@ export const Dashboard: React.FC = () => {
   const canRca = profile?.permissions.includes('advisories:rca') ?? false;
 
   const fetchAdvisories = () => {
-    api.advisories.list()
+    const filters = initialNodeId ? { node_id: initialNodeId } : undefined;
+    api.advisories.list(filters)
       .then((res) => setAdvisories(res))
       .catch((err) => console.error('Failed to load advisories:', err));
   };
 
-  useEffect(() => { fetchAdvisories(); }, []);
+  useEffect(() => {
+    fetchAdvisories();
+    const alertFilters = initialNodeId ? { node_id: initialNodeId } : undefined;
+    api.alerts.list(alertFilters)
+      .then(setAlerts)
+      .catch((err) => console.error('Failed to load alerts:', err));
+  }, [initialNodeId]);
 
   useEffect(() => {
     api.hierarchy.list(true)
@@ -193,49 +307,65 @@ export const Dashboard: React.FC = () => {
       .finally(() => setHierarchyLoading(false));
   }, []);
 
-  const handleHierarchyChange = (node: HierarchyNode | null, isComplete: boolean) => {
-    setSelectedNode(node);
-    if (!node) {
-      setDescendantSensors([]);
-      setSelectedSensorIds([]);
-      return;
-    }
-    const sensors: HierarchyNode[] = [];
-    const queue = [node.id];
-    while (queue.length > 0) {
-      const currentId = queue.shift()!;
-      flatNodes.filter(n => n.parent_id === currentId).forEach(child => {
-        if (child.node_type === 'sensor') sensors.push(child);
-        else queue.push(child.id);
-      });
-    }
-    if (node.node_type === 'sensor') sensors.push(node);
-    setDescendantSensors(sensors);
-    
-    // Automatically select all active graphs if selected till component,
-    // otherwise (asset or above) leave deselected by default.
-    if (node.node_type === 'component') {
-      setSelectedSensorIds(sensors.map(s => s.sensor_metadata?.sensor_id).filter(Boolean) as string[]);
-    } else {
-      setSelectedSensorIds([]);
-    }
-  };
-
   const handleViewClick = () => {
-    if (selectedSensorIds.length === 0) {
+    let activeNodeId = initialNodeId;
+    if (selectedComponentId) {
+      activeNodeId = Number(selectedComponentId);
+    } else if (selectedAssetId) {
+      activeNodeId = Number(selectedAssetId);
+    }
+
+    if (!activeNodeId) {
       setTelemetryPoints([]);
       setAppliedSensors([]);
       setAppliedSensorIds([]);
+      setAppliedAssetId(selectedAssetId);
+      setAppliedComponentId(selectedComponentId);
       return;
     }
+
+    const sensors: HierarchyNode[] = [];
+    const queue = [activeNodeId];
+    const visited = new Set<number>();
+    
+    while (queue.length > 0) {
+      const currentId = queue.shift()!;
+      if (visited.has(currentId)) continue;
+      visited.add(currentId);
+      
+      const node = flatNodes.find(n => n.id === currentId);
+      if (node) {
+        if (node.node_type === 'sensor') {
+          sensors.push(node);
+        }
+        flatNodes
+          .filter(n => n.parent_id === currentId)
+          .forEach(child => queue.push(child.id));
+      }
+    }
+
+    const sensorIds = sensors.map(s => s.sensor_metadata?.sensor_id).filter(Boolean) as string[];
+
+    if (sensorIds.length === 0) {
+      setTelemetryPoints([]);
+      setAppliedSensors([]);
+      setAppliedSensorIds([]);
+      setAppliedAssetId(selectedAssetId);
+      setAppliedComponentId(selectedComponentId);
+      return;
+    }
+
     setTelemetryLoading(true);
     const customStart = timeRange === 'custom' ? new Date(fromDate).toISOString() : undefined;
     const customEnd = timeRange === 'custom' ? new Date(toDate).toISOString() : undefined;
-    api.dashboard.getTelemetry(selectedSensorIds, getHoursFromRange(), undefined, customStart, customEnd)
+
+    api.dashboard.getTelemetry(sensorIds, getHoursFromRange(), undefined, customStart, customEnd)
       .then((res) => {
         setTelemetryPoints(res);
-        setAppliedSensors(descendantSensors);
-        setAppliedSensorIds(selectedSensorIds);
+        setAppliedSensors(sensors);
+        setAppliedSensorIds(sensorIds);
+        setAppliedAssetId(selectedAssetId);
+        setAppliedComponentId(selectedComponentId);
         setAppliedTimeRange(timeRange);
         setAppliedFromDate(fromDate);
         setAppliedToDate(toDate);
@@ -244,9 +374,61 @@ export const Dashboard: React.FC = () => {
         setTelemetryPoints([]);
         setAppliedSensors([]);
         setAppliedSensorIds([]);
+        setAppliedAssetId(selectedAssetId);
+        setAppliedComponentId(selectedComponentId);
       })
       .finally(() => setTelemetryLoading(false));
   };
+
+  // Auto-run view click when initialNodeId is provided via URL
+  useEffect(() => {
+    if (initialNodeId && flatNodes.length > 0 && !telemetryLoading && telemetryPoints.length === 0) {
+      // Find descendant sensors under the initial node
+      const sensors: HierarchyNode[] = [];
+      const queue = [initialNodeId];
+      const visited = new Set<number>();
+      
+      while (queue.length > 0) {
+        const currentId = queue.shift()!;
+        if (visited.has(currentId)) continue;
+        visited.add(currentId);
+        
+        const node = flatNodes.find(n => n.id === currentId);
+        if (node) {
+          if (node.node_type === 'sensor') {
+            sensors.push(node);
+          }
+          flatNodes
+            .filter(n => n.parent_id === currentId)
+            .forEach(child => queue.push(child.id));
+        }
+      }
+
+      const sensorIds = sensors.map(s => s.sensor_metadata?.sensor_id).filter(Boolean) as string[];
+      if (sensorIds.length > 0) {
+        setTelemetryLoading(true);
+        const customStart = timeRange === 'custom' ? new Date(fromDate).toISOString() : undefined;
+        const customEnd = timeRange === 'custom' ? new Date(toDate).toISOString() : undefined;
+        api.dashboard.getTelemetry(sensorIds, getHoursFromRange(), undefined, customStart, customEnd)
+          .then((res) => {
+            setTelemetryPoints(res);
+            setAppliedSensors(sensors);
+            setAppliedSensorIds(sensorIds);
+            setAppliedAssetId(selectedAssetId);
+            setAppliedComponentId(selectedComponentId);
+            setAppliedTimeRange(timeRange);
+            setAppliedFromDate(fromDate);
+            setAppliedToDate(toDate);
+          })
+          .catch(() => {
+            setTelemetryPoints([]);
+            setAppliedSensors([]);
+            setAppliedSensorIds([]);
+          })
+          .finally(() => setTelemetryLoading(false));
+      }
+    }
+  }, [initialNodeId, flatNodes]);
 
   const getBucketedDataPoints = (
     points: TelemetryPoint[],
@@ -451,38 +633,10 @@ export const Dashboard: React.FC = () => {
       <PageHeader
         title="Dashboard"
         subtitle="Anomalous tags are shown by default, stacked one below the other. Use the dropdown to browse any other parameter on this asset — anomaly or not."
-        actions={
-          <FormControl size="small" sx={{ minWidth: 350, bgcolor: 'white', }}>
-            <InputLabel id="site-select-label" shrink>Site</InputLabel>
-            <Select
-              labelId="site-select-label"
-              value={selectedSiteId}
-              label="Site"
-              onChange={(e) => setSelectedSiteId(e.target.value as number | '')}
-              disabled={hierarchyLoading}
-              displayEmpty
-              renderValue={selectedSiteId === '' ? () => <span style={{ color: '#9e9e9e' }}>Select</span> : undefined}
-            >
-              <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
-              {sites.map(s => (
-                <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        }
       />
       <Box sx={{ mb: 4 }}>
         <Paper sx={{ px: 2, py: 2.5, borderRadius: 2, border: '1px solid #ccc' }}>
           <Grid container spacing={3} sx={{ alignItems: 'center' }}>
-            <Grid size={12}>
-              <HierarchySelector
-                flatNodes={flatNodes}
-                onSelectionChange={handleHierarchyChange}
-                initialNodeId={initialNodeId}
-                loading={hierarchyLoading}
-                selectedSiteId={selectedSiteId}
-              />
-            </Grid>
             <Grid size={12}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
                 <FormControl size="small" sx={{ minWidth: 160 }}>
@@ -512,40 +666,45 @@ export const Dashboard: React.FC = () => {
                   slotProps={{ inputLabel: { shrink: true } }}
                   sx={{ minWidth: 200 }}
                 />
-                <Box sx={{ flex: 1 }} />
-                <FormControl size="small" sx={{ minWidth: 220 }} disabled={descendantSensors.length === 0}>
-                  <InputLabel id="sensor-filter-dropdown-label" shrink>Filter Active Graphs</InputLabel>
+                
+                <FormControl size="small" sx={{ minWidth: 200 }}>
+                  <InputLabel shrink>Asset</InputLabel>
                   <Select
-                    labelId="sensor-filter-dropdown-label"
-                    multiple value={selectedSensorIds}
-                    onChange={handleDropdownSelectChange}
-                    label="Filter Active Graphs"
-                    displayEmpty
-                    renderValue={(selected) => {
-                      const arr = selected as string[];
-                      return arr.length === 0 ? <span style={{ color: '#9e9e9e' }}>Select</span> : `Active Graphs: ${arr.length}`;
+                    value={selectedAssetId}
+                    onChange={(e) => {
+                      setSelectedAssetId(e.target.value as number | '');
+                      setSelectedComponentId('');
                     }}
+                    label="Asset"
+                    displayEmpty
                   >
-                    <MenuItem value="__clear_all__">
-                      <ListItemText primary="Clear All" sx={{ color: 'text.secondary', fontStyle: 'italic' }} />
-                    </MenuItem>
-                    {descendantSensors.map((sensor) => {
-                      const sid = sensor.sensor_metadata?.sensor_id || '';
-                      if (!sid) return null;
-                      return (
-                        <MenuItem key={sensor.id} value={sid}>
-                          <Checkbox checked={selectedSensorIds.includes(sid)} color="secondary" />
-                          <ListItemText primary={`${sensor.display_name} (${sid})`} />
-                        </MenuItem>
-                      );
-                    })}
+                    <MenuItem value="">All Assets</MenuItem>
+                    {availableAssets.map(a => (
+                      <MenuItem key={a.id} value={a.id}>{a.display_name}</MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
+
+                <FormControl size="small" sx={{ minWidth: 200 }}>
+                  <InputLabel shrink>Tag (Component)</InputLabel>
+                  <Select
+                    value={selectedComponentId}
+                    onChange={(e) => setSelectedComponentId(e.target.value as number | '')}
+                    label="Tag (Component)"
+                    displayEmpty
+                  >
+                    <MenuItem value="">All Tags</MenuItem>
+                    {availableComponents.map(c => (
+                      <MenuItem key={c.id} value={c.id}>{c.display_name}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <Box sx={{ flex: 1 }} />
                 <Button
                   variant="contained"
                   color="secondary"
                   onClick={handleViewClick}
-                  disabled={selectedSensorIds.length === 0}
                   sx={{ fontWeight: 700, px: 3, py: 1, ml: 1 }}
                 >
                   View
@@ -562,180 +721,194 @@ export const Dashboard: React.FC = () => {
         </Box>
       ) : (
         <Grid container spacing={3}>
-          {appliedSensors.length === 0 && telemetryPoints.length === 0 && !telemetryLoading ? (
-            <Grid size={12}>
-              <Paper sx={{ p: 6, textAlign: 'center', border: '1px solid #ccc', borderRadius: 2 }}>
-                <Typography variant="h6" color="text.secondary" gutterBottom sx={{ fontWeight: 600 }}>
-                  No Telemetry Data Loaded
-                </Typography>
-                <Typography color="text.secondary" variant="body2">
-                  Please customize your hierarchy level, time range, or active graphs and click the <strong>View</strong> button to load charts.
-                </Typography>
-              </Paper>
-            </Grid>
-          ) : telemetryLoading ? (
-            <Grid size={12}>
-              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
-                <CircularProgress size={40} color="secondary" />
-              </Box>
-            </Grid>
-          ) : appliedSensors.length === 0 ? (
-            <Grid size={12}>
-              <Paper sx={{ p: 4, textAlign: 'center', border: '1px solid #ccc' }}>
-                <Typography color="text.secondary">
-                  No sensors defined under the selected hierarchy level. Select a level with configured sensor metadata.
-                </Typography>
-              </Paper>
-            </Grid>
-          ) : (
-            appliedSensors
-              .filter(sensor => appliedSensorIds.includes(sensor.sensor_metadata?.sensor_id || ''))
-              .sort((a, b) => {
-                const aSid = a.sensor_metadata?.sensor_id || '';
-                const bSid = b.sensor_metadata?.sensor_id || '';
-                const aAdvisory = openAdvisories.find(adv => adv.sensor_id === aSid);
-                const bAdvisory = openAdvisories.find(adv => adv.sensor_id === bSid);
-                
-                const aPriority = aAdvisory ? (severityPriority[aAdvisory.severity] || 99) : 99;
-                const bPriority = bAdvisory ? (severityPriority[bAdvisory.severity] || 99) : 99;
-                
-                return aPriority - bPriority;
-              })
-              .map(sensor => {
-                const sid = sensor.sensor_metadata?.sensor_id || '';
-                const data = getSensorDataPoints(sid);
-                const unit = sensor.sensor_metadata?.unit || '';
-                const matchingAdvisory = openAdvisories.find(a => a.sensor_id === sid);
+          {/* Left Side: Telemetry Charts list */}
+          <Grid size={activeAdvisory ? 8 : 12}>
+            <Grid container spacing={3}>
+              {appliedSensors.length === 0 && telemetryPoints.length === 0 && !telemetryLoading ? (
+                <Grid size={12}>
+                  <Paper sx={{ p: 6, textAlign: 'center', border: '1px solid #ccc', borderRadius: 2 }}>
+                    <Typography variant="h6" color="text.secondary" gutterBottom sx={{ fontWeight: 600 }}>
+                      No Telemetry Data Loaded
+                    </Typography>
+                    <Typography color="text.secondary" variant="body2">
+                      Please customize your hierarchy level, time range, asset, or tag filters and click the <strong>View</strong> button to load charts.
+                    </Typography>
+                  </Paper>
+                </Grid>
+              ) : telemetryLoading ? (
+                <Grid size={12}>
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
+                    <CircularProgress size={40} color="secondary" />
+                  </Box>
+                </Grid>
+              ) : appliedSensors.length === 0 ? (
+                <Grid size={12}>
+                  <Paper sx={{ p: 4, textAlign: 'center', border: '1px solid #ccc' }}>
+                    <Typography color="text.secondary">
+                      No sensors defined under the selected hierarchy level. Select a level with configured sensor metadata.
+                    </Typography>
+                  </Paper>
+                </Grid>
+              ) : (
+                appliedSensors
+                  .sort((a, b) => {
+                    const aSid = a.sensor_metadata?.sensor_id || '';
+                    const bSid = b.sensor_metadata?.sensor_id || '';
+                    const aAdvisory = openAdvisories.find(adv => adv.sensor_id === aSid);
+                    const bAdvisory = openAdvisories.find(adv => adv.sensor_id === bSid);
+                    
+                    const aPriority = aAdvisory ? (severityPriority[aAdvisory.severity] || 99) : 99;
+                    const bPriority = bAdvisory ? (severityPriority[bAdvisory.severity] || 99) : 99;
+                    
+                    return aPriority - bPriority;
+                  })
+                  .map(sensor => {
+                    const sid = sensor.sensor_metadata?.sensor_id || '';
+                    const data = getSensorDataPoints(sid);
+                    const unit = sensor.sensor_metadata?.unit || '';
+                    const matchingAdvisory = openAdvisories.find(a => a.sensor_id === sid);
 
-                return (
-                  <Grid size={12} key={sensor.id}>
-                    <Grid container spacing={3} alignItems="stretch">
-                      {/* Chart Area */}
-                      <Grid size={{ xs: 12, lg: 8 }}>
-                        <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc', height: '100%', display: 'flex', flexDirection: 'column' }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                            <Typography variant="h6" sx={{ fontWeight: 700 }}>{sensor.display_name}</Typography>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              {data.length > 0 && (
-                                <Chip label={`Current: ${data[data.length - 1].value} ${unit}`} color="secondary" size="small" sx={{ fontWeight: 600 }} />
-                              )}
-                              <IconButton size="small" onClick={() => openSensorExpanded(sensor)} title="Expand">
-                                <ExpandIcon fontSize="small" />
-                              </IconButton>
-                            </Box>
-                          </Box>
-                          {data.length === 0 ? (
-                            <Box sx={{ flex: 1, minHeight: 270, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed #000000', borderRadius: 1 }}>
-                              <Typography variant="body2" color="text.secondary">
-                                No telemetry data received for this sensor in the last 24 hours.
-                              </Typography>
-                            </Box>
-                          ) : (
-                            <Box sx={{ width: '100%', height: 270 }}>
-                              {renderLineChart(data, sensor, 270)}
-                            </Box>
-                          )}
-                        </Paper>
-                      </Grid>
-
-                      {/* Matching Advisory Column */}
-                      {matchingAdvisory ? (
-                        <Grid size={{ xs: 12, lg: 4 }}>
-                          <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                            <Box>
-                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-                                <Typography variant="subtitle2" sx={{ color: 'secondary.main', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
-                                  ADVISORY
-                                </Typography>
-                                <Chip
-                                  label={getSeverityLevelFull(matchingAdvisory.severity)}
-                                  size="small"
-                                  sx={{ backgroundColor: getSeverityBgColor(matchingAdvisory.severity), color: getSeverityColor(matchingAdvisory.severity), fontWeight: 600, fontSize: '0.75rem', height: 24, px: 0.5, borderRadius: '4px' }}
-                                />
+                    return (
+                      <Grid size={12} key={sensor.id}>
+                        <Grid container spacing={3} alignItems="stretch">
+                          {/* Chart Area */}
+                          <Grid size={{ xs: 12, lg: matchingAdvisory ? 8 : 12 }}>
+                            <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                <Typography variant="h6" sx={{ fontWeight: 700 }}>{sensor.display_name}</Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  {data.length > 0 && (
+                                    <Chip label={`Current: ${data[data.length - 1].value} ${unit}`} color="secondary" size="small" sx={{ fontWeight: 600 }} />
+                                  )}
+                                  <IconButton size="small" onClick={() => openSensorExpanded(sensor)} title="Expand">
+                                    <ExpandIcon fontSize="small" />
+                                  </IconButton>
+                                </Box>
                               </Box>
-                              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5, lineHeight: 1.2 }}>{matchingAdvisory.asset}</Typography>
-                              <Typography variant="caption" sx={{ display: 'block', mb: 1.5, color: 'text.secondary', fontWeight: 500 }}>
-                                First detected: {new Date(matchingAdvisory.first_detected).toLocaleDateString([], { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                              </Typography>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  lineHeight: 1.5,
-                                  color: 'text.primary',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  display: '-webkit-box',
-                                  WebkitLineClamp: 5,
-                                  WebkitBoxOrient: 'vertical'
-                                }}
-                              >
-                                {matchingAdvisory.description}
-                              </Typography>
-                            </Box>
-                            <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-                              <Button
-                                fullWidth
-                                variant="contained"
-                                color="primary"
-                                size="small"
-                                disabled={!canAcknowledge}
-                                onClick={() => handleAcknowledge(matchingAdvisory.id)}
-                                sx={{
-                                  fontWeight: 600,
-                                  textTransform: 'none',
-                                  fontSize: '0.8rem',
-                                  py: 1,
-                                  '&.Mui-disabled': {
-                                    backgroundColor: '#e2e8f0',
-                                    color: '#94a3b8',
-                                  }
-                                }}
-                              >
-                                Acknowledge
-                              </Button>
-                              <Button
-                                fullWidth
-                                variant="contained"
-                                size="small"
-                                disabled={!canRca}
-                                sx={{
-                                  backgroundColor: '#000000',
-                                  color: 'white',
-                                  fontWeight: 600,
-                                  textTransform: 'none',
-                                  fontSize: '0.8rem',
-                                  py: 1,
-                                  '&:hover': {
-                                    backgroundColor: '#1e293b',
-                                  },
-                                  '&.Mui-disabled': {
-                                    backgroundColor: '#e2e8f0',
-                                    color: '#94a3b8',
-                                  }
-                                }}
-                                onClick={() => handleInitiateRca(matchingAdvisory)}
-                              >
-                                RCA →
-                              </Button>
-                            </Box>
-                          </Paper>
+                              {data.length === 0 ? (
+                                <Box sx={{ flex: 1, minHeight: 270, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed #000000', borderRadius: 1 }}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    No telemetry data received for this sensor in the last 24 hours.
+                                  </Typography>
+                                </Box>
+                              ) : (
+                                <Box sx={{ width: '100%', height: 270 }}>
+                                  {renderLineChart(data, sensor, 270)}
+                                </Box>
+                              )}
+                            </Paper>
+                          </Grid>
+
+                          {/* Matching Advisory Column */}
+                          {matchingAdvisory && (
+                            <Grid size={{ xs: 12, lg: 4 }}>
+                              <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                                <Box>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                                    <Typography variant="subtitle2" sx={{ color: 'secondary.main', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
+                                      ADVISORY
+                                    </Typography>
+                                    <Chip
+                                      label={getSeverityLevelFull(matchingAdvisory.severity)}
+                                      size="small"
+                                      sx={{ backgroundColor: getSeverityBgColor(matchingAdvisory.severity), color: getSeverityColor(matchingAdvisory.severity), fontWeight: 600, fontSize: '0.75rem', height: 24, px: 0.5, borderRadius: '4px' }}
+                                    />
+                                  </Box>
+                                  <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5, lineHeight: 1.2 }}>{matchingAdvisory.asset}</Typography>
+                                  <Typography variant="caption" sx={{ display: 'block', mb: 1.5, color: 'text.secondary', fontWeight: 500 }}>
+                                    First detected: {new Date(matchingAdvisory.first_detected).toLocaleDateString([], { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                  </Typography>
+                                  <Typography
+                                    variant="body2"
+                                    sx={{
+                                      lineHeight: 1.5,
+                                      color: 'text.primary',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      display: '-webkit-box',
+                                      WebkitLineClamp: 5,
+                                      WebkitBoxOrient: 'vertical'
+                                    }}
+                                  >
+                                    {matchingAdvisory.description}
+                                  </Typography>
+                                </Box>
+                              </Paper>
+                            </Grid>
+                          )}
                         </Grid>
-                      ) : (
-                        <Grid size={{ xs: 12, lg: 4 }}>
-                          <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', bgcolor: '#f8fafc', borderStyle: 'dashed' }}>
-                            <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1 }}>
-                              No Advisory
-                            </Typography>
-                            <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center' }}>
-                              This sensor is operating within safe parameters. No active advisories.
-                            </Typography>
-                          </Paper>
-                        </Grid>
-                      )}
-                    </Grid>
-                  </Grid>
-                );
-              })
+                      </Grid>
+                    );
+                  })
+              )}
+            </Grid>
+          </Grid>
+
+          {/* Right Side: Sticky Detailed Advisory Panel */}
+          {activeAdvisory && (
+            <Grid size={4}>
+              <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc', position: 'sticky', top: 90, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="subtitle2" sx={{ color: 'secondary.main', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
+                    ADVISORY INFO
+                  </Typography>
+                  <Chip
+                    label={getSeverityLevelFull(activeAdvisory.severity)}
+                    size="small"
+                    sx={{ backgroundColor: getSeverityBgColor(activeAdvisory.severity), color: getSeverityColor(activeAdvisory.severity), fontWeight: 700, borderRadius: '4px' }}
+                  />
+                </Box>
+                <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.2 }}>{activeAdvisory.asset || 'Equipment Advisory'}</Typography>
+                
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600 }}>ASSET / COMPONENT</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{activeAdvisory.asset || 'N/A'} — {activeAdvisory.sensor_name || 'N/A'}</Typography>
+                </Box>
+
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600 }}>DETECTED AT</Typography>
+                  <Typography variant="body2">{new Date(activeAdvisory.first_detected).toLocaleString()}</Typography>
+                </Box>
+
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600 }}>ADVISORY MESSAGE</Typography>
+                  <Typography variant="body2" sx={{ lineHeight: 1.5, mt: 0.5 }}>{activeAdvisory.description}</Typography>
+                </Box>
+
+                <Box sx={{ mt: 1, display: 'flex', gap: 2 }}>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    color="secondary"
+                    size="small"
+                    disabled={activeAdvisory.status === 'acknowledged'}
+                    onClick={async () => {
+                      try {
+                        await api.advisories.update(activeAdvisory.id, { status: 'acknowledged' });
+                        setAdvisories(prev => prev.map(a => a.id === activeAdvisory.id ? { ...a, status: 'acknowledged' } : a));
+                      } catch (err) {
+                        console.error("Failed to acknowledge advisory:", err);
+                      }
+                    }}
+                    sx={{ fontWeight: 700, py: 1 }}
+                  >
+                    {activeAdvisory.status === 'acknowledged' ? 'Acknowledged' : 'Acknowledge'}
+                  </Button>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    color="secondary"
+                    size="small"
+                    onClick={() => {
+                      navigate(`/root-cause?advisoryId=${activeAdvisory.id}&selectedNodeName=${encodeURIComponent(activeAdvisory.asset || '')}`);
+                    }}
+                    sx={{ fontWeight: 700, py: 1 }}
+                  >
+                    Initiate RCA
+                  </Button>
+                </Box>
+              </Paper>
+            </Grid>
           )}
         </Grid>
       )}

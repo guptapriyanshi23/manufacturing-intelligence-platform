@@ -5,11 +5,57 @@ from backend.app.core.database import get_db
 from backend.app.core.security import get_current_user, check_permissions
 from backend.app.modules.alerts.schemas import AlertResponse, AlertCreate, AlertRuleResponse, AlertRuleCreate
 from backend.app.modules.alerts import service
+from backend.app.models.hierarchy import HierarchyNode
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
 
+def resolve_alert_details(db: Session, alert) -> dict:
+    if not alert:
+        return {}
+    sensor_name = "N/A"
+    sensor_id = None
+    asset_name = "N/A"
+    
+    if alert.node_id:
+        node = db.query(HierarchyNode).filter(HierarchyNode.id == alert.node_id).first()
+        if node:
+            if node.node_type == 'sensor':
+                sensor_name = node.display_name
+                if node.sensor_metadata:
+                    sensor_id = node.sensor_metadata.sensor_id
+            else:
+                sensor_name = node.display_name
+            
+            curr = node
+            while curr:
+                if curr.node_type == 'asset':
+                    asset_name = curr.display_name
+                    break
+                curr = curr.parent
+                
+    return {
+        "id": alert.id,
+        "node_id": alert.node_id,
+        "sensor_id": sensor_id,
+        "sensor_name": sensor_name,
+        "asset_name": asset_name,
+        "name": alert.name,
+        "description": alert.description,
+        "condition": alert.condition,
+        "threshold": alert.threshold,
+        "severity": alert.severity,
+        "message": alert.message,
+        "status": alert.status,
+        "timestamp": alert.timestamp
+    }
+
+from typing import List, Optional
+
 @router.get("", response_model=List[AlertResponse])
 def get_alerts(
+    node_id: Optional[int] = None,
+    severity: Optional[str] = None,
+    status: Optional[str] = None,
     current_user = Depends(check_permissions(["alerts:view"])),
     db: Session = Depends(get_db)
 ):
@@ -19,17 +65,18 @@ def get_alerts(
     from backend.app.core.security import get_allowed_node_ids
     allowed_ids = get_allowed_node_ids(current_user, db)
     
-    alerts = service.get_alerts(db)
+    alerts = service.get_alerts(db, node_id=node_id, severity=severity, status=status)
     if allowed_ids is not None:
         alerts = [a for a in alerts if a.node_id in allowed_ids]
-    return alerts
+    return [resolve_alert_details(db, a) for a in alerts]
 
 @router.post("", response_model=AlertResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(get_current_user)])
 def create_alert(alert_in: AlertCreate, db: Session = Depends(get_db)):
     """
     Trigger a new alert mock.
     """
-    return service.create_alert(db, alert_in)
+    alert = service.create_alert(db, alert_in)
+    return resolve_alert_details(db, alert)
 
 
 @router.get("/rules", response_model=List[AlertRuleResponse], dependencies=[Depends(check_permissions(["alerts:view"]))])
@@ -80,4 +127,4 @@ def update_alert(id: int, status_in: dict, db: Session = Depends(get_db)):
     alert = service.update_alert_status(db, id, status_in.get("status", "acknowledged"))
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
-    return alert
+    return resolve_alert_details(db, alert)

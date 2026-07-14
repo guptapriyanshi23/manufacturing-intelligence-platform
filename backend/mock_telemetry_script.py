@@ -192,27 +192,39 @@ def seed_thresholds_and_alerts(db, sensors):
     has_alerts = db.execute(text("SELECT 1 FROM alerts LIMIT 1")).scalar()
     if not has_alerts:
         now = datetime.now(timezone.utc)
+        sensor_node_ids = {}
+        for s in sensors:
+            res = db.execute(text("SELECT id FROM hierarchy_nodes WHERE name = :name"), {"name": s["name"]}).scalar()
+            if res:
+                sensor_node_ids[s["id"]] = res
+        
         mock_alerts = [
             {
-                "sensor_id": sensors[0]["id"] if sensors else "SEN-TMP-001",
-                "node_id": 1,
-                "severity": "critical",
+                "node_id": sensor_node_ids.get(sensors[0]["id"]) if sensors else 1,
+                "name": "Temperature Limit Overstep",
+                "description": f"Critical threshold breach on {sensors[0]['name'] if sensors else 'Bearing'}",
+                "condition": "temperature > 80",
+                "threshold": 80.0,
+                "severity": 1, # critical
                 "message": f"Critical threshold breach on {sensors[0]['name'] if sensors else 'Bearing'}",
                 "status": "active",
                 "timestamp": now - timedelta(minutes=15)
             },
             {
-                "sensor_id": sensors[1]["id"] if len(sensors) > 1 else "SEN-VIB-002",
-                "node_id": 2,
-                "severity": "warning",
+                "node_id": sensor_node_ids.get(sensors[1]["id"]) if len(sensors) > 1 else 2,
+                "name": "High Mechanical Vibration",
+                "description": f"Vibration anomaly warning on {sensors[1]['name'] if len(sensors) > 1 else 'Spindle'}",
+                "condition": "vibration > 2.5",
+                "threshold": 2.5,
+                "severity": 3, # warning
                 "message": f"Vibration anomaly warning on {sensors[1]['name'] if len(sensors) > 1 else 'Spindle'}",
                 "status": "active",
                 "timestamp": now - timedelta(hours=1)
             }
         ]
         db.execute(text("""
-            INSERT INTO alerts (sensor_id, node_id, severity, message, status, timestamp)
-            VALUES (:sensor_id, :node_id, :severity, :message, :status, :timestamp)
+            INSERT INTO alerts (node_id, name, description, condition, threshold, severity, message, status, timestamp)
+            VALUES (:node_id, :name, :description, :condition, :threshold, :severity, :message, :status, :timestamp)
         """), mock_alerts)
         
     db.commit()
@@ -232,81 +244,41 @@ def seed_advisories(db, sensors):
             sensor_id = s["id"]
             sensor_name = s["name"]
             
-            # Find the display name of the ancestor asset node dynamically
-            asset_display_name = None
+            node_id = None
             try:
-                asset_res = db.execute(text("""
-                    WITH RECURSIVE ancestor AS (
-                        SELECT id, parent_id, node_type, display_name
-                        FROM hierarchy_nodes
-                        WHERE name = :sensor_name
-                        UNION ALL
-                        SELECT n.id, n.parent_id, n.node_type, n.display_name
-                        FROM hierarchy_nodes n
-                        JOIN ancestor a ON n.id = a.parent_id
-                    )
-                    SELECT display_name FROM ancestor WHERE node_type = 'asset' LIMIT 1;
-                """), {"sensor_name": sensor_name}).scalar()
-                if asset_res:
-                    asset_display_name = asset_res
+                node_id = db.execute(text("SELECT id FROM hierarchy_nodes WHERE name = :sensor_name"), {"sensor_name": sensor_name}).scalar()
             except Exception as e:
-                print(f"Warning: Could not query asset ancestor for {sensor_name}: {e}")
+                print(f"Warning: Could not query node id for {sensor_name}: {e}")
                 
-            if not asset_display_name:
-                asset_display_name = "Pump / Filler"  # Fallback asset name
+            if not node_id:
+                continue
                 
-            # Create a relevant advisory based on the sensor type
             s_name_lower = sensor_name.lower()
             if "temp" in s_name_lower:
-                mock_advisories.append({
-                    "sensor_id": sensor_id,
-                    "sensor_name": sensor_name,
-                    "asset": asset_display_name,
-                    "severity": "critical",
-                    "description": f"Bearing temperature on sensor {sensor_id} has trended 44% above the twin baseline over the last 6 hours — consistent with advancing bearing wear. Severity has escalated S4 → S3 → S2 → S1 as the deviation sustained. The legacy 85°C alarm is only now starting to fire — the twin flagged this a full 6 hours earlier, well ahead of the 95°C trip limit.",
-                    "first_detected": now - timedelta(hours=6),
-                    "status": "open",
-                    "image_path": None,
-                    "root_cause_description": None,
-                    "action_taken": None,
-                    "created_at": now - timedelta(hours=6),
-                    "updated_at": now - timedelta(hours=6)
-                })
+                severity = 1
+                description = f"Bearing temperature on sensor {sensor_id} has trended 44% above the twin baseline over the last 6 hours — consistent with advancing bearing wear. Severity has escalated S4 → S3 → S2 → S1 as the deviation sustained. The legacy 85°C alarm is only now starting to fire — the twin flagged this a full 6 hours earlier, well ahead of the 95°C trip limit."
             elif "press" in s_name_lower or "prs" in s_name_lower or "unique" in sensor_id.lower() or "new_1" in s_name_lower:
-                mock_advisories.append({
-                    "sensor_id": sensor_id,
-                    "sensor_name": sensor_name,
-                    "asset": asset_display_name,
-                    "severity": "warning",
-                    "description": f"Sensor {sensor_id} ({sensor_name}) pressure profile indicates a minor 1.5 bar drop over the last 24 hours. We recommend scheduled greasing and gasket inspection within the next 48 production hours to avoid seal failure.",
-                    "first_detected": now - timedelta(days=1),
-                    "status": "open",
-                    "image_path": None,
-                    "root_cause_description": None,
-                    "action_taken": None,
-                    "created_at": now - timedelta(days=1),
-                    "updated_at": now - timedelta(days=1)
-                })
+                severity = 3
+                description = f"Sensor {sensor_id} ({sensor_name}) pressure profile indicates a minor 1.5 bar drop over the last 24 hours. We recommend scheduled greasing and gasket inspection within the next 48 production hours to avoid seal failure."
             else:
-                mock_advisories.append({
-                    "sensor_id": sensor_id,
-                    "sensor_name": sensor_name,
-                    "asset": asset_display_name,
-                    "severity": "info",
-                    "description": f"Measurement anomaly detected on sensor {sensor_id} ({sensor_name}). The signal variance has increased by 15% over the baseline. Monitor for further deviation.",
-                    "first_detected": now - timedelta(days=2),
-                    "status": "open",
-                    "image_path": None,
-                    "root_cause_description": None,
-                    "action_taken": None,
-                    "created_at": now - timedelta(days=2),
-                    "updated_at": now - timedelta(days=2)
-                })
+                severity = 5
+                description = f"Measurement anomaly detected on sensor {sensor_id} ({sensor_name}). The signal variance has increased by 15% over the baseline. Monitor for further deviation."
+                
+            mock_advisories.append({
+                "node_id": node_id,
+                "severity": severity,
+                "description": description,
+                "first_detected": now - timedelta(hours=6),
+                "status": "open",
+                "image_path": None,
+                "created_at": now - timedelta(hours=6),
+                "updated_at": now - timedelta(hours=6)
+            })
                 
         if mock_advisories:
             db.execute(text("""
-                INSERT INTO advisories (sensor_id, sensor_name, asset, severity, description, first_detected, status, image_path, root_cause_description, action_taken, created_at, updated_at)
-                VALUES (:sensor_id, :sensor_name, :asset, :severity, :description, :first_detected, :status, :image_path, :root_cause_description, :action_taken, :created_at, :updated_at)
+                INSERT INTO advisories (node_id, severity, description, first_detected, status, image_path, created_at, updated_at)
+                VALUES (:node_id, :severity, :description, :first_detected, :status, :image_path, :created_at, :updated_at)
             """), mock_advisories)
             db.commit()
 

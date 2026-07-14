@@ -12,7 +12,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from backend.app.core.config import settings
 from backend.app.models.alerts import Alert
-from backend.app.models.advisories import Advisory
+from backend.app.models.advisories import Advisory, RCA
 from backend.app.models.hierarchy import HierarchyNode, SensorMetadata
 
 db_url = settings.DATABASE_URL
@@ -31,122 +31,95 @@ def seed_alerts_advisories():
             print("No sensor nodes found. Please run seed_hierarchy.py first.")
             return
 
-        # 2. Clear existing alerts and advisories to maintain cleanliness
+        # 2. Clear existing alerts, advisories and RCAs to maintain cleanliness
+        db.query(RCA).delete()
         db.query(Alert).delete()
         db.query(Advisory).delete()
         db.commit()
 
-        # 3. Create some realistic advisories for sensors
-        advisories_seed = [
-            {
-                "name_type": "Bearing Temperature Warning",
-                "desc": "Axis bearing temperature exceeded warning limit of 80°C. Machine is experiencing localized friction.",
-                "severity": "warning",
-                "status": "open"
-            },
-            {
-                "name_type": "Spindle Vibration Critical",
-                "desc": "Vibration intensity on the rotation spindle exceeded safety limit. Immediate inspection advised.",
-                "severity": "critical",
-                "status": "in_progress"
-            },
-            {
-                "name_type": "Voltage Fluctuations Alert",
-                "desc": "Supply voltage dropped below 18V threshold. Verify electrical connection lines.",
-                "severity": "info",
-                "status": "acknowledged"
-            },
-            {
-                "name_type": "Coolant Flow Rate Low",
-                "desc": "Coolant fluid level flow rate dropped. Spindle heat risk detected.",
-                "severity": "warning",
-                "status": "resolved"
-            }
-        ]
-
-        # Seed 12 random advisories across the newly seeded sensors
-        advisory_count = 0
-        selected_sensors = random.sample(sensors, min(len(sensors), 12))
-        
-        for sensor in selected_sensors:
-            # Find parent asset
-            parent_asset = db.query(HierarchyNode).filter(HierarchyNode.id == sensor.parent_id).first()
-            asset_name = parent_asset.display_name if parent_asset else "Unknown Asset"
-            
-            seed_data = advisories_seed[advisory_count % len(advisories_seed)]
-            
-            db_advisory = Advisory(
-                sensor_id=sensor.sensor_metadata.sensor_id if sensor.sensor_metadata else None,
-                sensor_name=sensor.display_name,
-                asset=asset_name,
-                severity=seed_data["severity"],
-                description=seed_data["desc"],
-                status=seed_data["status"],
-                first_detected=datetime.utcnow() - timedelta(hours=random.randint(1, 24)),
-                root_cause_description="Lube decay or loose bolts" if seed_data["status"] in ("resolved", "in_progress") else None,
-                action_taken="Re-tightened mounts and re-lubricated bearings" if seed_data["status"] == "resolved" else None
-            )
-            db.add(db_advisory)
-            advisory_count += 1
-
-        # 4. Create matching alerts
-        alerts_seed = [
+        # 3. Create matching alerts and advisories pairs
+        pairs_seed = [
             {
                 "name": "Temperature Limit Overstep",
-                "desc": "Measured temperature has spiked above the maximum safe parameter.",
+                "desc": "Axis bearing temperature exceeded warning limit of 80°C. Machine is experiencing localized friction. Spindle heat risk detected.",
                 "condition": "temperature > 80",
                 "threshold": 80.0,
-                "severity": "critical",
-                "status": "active"
+                "severity": 1, # critical
+                "status": "open",
+                "advisory_desc": "Bearing temperature on sensor has trended 44% above the twin baseline over the last 6 hours — consistent with advancing bearing wear. Severity has escalated S4 → S3 → S2 → S1 as the deviation sustained. The legacy 85°C alarm is only now starting to fire — the twin flagged this a full 6 hours earlier, well ahead of the 95°C trip limit."
             },
             {
                 "name": "High Mechanical Vibration",
-                "desc": "Vibrational G-force limits on the support spindle have exceeded standard bounds.",
+                "desc": "Vibration intensity on the rotation spindle exceeded safety limit. Immediate inspection advised.",
                 "condition": "vibration > 2.5",
                 "threshold": 2.5,
-                "severity": "warning",
-                "status": "active"
+                "severity": 3, # warning
+                "status": "in_progress",
+                "advisory_desc": "Vibration profile indicates a minor alignment issue. Spindle mechanical variance has increased by 15% over the baseline. We recommend scheduled greasing and spindle mounting inspection within the next 48 production hours to avoid coupling wear."
             },
             {
                 "name": "Electrical Arc Voltage Dip",
-                "desc": "Voltage sag detected during welding operation. Risk of low-weld quality.",
+                "desc": "Supply voltage dropped below 18V threshold. Verify electrical connection lines.",
                 "condition": "voltage < 18",
                 "threshold": 18.0,
-                "severity": "info",
-                "status": "acknowledged"
+                "severity": 5, # info
+                "status": "acknowledged",
+                "advisory_desc": "Supply voltage dropped below 18V threshold. Voltage sag detected during welding operation. Risk of low-weld quality. Verify electrical transformer connection lines."
+            },
+            {
+                "name": "Coolant Flow Rate Anomaly",
+                "desc": "Coolant fluid level flow rate dropped. Spindle heat risk detected.",
+                "condition": "flow_rate < 5.0",
+                "threshold": 5.0,
+                "severity": 3, # warning
+                "status": "resolved",
+                "advisory_desc": "Coolant flow rate sagged below safety baseline threshold. Spindle cooling efficiency has degraded. System resolved after backup coolant pump cycle initiated."
             }
         ]
 
-        # Seed 20 random alerts across the newly seeded sensors
-        alert_count = 0
-        alert_sensors = random.sample(sensors, min(len(sensors), 20))
-        
-        for sensor in alert_sensors:
-            # Find parent asset
-            parent_asset = db.query(HierarchyNode).filter(HierarchyNode.id == sensor.parent_id).first()
-            asset_name = parent_asset.display_name if parent_asset else "Unknown Asset"
+        # Seed pairs across all sensors (to guarantee each alert has a matching detailed advisory)
+        seed_count = 0
+        for sensor in sensors:
+            seed_data = pairs_seed[seed_count % len(pairs_seed)]
             
-            seed_data = alerts_seed[alert_count % len(alerts_seed)]
-            
+            # Seed Advisory
+            db_advisory = Advisory(
+                node_id=sensor.id,
+                severity=seed_data["severity"],
+                description=seed_data["advisory_desc"],
+                status=seed_data["status"],
+                first_detected=datetime.utcnow() - timedelta(hours=random.randint(1, 24))
+            )
+            db.add(db_advisory)
+            db.flush() # Populates db_advisory.id
+
+            # Seed RCA if resolved/in_progress
+            if seed_data["status"] in ("resolved", "in_progress"):
+                db_rca = RCA(
+                    advisory_id=db_advisory.id,
+                    root_cause_description="Lube decay or loose bolts",
+                    action_taken="Re-tightened mounts and re-lubricated bearings" if seed_data["status"] == "resolved" else None,
+                    status="completed" if seed_data["status"] == "resolved" else "initiated"
+                )
+                db.add(db_rca)
+
+            # Seed matching Alert
             db_alert = Alert(
                 node_id=sensor.id,
-                sensor_id=sensor.sensor_metadata.sensor_id if sensor.sensor_metadata else None,
                 name=seed_data["name"],
                 description=seed_data["desc"],
-                asset_name=asset_name,
-                sensor_name=sensor.display_name,
                 condition=seed_data["condition"],
                 threshold=seed_data["threshold"],
                 severity=seed_data["severity"],
                 message=seed_data["desc"],
-                status=seed_data["status"],
-                timestamp=datetime.utcnow() - timedelta(minutes=random.randint(10, 400))
+                status="active" if seed_data["status"] in ("open", "in_progress") else ("acknowledged" if seed_data["status"] == "acknowledged" else "resolved"),
+                timestamp=db_advisory.first_detected
             )
             db.add(db_alert)
-            alert_count += 1
+            seed_count += 1
 
         db.commit()
-        print(f"Successfully seeded {advisory_count} advisories and {alert_count} alerts.")
+        print(f"Successfully seeded {seed_count} matching pairs of alerts and advisories.")
 
     except Exception as e:
         db.rollback()

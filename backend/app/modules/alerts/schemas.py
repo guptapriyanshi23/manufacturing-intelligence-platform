@@ -4,14 +4,11 @@ from pydantic import BaseModel
 
 class AlertBase(BaseModel):
     node_id: int
-    sensor_id: Optional[str] = None
     name: Optional[str] = None
     description: Optional[str] = None
-    asset_name: Optional[str] = None
-    sensor_name: Optional[str] = None
     condition: Optional[str] = None
     threshold: Optional[float] = None
-    severity: str  # 'critical', 'warning', 'info'
+    severity: int  # 1 = critical, 2 = high, 3 = warning, 4 = low, 5 = info
     message: str
     status: str  # 'active', 'acknowledged', 'resolved'
 
@@ -21,6 +18,9 @@ class AlertCreate(AlertBase):
 class AlertResponse(AlertBase):
     id: int
     timestamp: datetime
+    sensor_id: Optional[str] = None
+    asset_name: Optional[str] = None
+    sensor_name: Optional[str] = None
 
     class Config:
         from_attributes = True

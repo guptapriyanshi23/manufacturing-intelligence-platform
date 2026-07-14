@@ -49,7 +49,7 @@ export const Login: React.FC = () => {
       const profile = await api.auth.getMe();
       localStorage.setItem('user_profile', JSON.stringify(profile));
 
-      navigate('/dashboard');
+      navigate('/');
     } catch (err: any) {
       setError(err.message || 'Invalid username or password.');
     } finally {

@@ -12,6 +12,54 @@ from fastapi import UploadFile, File
 router = APIRouter(prefix="/advisories", tags=["Advisories"])
 UPLOAD_DIR = "backend/app/static/uploads"
 
+from backend.app.models.hierarchy import HierarchyNode
+from backend.app.models.advisories import RCA
+
+def resolve_advisory_details(db: Session, adv) -> dict:
+    if not adv:
+        return {}
+    sensor_name = "N/A"
+    sensor_id = None
+    asset_name = "N/A"
+    
+    if adv.node_id:
+        node = db.query(HierarchyNode).filter(HierarchyNode.id == adv.node_id).first()
+        if node:
+            if node.node_type == 'sensor':
+                sensor_name = node.display_name
+                if node.sensor_metadata:
+                    sensor_id = node.sensor_metadata.sensor_id
+            else:
+                sensor_name = node.display_name
+            
+            curr = node
+            while curr:
+                if curr.node_type == 'asset':
+                    asset_name = curr.display_name
+                    break
+                curr = curr.parent
+                
+    rca = db.query(RCA).filter(RCA.advisory_id == adv.id).first()
+    rca_desc = rca.root_cause_description if rca else None
+    rca_action = rca.action_taken if rca else None
+    
+    return {
+        "id": adv.id,
+        "node_id": adv.node_id,
+        "sensor_id": sensor_id,
+        "sensor_name": sensor_name,
+        "asset": asset_name,
+        "severity": adv.severity,
+        "description": adv.description,
+        "first_detected": adv.first_detected,
+        "status": adv.status,
+        "image_path": adv.image_path,
+        "root_cause_description": rca_desc,
+        "action_taken": rca_action,
+        "created_at": adv.created_at,
+        "updated_at": adv.updated_at
+    }
+
 @router.get("", response_model=List[AdvisoryResponse])
 def get_advisories(
     node_id: Optional[int] = None,
@@ -30,11 +78,8 @@ def get_advisories(
     if allowed_ids is not None:
         if not allowed_ids:
             return []
-        from sqlalchemy import text
-        nodes_stmt = text("SELECT display_name FROM hierarchy_nodes WHERE id IN :ids")
-        allowed_names = {r[0] for r in db.execute(nodes_stmt, {"ids": tuple(allowed_ids)}).fetchall()}
-        advisories = [a for a in advisories if a.asset in allowed_names]
-    return advisories
+        advisories = [a for a in advisories if a.node_id in allowed_ids]
+    return [resolve_advisory_details(db, a) for a in advisories]
 
 @router.patch("/{advisory_id}", response_model=AdvisoryResponse)
 def update_advisory(
@@ -60,7 +105,7 @@ def update_advisory(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Advisory with ID {advisory_id} not found"
         )
-    return advisory
+    return resolve_advisory_details(db, advisory)
 
 @router.post("/upload")
 def upload_advisory_image(

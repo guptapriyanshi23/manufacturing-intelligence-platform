@@ -66,7 +66,14 @@ export const api = {
       }),
   },
   alerts: {
-    list: () => request<any[]>('/alerts'),
+    list: (filters?: { node_id?: number | null; severity?: string; status?: string }) => {
+      const params = new URLSearchParams();
+      if (filters?.node_id) params.append('node_id', filters.node_id.toString());
+      if (filters?.severity) params.append('severity', filters.severity);
+      if (filters?.status) params.append('status', filters.status);
+      const query = params.toString();
+      return request<any[]>(`/alerts${query ? `?${query}` : ''}`);
+    },
     listRules: () => request<any[]>('/alerts/rules'),
     createRule: (data: any) => request<any>('/alerts/rules', {
       method: 'POST',

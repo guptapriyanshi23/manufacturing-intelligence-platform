@@ -19,6 +19,8 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 from backend.app.core.database import Base
 from backend.app.models.hierarchy import HierarchyNode, PlantMetadata, AssetMetadata, SensorMetadata  # noqa
+from backend.app.models.alerts import Alert, AlertRule, SensorThreshold  # noqa
+from backend.app.models.advisories import Advisory, RCA  # noqa
 target_metadata = Base.metadata
 
 # Retrieve DB URL from our settings config

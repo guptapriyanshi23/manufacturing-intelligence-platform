@@ -100,13 +100,32 @@ export const MainLayout: React.FC = () => {
   const handleSelectNode = (node: HierarchyNode) => {
     setSelectedNode(node);
     
-    // Sync node selection to dashboard via query params
-    if (location.pathname === '/dashboard') {
-      navigate(`/dashboard?selectedNodeId=${node.id}&selectedNodeName=${encodeURIComponent(node.display_name)}`);
-    } else if (location.pathname === '/admin') {
-      navigate(`/admin?selectedNodeId=${node.id}&selectedNodeName=${encodeURIComponent(node.display_name)}`);
-    }
+    // Sync node selection to pages via state instead of query string to keep URLs clean!
+    navigate(location.pathname, { state: { ...location.state, selectedNodeId: node.id } });
   };
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const queryNodeId = location.state?.selectedNodeId || (searchParams.get('selectedNodeId') ? Number(searchParams.get('selectedNodeId')) : null);
+    if (nodes.length > 0 && queryNodeId && (!selectedNode || selectedNode.id !== queryNodeId)) {
+      // Find node in flat list or hierarchically. If nodes is a tree, we should find it recursively or flat.
+      // Wait, let's find it. Let's write a helper to find node in tree.
+      const findNodeInTree = (list: HierarchyNode[], id: number): HierarchyNode | null => {
+        for (const n of list) {
+          if (n.id === id) return n;
+          if (n.children && n.children.length > 0) {
+            const found = findNodeInTree(n.children, id);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+      const node = findNodeInTree(nodes, queryNodeId);
+      if (node) {
+        setSelectedNode(node);
+      }
+    }
+  }, [nodes, location.search, location.state, selectedNode]);
 
   const handleLogout = () => {
     localStorage.removeItem('auth_token');
