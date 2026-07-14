@@ -14,9 +14,8 @@ import {
   InputLabel,
   Paper,
   Stack,
-  RadioGroup,
   FormControlLabel,
-  Radio,
+  Checkbox,
 } from '@mui/material';
 import { PhotoCameraOutlined } from '@mui/icons-material';
 import { PageContainer } from '../../components/Cards/PageContainer';
@@ -54,6 +53,7 @@ export const RootCause: React.FC = () => {
             setSelectedAdvisoryId(found.id);
             setRootCauseDescription(found.root_cause_description || '');
             setActionTaken(found.action_taken || '');
+            setRcaStatus(found.status === 'resolved' ? 'resolved' : 'in_progress');
           }
         }
       })
@@ -76,9 +76,11 @@ export const RootCause: React.FC = () => {
     if (found) {
       setRootCauseDescription(found.root_cause_description || '');
       setActionTaken(found.action_taken || '');
+      setRcaStatus(found.status === 'resolved' ? 'resolved' : 'in_progress');
     } else {
       setRootCauseDescription('');
       setActionTaken('');
+      setRcaStatus('in_progress');
     }
   };
 
@@ -268,25 +270,18 @@ export const RootCause: React.FC = () => {
                   onChange={(event) => setActionTaken(event.target.value)}
                 />
 
-                <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
-                  <Typography variant="body1" >Status </Typography>
-                  <RadioGroup
-                    row
-                    value={rcaStatus}
-                    onChange={(e) => setRcaStatus(e.target.value as 'in_progress' | 'resolved')}
-                  >
-                    <FormControlLabel
-                      value="in_progress"
-                      control={<Radio color="primary" />}
-                      label="In Progress"
-                    />
-                    <FormControlLabel
-                      value="resolved"
-                      control={<Radio color="primary" />}
-                      label="Resolved"
-                    />
-                  </RadioGroup>
-                </Box>
+                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                   <FormControlLabel
+                     control={
+                       <Checkbox
+                         checked={rcaStatus === 'resolved'}
+                         onChange={(e) => setRcaStatus(e.target.checked ? 'resolved' : 'in_progress')}
+                         color="primary"
+                       />
+                     }
+                     label="Mark as Resolved"
+                   />
+                 </Box>
 
                 <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
                   <Button

@@ -171,41 +171,57 @@ def stream_live_telemetry(session, sensors, rates_config=None):
 
     last_run = {s["id"]: 0.0 for s in matched_sensors}
 
-    try:
-        while True:
-            now_time = time.time()
-            now_dt = datetime.fromtimestamp(now_time, tz=timezone.utc)
-            
-            for sensor in matched_sensors:
-                sid = sensor["id"]
-                interval = sensor_intervals[sid]
+    current_session = session
+    while True:
+        try:
+            while True:
+                now_time = time.time()
+                now_dt = datetime.fromtimestamp(now_time, tz=timezone.utc)
                 
-                if now_time - last_run[sid] >= interval:
-                    val = generate_value(sensor["name"], now_dt)
-                    session.execute(
-                        text(
-                            "INSERT INTO sensor_telemetry (timestamp, sensor_id, sensor_name, value, inserted_at) "
-                            "VALUES (:timestamp, :sensor_id, :sensor_name, :value, :inserted_at) "
-                            "ON CONFLICT (timestamp, sensor_id) DO UPDATE SET value = EXCLUDED.value, inserted_at = EXCLUDED.inserted_at"
-                        ),
-                        {
-                            "timestamp": now_dt,
-                            "sensor_id": sid,
-                            "sensor_name": sensor["name"],
-                            "value": val,
-                            "inserted_at": now_dt
-                        }
-                    )
-                    session.commit()
-                    print(f"[{now_dt.strftime('%H:%M:%S')}] {sid} -> {val} {sensor['unit']}")
-                    last_run[sid] = now_time
-            
-            time.sleep(0.01)  # small sleep for responsiveness and fast rates
-            
-    except KeyboardInterrupt:
-        print("\nLive streaming stopped by user.")
-    except Exception as e:
-        print(f"Streaming error: {e}")
+                for sensor in matched_sensors:
+                    sid = sensor["id"]
+                    interval = sensor_intervals[sid]
+                    
+                    if now_time - last_run[sid] >= interval:
+                        val = generate_value(sensor["name"], now_dt)
+                        current_session.execute(
+                            text(
+                                "INSERT INTO sensor_telemetry (timestamp, sensor_id, sensor_name, value, inserted_at) "
+                                "VALUES (:timestamp, :sensor_id, :sensor_name, :value, :inserted_at) "
+                                "ON CONFLICT (timestamp, sensor_id) DO UPDATE SET value = EXCLUDED.value, inserted_at = EXCLUDED.inserted_at"
+                            ),
+                            {
+                                "timestamp": now_dt,
+                                "sensor_id": sid,
+                                "sensor_name": sensor["name"],
+                                "value": val,
+                                "inserted_at": now_dt
+                            }
+                        )
+                        current_session.commit()
+                        print(f"[{now_dt.strftime('%H:%M:%S')}] {sid} -> {val} {sensor['unit']}")
+                        last_run[sid] = now_time
+                
+                time.sleep(0.01)  # small sleep for responsiveness and fast rates
+                
+        except KeyboardInterrupt:
+            print("\nLive streaming stopped by user.")
+            break
+        except Exception as e:
+            print(f"Streaming error: {e}")
+            print("Database connection lost or error occurred. Retrying connection in 5 seconds...")
+            try:
+                current_session.rollback()
+            except Exception:
+                pass
+            try:
+                current_session.close()
+            except Exception:
+                pass
+            time.sleep(5)
+            # Recreate session
+            current_session = SessionLocal()
+            print("Reconnected to database. Resuming stream...")
 
 if __name__ == "__main__":
     db = SessionLocal()

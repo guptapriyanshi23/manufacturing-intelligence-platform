@@ -391,35 +391,52 @@ def stream_live_telemetry(session, sensors):
     if N == 0:
         return
     
-    try:
-        index = 0
-        while True:
-            now = datetime.now(timezone.utc)
-            sensor = sensors[index]
-            val = generate_value(sensor["name"], now)
-            
-            session.execute(
-                text(
-                    "INSERT INTO sensor_telemetry (timestamp, sensor_id, sensor_name, value, inserted_at) "
-                    "VALUES (:timestamp, :sensor_id, :sensor_name, :value, :inserted_at) "
-                    "ON CONFLICT (timestamp, sensor_id) DO NOTHING"
-                ),
-                {
-                    "timestamp": now,
-                    "sensor_id": sensor["id"],
-                    "sensor_name": sensor["name"],
-                    "value": val,
-                    "inserted_at": now
-                }
-            )
-            session.commit()
-            print(f"[{now.strftime('%H:%M:%S')}] {sensor['id']} -> {val} {sensor['unit']}")
-            
-            index = (index + 1) % N
-            time.sleep(0.6) # 0.6 seconds sleep = 100 points per minute total
-            
-    except Exception as e:
-        print(f"Streaming error: {e}")
+    current_session = session
+    index = 0
+    while True:
+        try:
+            while True:
+                now = datetime.now(timezone.utc)
+                sensor = sensors[index]
+                val = generate_value(sensor["name"], now)
+                
+                current_session.execute(
+                    text(
+                        "INSERT INTO sensor_telemetry (timestamp, sensor_id, sensor_name, value, inserted_at) "
+                        "VALUES (:timestamp, :sensor_id, :sensor_name, :value, :inserted_at) "
+                        "ON CONFLICT (timestamp, sensor_id) DO NOTHING"
+                    ),
+                    {
+                        "timestamp": now,
+                        "sensor_id": sensor["id"],
+                        "sensor_name": sensor["name"],
+                        "value": val,
+                        "inserted_at": now
+                    }
+                )
+                current_session.commit()
+                print(f"[{now.strftime('%H:%M:%S')}] {sensor['id']} -> {val} {sensor['unit']}")
+                
+                index = (index + 1) % N
+                time.sleep(0.6) # 0.6 seconds sleep = 100 points per minute total
+                
+        except KeyboardInterrupt:
+            print("\nLive streaming stopped by user.")
+            break
+        except Exception as e:
+            print(f"Streaming error: {e}")
+            print("Database connection lost or error occurred. Retrying connection in 5 seconds...")
+            try:
+                current_session.rollback()
+            except Exception:
+                pass
+            try:
+                current_session.close()
+            except Exception:
+                pass
+            time.sleep(5)
+            current_session = SessionLocal()
+            print("Reconnected to database. Resuming stream...")
 
 
 def seed_alerts(db):
