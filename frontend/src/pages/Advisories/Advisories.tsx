@@ -38,66 +38,43 @@ export const Advisories: React.FC = () => {
   const location = useLocation();
   const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
   const [hierarchyLoading, setHierarchyLoading] = useState(true);
-  const [selectedSiteId, setSelectedSiteId] = useState<number | ''>('');
 
-  const sites = useMemo(() => {
-    return flatNodes.filter(n => n.node_type === 'site');
-  }, [flatNodes]);
 
-  const queryParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
-  const qSiteId = queryParams.get('siteId') ? Number(queryParams.get('siteId')) : '';
-  const qNodeId = queryParams.get('nodeId') ? Number(queryParams.get('nodeId')) : null;
+  const treeNodeId = location.state?.selectedNodeId ? Number(location.state.selectedNodeId) : null;
   const [advisories, setAdvisories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Dropdown states (selection state, not applied immediately)
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [severityFilter, setSeverityFilter] = useState<string>('');
-  const [selectedNode, setSelectedNode] = useState<HierarchyNode | null>(null);
 
   // Applied states (updates only when 'View' button is clicked)
   const [appliedStatus, setAppliedStatus] = useState<string>('');
   const [appliedSeverity, setAppliedSeverity] = useState<string>('');
   const [appliedNode, setAppliedNode] = useState<HierarchyNode | null>(null);
+
   useEffect(() => {
-    if (flatNodes.length === 0) return;
-
-    let siteIdVal = qSiteId;
-    let nodeIdVal = qNodeId;
-    let statusVal = '';
-    let severityVal = '';
-
     const saved = localStorage.getItem('advisories_applied_filters');
     if (saved) {
       try {
         const filters = JSON.parse(saved);
-        if (!siteIdVal && filters.siteId) siteIdVal = filters.siteId;
-        if (!nodeIdVal && filters.nodeId) nodeIdVal = filters.nodeId;
-        if (filters.status) statusVal = filters.status;
-        if (filters.severity) severityVal = filters.severity;
+        if (filters.status) {
+          setStatusFilter(filters.status);
+          setAppliedStatus(filters.status);
+        }
+        if (filters.severity) {
+          setSeverityFilter(filters.severity);
+          setAppliedSeverity(filters.severity);
+        }
       } catch (e) { }
     }
+  }, []);
 
-    if (siteIdVal) {
-      setSelectedSiteId(siteIdVal);
-    } else {
-      const sitesList = flatNodes.filter(n => n.node_type === 'site');
-      setSelectedSiteId(sitesList[0]?.id || '');
-    }
-
-    if (nodeIdVal) {
-      const matchingNode = flatNodes.find(n => n.id === nodeIdVal);
-      if (matchingNode) {
-        setSelectedNode(matchingNode);
-        setAppliedNode(matchingNode);
-      }
-    }
-
-    setStatusFilter(statusVal);
-    setAppliedStatus(statusVal);
-    setSeverityFilter(severityVal);
-    setAppliedSeverity(severityVal);
-  }, [flatNodes, qSiteId, qNodeId]);
+  useEffect(() => {
+    if (flatNodes.length === 0) return;
+    const matchingNode = treeNodeId ? flatNodes.find(n => n.id === treeNodeId) : null;
+    setAppliedNode(matchingNode);
+  }, [treeNodeId, flatNodes]);
 
   const [selectedAdvisory, setSelectedAdvisory] = useState<any | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -143,30 +120,24 @@ export const Advisories: React.FC = () => {
 
   const filteredRows = advisories;
 
-  const isAllActive = !statusFilter && !severityFilter && !selectedNode && !appliedStatus && !appliedSeverity && !appliedNode;
+  const isAllActive = !statusFilter && !severityFilter && !appliedStatus && !appliedSeverity && !appliedNode;
 
   const handleApplyFilters = () => {
     setAppliedStatus(statusFilter);
     setAppliedSeverity(severityFilter);
-    setAppliedNode(selectedNode);
 
     localStorage.setItem('advisories_applied_filters', JSON.stringify({
-      siteId: selectedSiteId,
       status: statusFilter,
       severity: severityFilter,
-      nodeId: selectedNode ? selectedNode.id : null
     }));
   };
 
   const handleResetFilters = () => {
     setStatusFilter('');
     setSeverityFilter('');
-    setSelectedNode(null);
     setAppliedStatus('');
     setAppliedSeverity('');
-    setAppliedNode(null);
     localStorage.removeItem('advisories_applied_filters');
-    navigate('/advisories'); // Reset the query params
   };
 
   const handleRowClick = (advisory: any) => { setSelectedAdvisory(advisory); setDetailsOpen(true); };
@@ -200,37 +171,9 @@ export const Advisories: React.FC = () => {
       <PageHeader
         title="Advisories"
         subtitle="Active system advisories for equipment health, severity tracking, and remediation actions. Click any row to view full details."
-        actions={
-          <FormControl size="small" sx={{ minWidth: 350, bgcolor: 'white', }}>
-            <InputLabel id="site-select-label" shrink>Site</InputLabel>
-            <Select
-              labelId="site-select-label"
-              value={selectedSiteId}
-              label="Site"
-              onChange={(e) => setSelectedSiteId(e.target.value as number)}
-              disabled={hierarchyLoading}
-              displayEmpty
-              renderValue={selectedSiteId === '' ? () => <span style={{ color: '#9e9e9e' }}>Select</span> : undefined}
-            >
-              <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
-              {sites.map(s => (
-                <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        }
       />
 
       <Paper sx={{ px: 2, py: 2.5, mb: 3, border: '1px solid #ccc' }}>
-        <Box sx={{ mb: 3 }}>
-          <HierarchySelector
-            flatNodes={flatNodes}
-            onSelectionChange={(node) => setSelectedNode(node)}
-            initialNodeId={qNodeId}
-            loading={hierarchyLoading}
-            selectedSiteId={selectedSiteId}
-          />
-        </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
 
           <FormControl sx={{ flex: 1, minWidth: 0 }} size="small">
@@ -312,7 +255,7 @@ export const Advisories: React.FC = () => {
               {appliedNode === null ? (
                 <TableRow>
                   <TableCell colSpan={5} sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
-                    Please select a hierarchy node and click the <strong>View</strong> button to display advisories.
+                    Please select a hierarchy node from the left tree panel to display advisories.
                   </TableCell>
                 </TableRow>
               ) : filteredRows.length === 0 ? (
@@ -337,7 +280,7 @@ export const Advisories: React.FC = () => {
                     </TableCell>
                     <TableCell sx={{ borderBottom: '1px solid #ccc' }}>
                       <Chip
-                        label={row.severity.toUpperCase()}
+                        label={String(row.severity).toUpperCase()}
                         size="small"
                         sx={{
                           backgroundColor: getSeverityBgColor(row.severity),
@@ -377,7 +320,7 @@ export const Advisories: React.FC = () => {
               <Typography variant="h4" sx={{ fontWeight: 700 }}>{selectedAdvisory.asset}</Typography>
               <Box sx={{ display: 'flex', gap: 1 }}>
                 <Chip
-                  label={selectedAdvisory.severity.toUpperCase()}
+                  label={String(selectedAdvisory.severity).toUpperCase()}
                   size="small"
                   sx={{
                     backgroundColor: getSeverityBgColor(selectedAdvisory.severity),
