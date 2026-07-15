@@ -409,6 +409,7 @@ export const Alerts: React.FC = () => {
               ))}
             </Select>
           </FormControl>
+        }
       />
 
       {breadcrumbs.length > 0 && (
