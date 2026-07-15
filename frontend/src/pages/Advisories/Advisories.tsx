@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useOutletContext } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -22,16 +22,38 @@ import {
   DialogContent,
   DialogActions,
   Typography,
+  Breadcrumbs,
 } from '@mui/material';
+import { NavigateNext as NavigateNextIcon } from '@mui/icons-material';
 import type { SelectChangeEvent } from '@mui/material/Select';
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
 import { StatusChip } from '../../components/Forms/StatusChip';
 import { api } from '../../api/client';
-import { getSeverityColor, getSeverityBgColor, severityOptions } from '../../constants/severity';
+import { getSeverityColor, getSeverityBgColor, severityOptions, getSeverityLevelFull } from '../../constants/severity';
 import { statusOptions } from '../../constants/status';
 import type { HierarchyNode } from '../../types/hierarchy';
 import { HierarchySelector } from '../../components/Filters/HierarchySelector';
+
+const getBreadcrumbsPath = (nodeId: number, flatNodes: HierarchyNode[]): string[] => {
+  const path: string[] = [];
+  let current = flatNodes.find(n => n.id === nodeId);
+  while (current) {
+    path.unshift(current.display_name);
+    current = current.parent_id ? flatNodes.find(n => n.id === current.parent_id) : undefined;
+  }
+  return path;
+};
+
+const mapToSeverityOption = (sev: string | number): string => {
+  const s = typeof sev === 'string' ? sev.toLowerCase() : sev;
+  if (s === 1 || s === 'critical') return 'critical';
+  if (s === 2 || s === 'high') return 'high';
+  if (s === 3 || s === 'warning' || s === 'medium') return 'warning';
+  if (s === 4 || s === 'low') return 'low';
+  if (s === 5 || s === 'info' || s === 'informational') return 'info';
+  return 'info';
+};
 
 export const Advisories: React.FC = () => {
   const navigate = useNavigate();
@@ -40,20 +62,77 @@ export const Advisories: React.FC = () => {
   const [hierarchyLoading, setHierarchyLoading] = useState(true);
 
 
-  const treeNodeId = location.state?.selectedNodeId ? Number(location.state.selectedNodeId) : null;
+  const context = useOutletContext<{ selectedNodeId?: number | null }>();
+  const treeNodeId = context?.selectedNodeId ?? (location.state?.selectedNodeId ? Number(location.state.selectedNodeId) : null);
   const [advisories, setAdvisories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Dropdown states (selection state, not applied immediately)
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [severityFilter, setSeverityFilter] = useState<string>('');
+  const [selectedSensorId, setSelectedSensorId] = useState<number | ''>('');
 
   // Applied states (updates only when 'View' button is clicked)
   const [appliedStatus, setAppliedStatus] = useState<string>('');
   const [appliedSeverity, setAppliedSeverity] = useState<string>('');
+  const [appliedSensorId, setAppliedSensorId] = useState<number | ''>('');
   const [appliedNode, setAppliedNode] = useState<HierarchyNode | null>(null);
 
+  const descendantsOfSidePanel = useMemo(() => {
+    if (!treeNodeId) return flatNodes;
+    const getDescendants = (nodeId: number) => {
+      const result: HierarchyNode[] = [];
+      const queue = [nodeId];
+      const visited = new Set<number>();
+      while (queue.length > 0) {
+        const id = queue.shift()!;
+        if (visited.has(id)) continue;
+        visited.add(id);
+        const node = flatNodes.find(n => n.id === id);
+        if (node) {
+          result.push(node);
+          flatNodes.filter(n => n.parent_id === id).forEach(n => queue.push(n.id));
+        }
+      }
+      return result;
+    };
+    return getDescendants(treeNodeId);
+  }, [treeNodeId, flatNodes]);
+
+  const availableSensors = useMemo(() => {
+    return descendantsOfSidePanel.filter(n => n.node_type === 'sensor');
+  }, [descendantsOfSidePanel]);
+
+  const isAssetSelected = useMemo(() => {
+    return flatNodes.find(n => n.id === treeNodeId)?.node_type === 'asset';
+  }, [treeNodeId, flatNodes]);
+
+  const [breadcrumbs, setBreadcrumbs] = useState<string[]>([]);
+
   useEffect(() => {
+    if (treeNodeId && flatNodes.length > 0) {
+      setBreadcrumbs(getBreadcrumbsPath(treeNodeId, flatNodes));
+    } else {
+      setBreadcrumbs([]);
+    }
+  }, [treeNodeId, flatNodes]);
+
+  useEffect(() => {
+    if (location.state?.prefilledStatus || location.state?.prefilledSeverity) {
+      if (location.state.prefilledStatus) {
+        setStatusFilter(location.state.prefilledStatus);
+        setAppliedStatus(location.state.prefilledStatus);
+      }
+      if (location.state.prefilledSeverity) {
+        const mappedSev = mapToSeverityOption(location.state.prefilledSeverity);
+        setSeverityFilter(mappedSev);
+        setAppliedSeverity(mappedSev);
+      }
+      // Clean up prefilled context from history state so subsequent actions act normally
+      window.history.replaceState({ ...location.state, prefilledStatus: undefined, prefilledSeverity: undefined }, '');
+      return;
+    }
+
     const saved = localStorage.getItem('advisories_applied_filters');
     if (saved) {
       try {
@@ -68,12 +147,17 @@ export const Advisories: React.FC = () => {
         }
       } catch (e) { }
     }
-  }, []);
+  }, [location.state]);
 
   useEffect(() => {
     if (flatNodes.length === 0) return;
     const matchingNode = treeNodeId ? flatNodes.find(n => n.id === treeNodeId) : null;
     setAppliedNode(matchingNode);
+
+    if (treeNodeId) {
+      setSelectedSensorId('');
+      setAppliedSensorId('');
+    }
   }, [treeNodeId, flatNodes]);
 
   const [selectedAdvisory, setSelectedAdvisory] = useState<any | null>(null);
@@ -109,22 +193,24 @@ export const Advisories: React.FC = () => {
     }
 
     setLoading(true);
+    const targetNodeId = appliedSensorId ? Number(appliedSensorId) : appliedNode.id;
     api.advisories.list({
-      node_id: appliedNode.id,
+      node_id: targetNodeId,
       status: appliedStatus,
       severity: appliedSeverity,
     })
       .then((res) => { setAdvisories(res); setLoading(false); })
       .catch((err) => { console.error('Failed to fetch advisories:', err); setLoading(false); });
-  }, [appliedNode, appliedStatus, appliedSeverity]);
+  }, [appliedNode, appliedStatus, appliedSeverity, appliedSensorId]);
 
   const filteredRows = advisories;
 
-  const isAllActive = !statusFilter && !severityFilter && !appliedStatus && !appliedSeverity && !appliedNode;
+  const isAllActive = !statusFilter && !severityFilter && !selectedSensorId && !appliedStatus && !appliedSeverity && !appliedNode;
 
   const handleApplyFilters = () => {
     setAppliedStatus(statusFilter);
     setAppliedSeverity(severityFilter);
+    setAppliedSensorId(selectedSensorId);
 
     localStorage.setItem('advisories_applied_filters', JSON.stringify({
       status: statusFilter,
@@ -135,8 +221,10 @@ export const Advisories: React.FC = () => {
   const handleResetFilters = () => {
     setStatusFilter('');
     setSeverityFilter('');
+    setSelectedSensorId('');
     setAppliedStatus('');
     setAppliedSeverity('');
+    setAppliedSensorId('');
     localStorage.removeItem('advisories_applied_filters');
   };
 
@@ -173,6 +261,20 @@ export const Advisories: React.FC = () => {
         subtitle="Active system advisories for equipment health, severity tracking, and remediation actions. Click any row to view full details."
       />
 
+      {breadcrumbs.length > 0 && (
+        <Breadcrumbs separator={<NavigateNextIcon fontSize="small" sx={{ color: 'text.secondary' }} />} sx={{ mb: 2 }}>
+          {breadcrumbs.map((name, index, arr) => (
+            <Typography
+              key={name}
+              color={index === arr.length - 1 ? 'text.primary' : 'text.secondary'}
+              sx={{ fontWeight: index === arr.length - 1 ? 700 : 500, fontSize: '0.85rem' }}
+            >
+              {name}
+            </Typography>
+          ))}
+        </Breadcrumbs>
+      )}
+
       <Paper sx={{ px: 2, py: 2.5, mb: 3, border: '1px solid #ccc' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
 
@@ -185,7 +287,7 @@ export const Advisories: React.FC = () => {
               onChange={(e: SelectChangeEvent) => setStatusFilter(e.target.value)}
               displayEmpty
               renderValue={(selected) =>
-                selected ? (selected === 'in_progress' ? 'In Progress' : selected.charAt(0).toUpperCase() + selected.slice(1)) : <span style={{ color: '#9e9e9e' }}>Select</span>
+                selected ? (String(selected) === 'in_progress' ? 'In Progress' : String(selected).charAt(0).toUpperCase() + String(selected).slice(1)) : <span style={{ color: '#9e9e9e' }}>Select</span>
               }
             >
               <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
@@ -206,7 +308,7 @@ export const Advisories: React.FC = () => {
               onChange={(e: SelectChangeEvent) => setSeverityFilter(e.target.value)}
               displayEmpty
               renderValue={(selected) =>
-                selected ? selected.charAt(0).toUpperCase() + selected.slice(1) : <span style={{ color: '#9e9e9e' }}>Select</span>
+                selected ? String(selected).charAt(0).toUpperCase() + String(selected).slice(1) : <span style={{ color: '#9e9e9e' }}>Select</span>
               }
             >
               <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
@@ -214,6 +316,22 @@ export const Advisories: React.FC = () => {
                 <MenuItem key={option} value={option}>
                   {option.charAt(0).toUpperCase() + option.slice(1)}
                 </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl sx={{ flex: 1, minWidth: 0 }} size="small" disabled={!isAssetSelected}>
+            <InputLabel id="sensor-filter-label" shrink>Sensor/Tag</InputLabel>
+            <Select
+              labelId="sensor-filter-label"
+              value={selectedSensorId}
+              label="Sensor/Tag"
+              onChange={(e) => setSelectedSensorId(e.target.value as number | '')}
+              displayEmpty
+            >
+              <MenuItem value="">All Sensors/Tags</MenuItem>
+              {availableSensors.map(s => (
+                <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
               ))}
             </Select>
           </FormControl>
@@ -280,7 +398,7 @@ export const Advisories: React.FC = () => {
                     </TableCell>
                     <TableCell sx={{ borderBottom: '1px solid #ccc' }}>
                       <Chip
-                        label={String(row.severity).toUpperCase()}
+                        label={getSeverityLevelFull(row.severity).toUpperCase()}
                         size="small"
                         sx={{
                           backgroundColor: getSeverityBgColor(row.severity),
@@ -320,7 +438,7 @@ export const Advisories: React.FC = () => {
               <Typography variant="h4" sx={{ fontWeight: 700 }}>{selectedAdvisory.asset}</Typography>
               <Box sx={{ display: 'flex', gap: 1 }}>
                 <Chip
-                  label={String(selectedAdvisory.severity).toUpperCase()}
+                  label={getSeverityLevelFull(selectedAdvisory.severity).toUpperCase()}
                   size="small"
                   sx={{
                     backgroundColor: getSeverityBgColor(selectedAdvisory.severity),

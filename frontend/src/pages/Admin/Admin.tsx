@@ -43,7 +43,7 @@ import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
 import { api } from '../../api/client';
 import type { HierarchyNode, NodeType } from '../../types/hierarchy';
-import { getSeverityColor, getSeverityBgColor } from '../../constants/severity';
+import { getSeverityColor, getSeverityBgColor, getSeverityLevelFull } from '../../constants/severity';
 
 // ─── Hierarchy constants ────────────────────────────────────────────────────
 const LEVELS: NodeType[] = ['enterprise','site','area','line','station','asset','component','sensor'];
@@ -863,7 +863,7 @@ export const Admin: React.FC = () => {
                         <TableCell sx={{ color: 'text.secondary', fontSize: 12 }}>{triggerName}</TableCell>
                         <TableCell>{conditionText}</TableCell>
                         <TableCell>
-                          <Chip label={String(rule.severity).toUpperCase()} size="small"
+                          <Chip label={getSeverityLevelFull(rule.severity).toUpperCase()} size="small"
                             sx={{ backgroundColor: getSeverityBgColor(rule.severity), color: getSeverityColor(rule.severity), fontWeight: 600, fontSize: 11, borderRadius: '4px' }}
                           />
                         </TableCell>
@@ -1159,7 +1159,7 @@ export const Admin: React.FC = () => {
                   <Grid size={{ xs: 6 }}>
                     <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>Severity</Typography>
                     <Box sx={{ mt: 0.5 }}>
-                      <Chip label={String(selectedRuleDetails.severity).toUpperCase()} size="small"
+                      <Chip label={getSeverityLevelFull(selectedRuleDetails.severity).toUpperCase()} size="small"
                         sx={{ backgroundColor: getSeverityBgColor(selectedRuleDetails.severity), color: getSeverityColor(selectedRuleDetails.severity), fontWeight: 600, fontSize: 11, borderRadius: '4px' }}
                       />
                     </Box>

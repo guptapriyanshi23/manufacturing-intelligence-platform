@@ -1,14 +1,14 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useOutletContext } from 'react-router-dom';
 import {
   Grid, Typography, Paper, Box, useTheme, Chip, Checkbox, CircularProgress,
   FormControl, InputLabel, Select, MenuItem, ListItemText, Button, Stack,
-  IconButton, Dialog, DialogContent, TextField,
+  IconButton, Dialog, DialogContent, TextField, Breadcrumbs,
 } from '@mui/material';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceDot,
 } from 'recharts';
-import { OpenInFull as ExpandIcon, Close as CloseIcon } from '@mui/icons-material';
+import { OpenInFull as ExpandIcon, Close as CloseIcon, NavigateNext as NavigateNextIcon } from '@mui/icons-material';
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { api } from '../../api/client';
 import type { HierarchyNode } from '../../types/hierarchy';
@@ -40,13 +40,24 @@ interface TelemetryPoint {
   value: number;
 }
 
+const getBreadcrumbsPath = (nodeId: number, flatNodes: HierarchyNode[]): string[] => {
+  const path: string[] = [];
+  let current = flatNodes.find(n => n.id === nodeId);
+  while (current) {
+    path.unshift(current.display_name);
+    current = current.parent_id ? flatNodes.find(n => n.id === current.parent_id) : undefined;
+  }
+  return path;
+};
+
 export const Dashboard: React.FC = () => {
   const theme = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
 
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
-  const initialNodeId = location.state?.selectedNodeId ? Number(location.state.selectedNodeId) : (searchParams.get('selectedNodeId') ? Number(searchParams.get('selectedNodeId')) : null);
+  const context = useOutletContext<{ selectedNodeId?: number | null }>();
+  const initialNodeId = context?.selectedNodeId ?? (location.state?.selectedNodeId ? Number(location.state.selectedNodeId) : (searchParams.get('selectedNodeId') ? Number(searchParams.get('selectedNodeId')) : null));
   const alertId = location.state?.alertId ? Number(location.state.alertId) : (searchParams.get('alertId') ? Number(searchParams.get('alertId')) : null);
 
   const [hierarchyLoading, setHierarchyLoading] = useState(true);
@@ -65,10 +76,8 @@ export const Dashboard: React.FC = () => {
   const [selectedSiteId, setSelectedSiteId] = useState<number | ''>('');
 
   // Dropdown filter states
-  const [selectedAssetId, setSelectedAssetId] = useState<number | ''>('');
-  const [selectedComponentId, setSelectedComponentId] = useState<number | ''>('');
-  const [appliedAssetId, setAppliedAssetId] = useState<number | ''>('');
-  const [appliedComponentId, setAppliedComponentId] = useState<number | ''>('');
+  const [selectedSensorId, setSelectedSensorId] = useState<number | ''>('');
+  const [appliedSensorId, setAppliedSensorId] = useState<number | ''>('');
 
   const sites = React.useMemo(() => {
     return flatNodes.filter(n => n.node_type === 'site');
@@ -128,67 +137,58 @@ export const Dashboard: React.FC = () => {
     return getDescendantNodes(initialNodeId);
   }, [initialNodeId, flatNodes, getDescendantNodes]);
 
-  // Asset dropdown options
-  const availableAssets = React.useMemo(() => {
-    return descendantsOfSidePanel.filter(n => n.node_type === 'asset');
+  // Sensor/Tag dropdown options
+  const availableSensors = React.useMemo(() => {
+    return descendantsOfSidePanel.filter(n => n.node_type === 'sensor');
   }, [descendantsOfSidePanel]);
 
-  // Component dropdown options
-  const availableComponents = React.useMemo(() => {
-    if (selectedAssetId) {
-      return getDescendantNodes(Number(selectedAssetId)).filter(n => n.node_type === 'component');
-    }
-    return descendantsOfSidePanel.filter(n => n.node_type === 'component');
-  }, [selectedAssetId, descendantsOfSidePanel, getDescendantNodes]);
+  const isAssetSelected = React.useMemo(() => {
+    return flatNodes.find(n => n.id === initialNodeId)?.node_type === 'asset';
+  }, [initialNodeId, flatNodes]);
 
   // Autopopulate and sync dropdown selections based on the side panel hierarchy node selection in Dashboard
   React.useEffect(() => {
     if (flatNodes.length === 0) return;
 
     if (!initialNodeId) {
-      setSelectedAssetId('');
-      setAppliedAssetId('');
-      setSelectedComponentId('');
-      setAppliedComponentId('');
+      setSelectedSensorId('');
+      setAppliedSensorId('');
       return;
+    }
+
+    const incomingSensorId = location.state?.originalSensorNodeId;
+    if (incomingSensorId) {
+      const sensorNode = flatNodes.find(n => n.id === incomingSensorId);
+      if (sensorNode && sensorNode.node_type === 'sensor') {
+        setSelectedSensorId(sensorNode.id);
+        setAppliedSensorId(sensorNode.id);
+        return;
+      }
     }
 
     const node = flatNodes.find(n => n.id === initialNodeId);
     if (!node) return;
 
-    if (node.node_type === 'asset') {
-      setSelectedAssetId(node.id);
-      setAppliedAssetId(node.id);
-      setSelectedComponentId('');
-      setAppliedComponentId('');
-    } else if (node.node_type === 'component') {
-      setSelectedComponentId(node.id);
-      setAppliedComponentId(node.id);
-
-      // Walk up to find parent asset
-      let parent: HierarchyNode | undefined = node.parent_id ? flatNodes.find(n => n.id === node.parent_id) : undefined;
-      while (parent && parent.node_type !== 'asset') {
-        parent = parent.parent_id ? flatNodes.find(n => n.id === parent.parent_id) : undefined;
-      }
-      if (parent) {
-        setSelectedAssetId(parent.id);
-        setAppliedAssetId(parent.id);
-      } else {
-        setSelectedAssetId('');
-        setAppliedAssetId('');
-      }
+    if (node.node_type === 'sensor') {
+      setSelectedSensorId(node.id);
+      setAppliedSensorId(node.id);
     } else {
-      // If it's site, area, line, etc., clear selected values if they are no longer within the new scope
-      if (selectedAssetId && !availableAssets.some(a => a.id === selectedAssetId)) {
-        setSelectedAssetId('');
-        setAppliedAssetId('');
-      }
-      if (selectedComponentId && !availableComponents.some(c => c.id === selectedComponentId)) {
-        setSelectedComponentId('');
-        setAppliedComponentId('');
+      if (selectedSensorId && !availableSensors.some(s => s.id === selectedSensorId)) {
+        setSelectedSensorId('');
+        setAppliedSensorId('');
       }
     }
-  }, [initialNodeId, flatNodes, availableAssets, availableComponents]);
+  }, [initialNodeId, flatNodes, availableSensors, location.state?.originalSensorNodeId]);
+
+  const [breadcrumbs, setBreadcrumbs] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (initialNodeId && flatNodes.length > 0) {
+      setBreadcrumbs(getBreadcrumbsPath(initialNodeId, flatNodes));
+    } else {
+      setBreadcrumbs([]);
+    }
+  }, [initialNodeId, flatNodes]);
 
   // Find active advisory details if initialNodeId is present
   const activeAdvisory = React.useMemo(() => {
@@ -371,18 +371,15 @@ export const Dashboard: React.FC = () => {
 
   const handleViewClick = () => {
     let activeNodeId = initialNodeId;
-    if (selectedComponentId) {
-      activeNodeId = Number(selectedComponentId);
-    } else if (selectedAssetId) {
-      activeNodeId = Number(selectedAssetId);
+    if (selectedSensorId) {
+      activeNodeId = Number(selectedSensorId);
     }
 
     if (!activeNodeId) {
       setTelemetryPoints([]);
       setAppliedSensors([]);
       setAppliedSensorIds([]);
-      setAppliedAssetId(selectedAssetId);
-      setAppliedComponentId(selectedComponentId);
+      setAppliedSensorId(selectedSensorId);
       return;
     }
 
@@ -412,8 +409,7 @@ export const Dashboard: React.FC = () => {
       setTelemetryPoints([]);
       setAppliedSensors([]);
       setAppliedSensorIds([]);
-      setAppliedAssetId(selectedAssetId);
-      setAppliedComponentId(selectedComponentId);
+      setAppliedSensorId(selectedSensorId);
       return;
     }
 
@@ -432,8 +428,7 @@ export const Dashboard: React.FC = () => {
         setTelemetryPoints(res);
         setAppliedSensors(sensors);
         setAppliedSensorIds(sensorIds);
-        setAppliedAssetId(selectedAssetId);
-        setAppliedComponentId(selectedComponentId);
+        setAppliedSensorId(selectedSensorId);
         setAppliedTimeRange(timeRange);
         setAppliedFromDate(fromDate);
         setAppliedToDate(toDate);
@@ -442,8 +437,7 @@ export const Dashboard: React.FC = () => {
         setTelemetryPoints([]);
         setAppliedSensors([]);
         setAppliedSensorIds([]);
-        setAppliedAssetId(selectedAssetId);
-        setAppliedComponentId(selectedComponentId);
+        setAppliedSensorId(selectedSensorId);
       })
       .finally(() => setTelemetryLoading(false));
   };
@@ -452,9 +446,12 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     if (!advisoriesFetched) return;
     if (initialNodeId && flatNodes.length > 0 && !telemetryLoading && telemetryPoints.length === 0) {
-      // Find descendant sensors under the initial node
+      // Find descendant sensors under the active node
+      const incomingSensorId = location.state?.originalSensorNodeId;
+      const targetNodeId = incomingSensorId ? Number(incomingSensorId) : initialNodeId;
+
       const sensors: HierarchyNode[] = [];
-      const queue = [initialNodeId];
+      const queue = [targetNodeId];
       const visited = new Set<number>();
 
       while (queue.length > 0) {
@@ -490,8 +487,9 @@ export const Dashboard: React.FC = () => {
             setTelemetryPoints(res);
             setAppliedSensors(sensors);
             setAppliedSensorIds(sensorIds);
-            setAppliedAssetId(selectedAssetId);
-            setAppliedComponentId(selectedComponentId);
+            if (incomingSensorId) {
+              setAppliedSensorId(incomingSensorId);
+            }
             if (activeAdvisory && !isTimeOverridden) {
               const win = getAdvisoryTimeWindow(activeAdvisory);
               setAppliedTimeRange('custom');
@@ -511,7 +509,7 @@ export const Dashboard: React.FC = () => {
           .finally(() => setTelemetryLoading(false));
       }
     }
-  }, [initialNodeId, flatNodes, activeAdvisory, isTimeOverridden, advisoriesFetched]);
+  }, [initialNodeId, flatNodes, activeAdvisory, isTimeOverridden, advisoriesFetched, location.state?.originalSensorNodeId]);
 
   const getBucketedDataPoints = (
     points: TelemetryPoint[],
@@ -769,6 +767,21 @@ export const Dashboard: React.FC = () => {
         title="Dashboard"
         subtitle="Anomalous tags are shown by default, stacked one below the other. Use the dropdown to browse any other parameter on this asset — anomaly or not."
       />
+
+      {breadcrumbs.length > 0 && (
+        <Breadcrumbs separator={<NavigateNextIcon fontSize="small" sx={{ color: 'text.secondary' }} />} sx={{ mb: 2 }}>
+          {breadcrumbs.map((name, index, arr) => (
+            <Typography
+              key={name}
+              color={index === arr.length - 1 ? 'text.primary' : 'text.secondary'}
+              sx={{ fontWeight: index === arr.length - 1 ? 700 : 500, fontSize: '0.85rem' }}
+            >
+              {name}
+            </Typography>
+          ))}
+        </Breadcrumbs>
+      )}
+
       <Box sx={{ mb: 4 }}>
         <Paper sx={{ px: 2, py: 2.5, borderRadius: 2, border: '1px solid #ccc' }}>
           <Grid container spacing={3} sx={{ alignItems: 'center' }}>
@@ -802,38 +815,22 @@ export const Dashboard: React.FC = () => {
                   sx={{ minWidth: 200 }}
                 />
 
-                <FormControl size="small" sx={{ minWidth: 200 }}>
-                  <InputLabel shrink>Asset</InputLabel>
+                <FormControl size="small" sx={{ minWidth: 200 }} disabled={!isAssetSelected}>
+                  <InputLabel shrink>Sensor/Tag</InputLabel>
                   <Select
-                    value={selectedAssetId}
-                    onChange={(e) => {
-                      setSelectedAssetId(e.target.value as number | '');
-                      setSelectedComponentId('');
-                    }}
-                    label="Asset"
+                    value={selectedSensorId}
+                    onChange={(e) => setSelectedSensorId(e.target.value as number | '')}
+                    label="Sensor/Tag"
                     displayEmpty
                   >
-                    <MenuItem value="">All Assets</MenuItem>
-                    {availableAssets.map(a => (
-                      <MenuItem key={a.id} value={a.id}>{a.display_name}</MenuItem>
+                    <MenuItem value="">All Sensors/Tags</MenuItem>
+                    {availableSensors.map(s => (
+                      <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
                     ))}
                   </Select>
                 </FormControl>
 
-                <FormControl size="small" sx={{ minWidth: 200 }}>
-                  <InputLabel shrink>Tag (Component)</InputLabel>
-                  <Select
-                    value={selectedComponentId}
-                    onChange={(e) => setSelectedComponentId(e.target.value as number | '')}
-                    label="Tag (Component)"
-                    displayEmpty
-                  >
-                    <MenuItem value="">All Tags</MenuItem>
-                    {availableComponents.map(c => (
-                      <MenuItem key={c.id} value={c.id}>{c.display_name}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+
 
                 <Box sx={{ flex: 1 }} />
                 <Button

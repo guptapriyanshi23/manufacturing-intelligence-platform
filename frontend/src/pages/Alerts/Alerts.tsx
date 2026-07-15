@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useOutletContext } from 'react-router-dom';
 import {
   Box,
   CircularProgress,
@@ -18,7 +18,9 @@ import {
   TableRow,
   Checkbox,
   Chip,
+  Breadcrumbs,
 } from '@mui/material';
+import { NavigateNext as NavigateNextIcon } from '@mui/icons-material';
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
 import { getSeverityColor, getSeverityBgColor, getSeverityLevel } from '../../constants/severity';
@@ -94,11 +96,22 @@ const getStatusStyles = (status: string) => {
   }
 };
 
+const getBreadcrumbsPath = (nodeId: number, flatNodes: HierarchyNode[]): string[] => {
+  const path: string[] = [];
+  let current = flatNodes.find(n => n.id === nodeId);
+  while (current) {
+    path.unshift(current.display_name);
+    current = current.parent_id ? flatNodes.find(n => n.id === current.parent_id) : undefined;
+  }
+  return path;
+};
+
 export const Alerts: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
-  const selectedNodeId = location.state?.selectedNodeId ? Number(location.state.selectedNodeId) : (searchParams.get('selectedNodeId') ? Number(searchParams.get('selectedNodeId')) : null);
+  const context = useOutletContext<{ selectedNodeId?: number | null }>();
+  const selectedNodeId = context?.selectedNodeId ?? (location.state?.selectedNodeId ? Number(location.state.selectedNodeId) : (searchParams.get('selectedNodeId') ? Number(searchParams.get('selectedNodeId')) : null));
 
   const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
   const [hierarchyLoading, setHierarchyLoading] = useState(true);
@@ -121,12 +134,10 @@ export const Alerts: React.FC = () => {
 
   // Filter states
   const [selectedSeverities, setSelectedSeverities] = useState<string[]>(['All']);
-  const [selectedAssetId, setSelectedAssetId] = useState<number | ''>('');
-  const [selectedComponentId, setSelectedComponentId] = useState<number | ''>('');
+  const [selectedSensorId, setSelectedSensorId] = useState<number | ''>('');
 
   // Applied filter states
-  const [appliedAssetId, setAppliedAssetId] = useState<number | ''>('');
-  const [appliedComponentId, setAppliedComponentId] = useState<number | ''>('');
+  const [appliedSensorId, setAppliedSensorId] = useState<number | ''>('');
   const [appliedSeverities, setAppliedSeverities] = useState<string[]>(['All']);
 
   useEffect(() => {
@@ -135,6 +146,16 @@ export const Alerts: React.FC = () => {
       .catch(() => setFlatNodes([]))
       .finally(() => setHierarchyLoading(false));
   }, []);
+
+  const [breadcrumbs, setBreadcrumbs] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (selectedNodeId && flatNodes.length > 0) {
+      setBreadcrumbs(getBreadcrumbsPath(selectedNodeId, flatNodes));
+    } else {
+      setBreadcrumbs([]);
+    }
+  }, [selectedNodeId, flatNodes]);
 
   // Fetch alerts from API when selected tree node changes (and is not null/site)
   useEffect(() => {
@@ -192,81 +213,49 @@ export const Alerts: React.FC = () => {
     return getDescendantNodes(selectedNodeId);
   }, [selectedNodeId, flatNodes, getDescendantNodes]);
 
-  // Asset dropdown options
-  const availableAssets = useMemo(() => {
-    return descendantsOfSidePanel.filter(n => n.node_type === 'asset');
+  // Sensor/Tag dropdown options
+  const availableSensors = useMemo(() => {
+    return descendantsOfSidePanel.filter(n => n.node_type === 'sensor');
   }, [descendantsOfSidePanel]);
 
-  // Component dropdown options
-  const availableComponents = useMemo(() => {
-    if (selectedAssetId) {
-      return getDescendantNodes(Number(selectedAssetId)).filter(n => n.node_type === 'component');
-    }
-    return descendantsOfSidePanel.filter(n => n.node_type === 'component');
-  }, [selectedAssetId, descendantsOfSidePanel, getDescendantNodes]);
+  const isAssetSelected = useMemo(() => {
+    return flatNodes.find(n => n.id === selectedNodeId)?.node_type === 'asset';
+  }, [selectedNodeId, flatNodes]);
 
   // Autopopulate and sync dropdown selections based on the side panel hierarchy node selection
   useEffect(() => {
     if (flatNodes.length === 0) return;
 
     if (!selectedNodeId) {
-      setSelectedAssetId('');
-      setAppliedAssetId('');
-      setSelectedComponentId('');
-      setAppliedComponentId('');
+      setSelectedSensorId('');
+      setAppliedSensorId('');
       return;
     }
 
     const node = flatNodes.find(n => n.id === selectedNodeId);
     if (!node) return;
 
-    if (node.node_type === 'asset') {
-      setSelectedAssetId(node.id);
-      setAppliedAssetId(node.id);
-      setSelectedComponentId('');
-      setAppliedComponentId('');
-    } else if (node.node_type === 'component') {
-      setSelectedComponentId(node.id);
-      setAppliedComponentId(node.id);
-      
-      // Walk up to find parent asset
-      let parent: HierarchyNode | undefined = node.parent_id ? flatNodes.find(n => n.id === node.parent_id) : undefined;
-      while (parent && parent.node_type !== 'asset') {
-        parent = parent.parent_id ? flatNodes.find(n => n.id === parent.parent_id) : undefined;
-      }
-      if (parent) {
-        setSelectedAssetId(parent.id);
-        setAppliedAssetId(parent.id);
-      } else {
-        setSelectedAssetId('');
-        setAppliedAssetId('');
-      }
+    if (node.node_type === 'sensor') {
+      setSelectedSensorId(node.id);
+      setAppliedSensorId(node.id);
     } else {
-      // If it's site, area, line, etc., clear selected values if they are no longer within the new scope
-      if (selectedAssetId && !availableAssets.some(a => a.id === selectedAssetId)) {
-        setSelectedAssetId('');
-        setAppliedAssetId('');
-      }
-      if (selectedComponentId && !availableComponents.some(c => c.id === selectedComponentId)) {
-        setSelectedComponentId('');
-        setAppliedComponentId('');
+      if (selectedSensorId && !availableSensors.some(s => s.id === selectedSensorId)) {
+        setSelectedSensorId('');
+        setAppliedSensorId('');
       }
     }
-  }, [selectedNodeId, flatNodes, availableAssets, availableComponents]);
+  }, [selectedNodeId, flatNodes, availableSensors]);
 
 
   const handleViewClick = () => {
     let activeNodeId = selectedNodeId;
-    if (selectedComponentId) {
-      activeNodeId = Number(selectedComponentId);
-    } else if (selectedAssetId) {
-      activeNodeId = Number(selectedAssetId);
+    if (selectedSensorId) {
+      activeNodeId = Number(selectedSensorId);
     }
 
     if (!activeNodeId) {
       setAlerts([]);
-      setAppliedAssetId(selectedAssetId);
-      setAppliedComponentId(selectedComponentId);
+      setAppliedSensorId(selectedSensorId);
       setAppliedSeverities(selectedSeverities);
       return;
     }
@@ -274,8 +263,7 @@ export const Alerts: React.FC = () => {
     const node = flatNodes.find(n => n.id === activeNodeId);
     if (!node || node.node_type === 'site') {
       setAlerts([]);
-      setAppliedAssetId(selectedAssetId);
-      setAppliedComponentId(selectedComponentId);
+      setAppliedSensorId(selectedSensorId);
       setAppliedSeverities(selectedSeverities);
       return;
     }
@@ -284,14 +272,12 @@ export const Alerts: React.FC = () => {
     api.alerts.list({ node_id: activeNodeId })
       .then((res) => {
         setAlerts(res || []);
-        setAppliedAssetId(selectedAssetId);
-        setAppliedComponentId(selectedComponentId);
+        setAppliedSensorId(selectedSensorId);
         setAppliedSeverities(selectedSeverities);
       })
       .catch(() => {
         setAlerts([]);
-        setAppliedAssetId(selectedAssetId);
-        setAppliedComponentId(selectedComponentId);
+        setAppliedSensorId(selectedSensorId);
         setAppliedSeverities(selectedSeverities);
       })
       .finally(() => setLoading(false));
@@ -336,14 +322,9 @@ export const Alerts: React.FC = () => {
       result = result.filter(a => matchesNode(a, selectedNodeId));
     }
 
-    // 2. Filter by Asset dropdown
-    if (appliedAssetId) {
-      result = result.filter(a => matchesNode(a, Number(appliedAssetId)));
-    }
-
-    // 3. Filter by Component dropdown
-    if (appliedComponentId) {
-      result = result.filter(a => matchesNode(a, Number(appliedComponentId)));
+    // 2. Filter by Sensor/Tag dropdown
+    if (appliedSensorId) {
+      result = result.filter(a => matchesNode(a, Number(appliedSensorId)));
     }
 
     // 4. Filter by Severity Chip (multiselect)
@@ -362,7 +343,7 @@ export const Alerts: React.FC = () => {
     });
 
     return result;
-  }, [alerts, selectedNodeId, appliedAssetId, appliedComponentId, selectedSeverities, flatNodes]);
+  }, [alerts, selectedNodeId, appliedSensorId, selectedSeverities, flatNodes]);
 
   const allSelected = filteredAlerts.length > 0 && selectedIds.length === filteredAlerts.length;
   const someSelected = selectedIds.length > 0 && !allSelected;
@@ -428,8 +409,21 @@ export const Alerts: React.FC = () => {
               ))}
             </Select>
           </FormControl>
-        }
       />
+
+      {breadcrumbs.length > 0 && (
+        <Breadcrumbs separator={<NavigateNextIcon fontSize="small" sx={{ color: 'text.secondary' }} />} sx={{ mb: 2 }}>
+          {breadcrumbs.map((name, index, arr) => (
+            <Typography
+              key={name}
+              color={index === arr.length - 1 ? 'text.primary' : 'text.secondary'}
+              sx={{ fontWeight: index === arr.length - 1 ? 700 : 500, fontSize: '0.85rem' }}
+            >
+              {name}
+            </Typography>
+          ))}
+        </Breadcrumbs>
+      )}
 
       {/* Filters Section */}
       <Paper sx={{ px: 3, py: 2.5, mb: 3, border: '1px solid #ccc' }}>
@@ -480,38 +474,22 @@ export const Alerts: React.FC = () => {
 
           {/* Right Side: Asset, Component Dropdowns and View Button */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <FormControl size="small" sx={{ minWidth: 180 }}>
-              <InputLabel id="asset-select-label">Asset</InputLabel>
+            <FormControl size="small" sx={{ minWidth: 180 }} disabled={!isAssetSelected}>
+              <InputLabel id="sensor-select-label">Sensor/Tag</InputLabel>
               <Select
-                labelId="asset-select-label"
-                value={selectedAssetId}
-                label="Asset"
-                onChange={(e) => {
-                  setSelectedAssetId(e.target.value as number | '');
-                  setSelectedComponentId('');
-                }}
+                labelId="sensor-select-label"
+                value={selectedSensorId}
+                label="Sensor/Tag"
+                onChange={(e) => setSelectedSensorId(e.target.value as number | '')}
               >
-                <MenuItem value="">All Assets</MenuItem>
-                {availableAssets.map(asset => (
-                  <MenuItem key={asset.id} value={asset.id}>{asset.display_name}</MenuItem>
+                <MenuItem value="">All Sensors/Tags</MenuItem>
+                {availableSensors.map(s => (
+                  <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
                 ))}
               </Select>
             </FormControl>
 
-            <FormControl size="small" sx={{ minWidth: 180 }}>
-              <InputLabel id="component-select-label">Component</InputLabel>
-              <Select
-                labelId="component-select-label"
-                value={selectedComponentId}
-                label="Component"
-                onChange={(e) => setSelectedComponentId(e.target.value as number | '')}
-              >
-                <MenuItem value="">All Components</MenuItem>
-                {availableComponents.map(comp => (
-                  <MenuItem key={comp.id} value={comp.id}>{comp.display_name}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+
 
             <Button
               variant="contained"

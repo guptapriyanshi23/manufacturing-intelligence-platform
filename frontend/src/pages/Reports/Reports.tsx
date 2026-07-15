@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Box, Card, CardContent, Grid, Button, Typography, CircularProgress,
   MenuItem, Select, FormControl, InputLabel, TextField, Paper,
@@ -34,13 +35,12 @@ const getDateRange = (rangeValue: string) => {
 };
 
 export const Reports: React.FC = () => {
+  const location = useLocation();
+  const treeNodeId = location.state?.selectedNodeId ? Number(location.state.selectedNodeId) : null;
   const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
   const [hierarchyLoading, setHierarchyLoading] = useState(true);
-  const [selectedSiteId, setSelectedSiteId] = useState<number | ''>('');
-  const [selectedNode, setSelectedNode] = useState<HierarchyNode | null>(null);
 
   // Applied filter states
-  const [appliedSiteId, setAppliedSiteId] = useState<number | ''>('');
   const [appliedNode, setAppliedNode] = useState<HierarchyNode | null>(null);
   const [timeRange, setTimeRange] = useState('last_24h');
   const initial = getDateRange('last_24h');
@@ -49,18 +49,11 @@ export const Reports: React.FC = () => {
   const [appliedFromDate, setAppliedFromDate] = useState(initial.from);
   const [appliedToDate, setAppliedToDate] = useState(initial.to);
 
-  const sites = useMemo(() => {
-    return flatNodes.filter(n => n.node_type === 'site');
-  }, [flatNodes]);
-
   useEffect(() => {
-    if (flatNodes.length > 0 && !selectedSiteId) {
-      const sitesList = flatNodes.filter(n => n.node_type === 'site');
-      const firstSiteId = sitesList[0]?.id || '';
-      setSelectedSiteId(firstSiteId);
-      setAppliedSiteId(firstSiteId);
-    }
-  }, [flatNodes, selectedSiteId]);
+    if (flatNodes.length === 0) return;
+    const matchingNode = treeNodeId ? flatNodes.find(n => n.id === treeNodeId) : null;
+    setAppliedNode(matchingNode);
+  }, [treeNodeId, flatNodes]);
 
   const [advisories, setAdvisories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,8 +80,6 @@ export const Reports: React.FC = () => {
   };
 
   const handleViewClick = () => {
-    setAppliedSiteId(selectedSiteId);
-    setAppliedNode(selectedNode);
     setAppliedFromDate(fromDate);
     setAppliedToDate(toDate);
   };
@@ -119,16 +110,7 @@ export const Reports: React.FC = () => {
       return { nodeIds, sensorIds };
     };
 
-    // 1. Filter by Site
-    if (appliedSiteId) {
-      const { nodeIds, sensorIds } = getDescendants(Number(appliedSiteId));
-      result = result.filter(a => 
-        nodeIds.has(a.node_id) || 
-        (a.sensor_id && sensorIds.has(a.sensor_id))
-      );
-    }
-
-    // 2. Filter by Selected Hierarchy Node
+    // Filter by Selected Hierarchy Node
     if (appliedNode) {
       const { nodeIds, sensorIds } = getDescendants(appliedNode.id);
       result = result.filter(a => 
@@ -146,7 +128,7 @@ export const Reports: React.FC = () => {
     });
 
     return result;
-  }, [advisories, appliedSiteId, appliedNode, appliedFromDate, appliedToDate, flatNodes]);
+  }, [advisories, appliedNode, appliedFromDate, appliedToDate, flatNodes]);
 
   const total = filteredAdvisories.length;
   const openCount = filteredAdvisories.filter(a => a.status === 'open').length;
@@ -176,37 +158,10 @@ export const Reports: React.FC = () => {
       <PageHeader
         title="Generate Reports"
         subtitle="Generate Advisory summaries - for a single asset, a set of equipment or an entire process line."
-        actions={
-          <FormControl size="small" sx={{ minWidth: 350, bgcolor: 'white',  }}>
-            <InputLabel id="site-select-label" shrink>Site</InputLabel>
-            <Select
-              labelId="site-select-label"
-              value={selectedSiteId}
-              label="Site"
-              onChange={(e) => setSelectedSiteId(e.target.value as number)}
-              disabled={hierarchyLoading}
-              displayEmpty
-              renderValue={selectedSiteId === '' ? () => <span style={{ color: '#9e9e9e' }}>Select</span> : undefined}
-            >
-              <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
-              {sites.map(s => (
-                <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        }
       />
 
       {/* Filter bar */}
       <Paper sx={{ px: 2, py: 2.5, mb: 3, border: '1px solid #ccc' }}>
-        <Box sx={{ mb: 3 }}>
-          <HierarchySelector
-            flatNodes={flatNodes}
-            onSelectionChange={(node) => setSelectedNode(node)}
-            loading={hierarchyLoading}
-            selectedSiteId={selectedSiteId}
-          />
-        </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <FormControl size="small" sx={{ minWidth: 160 }}>
             <InputLabel id="time-range-label" shrink>Time Range</InputLabel>
@@ -254,9 +209,18 @@ export const Reports: React.FC = () => {
         </Box>
       </Paper>
 
-      {loading ? <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-        <CircularProgress color="secondary" />
-      </Box> :
+      {!appliedNode ? (
+        <Paper sx={{ p: 6, borderRadius: 2, border: '1px dashed #ccc', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', backgroundColor: '#fafafa', height: '40vh' }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1 }}>No Node Selected</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Please select a hierarchy node from the left tree panel to generate reports.
+          </Typography>
+        </Paper>
+      ) : loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+          <CircularProgress color="secondary" />
+        </Box>
+      ) : (
         <Grid container spacing={3}>
           {/* Metric summary */}
           <Grid size={{ xs: 12 }}>
@@ -330,7 +294,7 @@ export const Reports: React.FC = () => {
 
 
         </Grid>
-      }
+      )}
     </PageContainer>
   );
 };

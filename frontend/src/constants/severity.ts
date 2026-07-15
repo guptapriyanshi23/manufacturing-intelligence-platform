@@ -1,3 +1,11 @@
+export enum Severity {
+  CRITICAL = 1,
+  HIGH = 2,
+  WARNING = 3,
+  LOW = 4,
+  INFO = 5,
+}
+
 export const SEVERITY_COLORS: Record<string, string> = {
   S1: '#B91C1C',
   S2: '#EA580C',
@@ -50,10 +58,25 @@ export const getSeverityLevel = (severity: string | number): string => {
   return SEVERITY_LEVEL_MAP[key] ?? 'S5';
 };
 
+export const getSeverityName = (severity: string | number): string => {
+  if (severity === undefined || severity === null) return 'INFO';
+  const val = typeof severity === 'string' ? parseInt(severity, 10) : severity;
+  if (!isNaN(Number(val)) && Severity[Number(val)]) {
+    return Severity[Number(val)];
+  }
+  const key = String(severity).toUpperCase();
+  if (key === 'CRITICAL' || key === 'HIGH' || key === 'WARNING' || key === 'LOW' || key === 'INFO') {
+    return key;
+  }
+  if (key === 'MEDIUM') return 'WARNING';
+  if (key === 'INFORMATIONAL') return 'INFO';
+  return 'INFO';
+};
+
 export const getSeverityLevelFull = (severity: string | number): string => {
-  if (severity === undefined || severity === null) return 'S5 - Informational';
-  const key = typeof severity === 'string' ? severity.toLowerCase() : severity;
-  return SEVERITY_LEVEL_FULL_MAP[key] ?? 'S5 - Informational';
+  const level = getSeverityLevel(severity);
+  const name = getSeverityName(severity);
+  return `${level} - ${name.charAt(0) + name.slice(1).toLowerCase()}`;
 };
 
 export const getSeverityColor = (severity: string | number): string =>

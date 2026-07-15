@@ -3,7 +3,7 @@ import { Box, FormControl, InputLabel, MenuItem, Select } from '@mui/material';
 import type { HierarchyNode, NodeType } from '../../types/hierarchy';
 
 // Levels in order; sensor, enterprise, and site are excluded (handled separately/externally)
-const LEVEL_ORDER: NodeType[] = ['area', 'line', 'station', 'asset', 'component'];
+const LEVEL_ORDER: NodeType[] = ['area', 'line', 'station', 'asset'];
 const MANDATORY_UP_TO: NodeType = 'asset';
 const DEFAULT_LEVELS: NodeType[] = ['area', 'asset'];
 

@@ -108,8 +108,6 @@ export const MainLayout: React.FC = () => {
     const searchParams = new URLSearchParams(location.search);
     const queryNodeId = location.state?.selectedNodeId || (searchParams.get('selectedNodeId') ? Number(searchParams.get('selectedNodeId')) : null);
     if (nodes.length > 0 && queryNodeId && (!selectedNode || selectedNode.id !== queryNodeId)) {
-      // Find node in flat list or hierarchically. If nodes is a tree, we should find it recursively or flat.
-      // Wait, let's find it. Let's write a helper to find node in tree.
       const findNodeInTree = (list: HierarchyNode[], id: number): HierarchyNode | null => {
         for (const n of list) {
           if (n.id === id) return n;
@@ -120,12 +118,38 @@ export const MainLayout: React.FC = () => {
         }
         return null;
       };
-      const node = findNodeInTree(nodes, queryNodeId);
+
+      let node = findNodeInTree(nodes, queryNodeId);
       if (node) {
-        setSelectedNode(node);
+        const getParent = (childId: number): HierarchyNode | null => {
+          const findParent = (list: HierarchyNode[]): HierarchyNode | null => {
+            for (const n of list) {
+              if (n.children && n.children.some(c => c.id === childId)) return n;
+              if (n.children && n.children.length > 0) {
+                const p = findParent(n.children);
+                if (p) return p;
+              }
+            }
+            return null;
+          };
+          return findParent(nodes);
+        };
+
+        while (node && (node.node_type === 'sensor' || node.node_type === 'component')) {
+          const parent = getParent(node.id);
+          if (!parent) break;
+          node = parent;
+        }
+
+        if (node) {
+          setSelectedNode(node);
+          if (node.id !== queryNodeId) {
+            navigate(location.pathname, { state: { ...location.state, selectedNodeId: node.id, originalSensorNodeId: queryNodeId }, replace: true });
+          }
+        }
       }
     }
-  }, [nodes, location.search, location.state, selectedNode]);
+  }, [nodes, location.search, location.state, selectedNode, navigate, location.pathname]);
 
   const handleLogout = () => {
     localStorage.removeItem('auth_token');
@@ -166,11 +190,7 @@ export const MainLayout: React.FC = () => {
               {allowedNavItems.map((item) => {
                 const isActive = location.pathname === item.path;
                 const handleNavClick = () => {
-                  if (item.path === '/dashboard') {
-                    navigate(`${item.path}${location.search}`);
-                  } else {
-                    navigate(item.path);
-                  }
+                  navigate(item.path, { state: { selectedNodeId: selectedNode?.id } });
                 };
                 return (
                   <ListItemButton
@@ -332,7 +352,7 @@ export const MainLayout: React.FC = () => {
 
       {/* Main Content Area */}
       <Box component="main" sx={{ flexGrow: 1, p: 3, pt: 10 }}>
-        <Outlet />
+        <Outlet context={{ selectedNodeId: selectedNode?.id }} />
       </Box>
     </Box>
   );

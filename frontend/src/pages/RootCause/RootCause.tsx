@@ -16,11 +16,26 @@ import {
   Stack,
   FormControlLabel,
   Checkbox,
+  Breadcrumbs,
+  CircularProgress,
+  Chip,
 } from '@mui/material';
-import { PhotoCameraOutlined } from '@mui/icons-material';
+import { PhotoCameraOutlined, NavigateNext as NavigateNextIcon } from '@mui/icons-material';
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
+import { StatusChip } from '../../components/Forms/StatusChip';
 import { api } from '../../api/client';
+import { getSeverityLevelFull, getSeverityColor, getSeverityBgColor } from '../../constants/severity';
+
+const getBreadcrumbsPath = (nodeId: number, flatNodes: any[]): string[] => {
+  const path: string[] = [];
+  let current = flatNodes.find(n => n.id === nodeId);
+  while (current) {
+    path.unshift(current.display_name);
+    current = current.parent_id ? flatNodes.find(n => n.id === current.parent_id) : undefined;
+  }
+  return path;
+};
 
 export const RootCause: React.FC = () => {
   const location = useLocation();
@@ -32,6 +47,7 @@ export const RootCause: React.FC = () => {
   const [advisories, setAdvisories] = useState<any[]>([]);
   const [selectedAdvisoryId, setSelectedAdvisoryId] = useState<number | ''>('');
   const [flatNodes, setFlatNodes] = useState<any[]>([]);
+  const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const searchParams = new URLSearchParams(location.search);
@@ -57,17 +73,28 @@ export const RootCause: React.FC = () => {
           console.error('Failed to load single advisory for RCA:', err);
         });
     } else {
-      api.advisories.list()
-        .then((res) => {
-          setAdvisories(res);
-        })
-        .catch((err) => {
-          console.error('Failed to load advisories for RCA:', err);
-        });
+      setAdvisories([]);
+      setSelectedAdvisoryId('');
     }
   }, [location.search, location.state]);
 
   const activeAdvisory = advisories.find((a) => a.id === selectedAdvisoryId);
+
+  const matchingNode = activeAdvisory
+    ? (flatNodes.find(n => n.sensor_metadata?.sensor_id === activeAdvisory.sensor_id)
+      || flatNodes.find(n => n.display_name === activeAdvisory.asset)
+      || flatNodes.find(n => n.id === activeAdvisory.node_id))
+    : null;
+
+  const [breadcrumbs, setBreadcrumbs] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (matchingNode && flatNodes.length > 0) {
+      setBreadcrumbs(getBreadcrumbsPath(matchingNode.id, flatNodes));
+    } else {
+      setBreadcrumbs([]);
+    }
+  }, [matchingNode, flatNodes]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
@@ -90,7 +117,7 @@ export const RootCause: React.FC = () => {
   };
 
   const handleUploadSubmit = async () => {
-    if (!selectedAdvisoryId) {
+    if (!selectedAdvisoryId || !activeAdvisory) {
       return;
     }
 
@@ -98,6 +125,7 @@ export const RootCause: React.FC = () => {
       return;
     }
 
+    setSubmitting(true);
     try {
       let imagePath = activeAdvisory?.image_path || null;
       if (selectedFile) {
@@ -112,24 +140,6 @@ export const RootCause: React.FC = () => {
         image_path: imagePath,
       });
 
-      let targetQuery = '';
-      if (activeAdvisory) {
-        const matchingNode = flatNodes.find(n => n.sensor_metadata?.sensor_id === activeAdvisory.sensor_id)
-          || flatNodes.find(n => n.display_name === activeAdvisory.asset);
-        if (matchingNode) {
-          let siteId = '';
-          let curr = matchingNode;
-          while (curr) {
-            if (curr.node_type === 'site') {
-              siteId = curr.id.toString();
-              break;
-            }
-            curr = curr.parent_id ? flatNodes.find(n => n.id === curr.parent_id) : null;
-          }
-          targetQuery = `?siteId=${siteId}&nodeId=${matchingNode.id}`;
-        }
-      }
-
       setSelectedFile(null);
       setRootCauseDescription('');
       setActionTaken('');
@@ -139,9 +149,18 @@ export const RootCause: React.FC = () => {
         fileInputRef.current.value = '';
       }
 
-      navigate(`/advisories${targetQuery}`);
+      // Prefill status, severity, and selectedNodeId for advisories page routing context!
+      navigate('/advisories', {
+        state: {
+          selectedNodeId: location.state?.selectedNodeId || activeAdvisory.node_id,
+          prefilledStatus: rcaStatus,
+          prefilledSeverity: activeAdvisory.severity,
+        }
+      });
     } catch (err) {
       console.error('Failed to save RCA details:', err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -151,6 +170,20 @@ export const RootCause: React.FC = () => {
         title="Root Cause Analysis (RCA)"
         subtitle="Attach evidence, describe root cause, and record the action taken to resolve system advisories."
       />
+
+      {breadcrumbs.length > 0 && (
+        <Breadcrumbs separator={<NavigateNextIcon fontSize="small" sx={{ color: 'text.secondary' }} />} sx={{ mb: 2 }}>
+          {breadcrumbs.map((name, index, arr) => (
+            <Typography
+              key={name}
+              color={index === arr.length - 1 ? 'text.primary' : 'text.secondary'}
+              sx={{ fontWeight: index === arr.length - 1 ? 700 : 500, fontSize: '0.85rem' }}
+            >
+              {name}
+            </Typography>
+          ))}
+        </Breadcrumbs>
+      )}
 
       <Grid container spacing={3}>
         <Grid size={{ xs: 12 }}>
@@ -167,50 +200,58 @@ export const RootCause: React.FC = () => {
                   color: 'white',
                   fontWeight: 700,
                 }}
-              >
-                {activeAdvisory ? `${activeAdvisory.asset}` : 'Select Advisory to Initiate RCA'}
-              </Typography>
+              >Root Cause Analysis</Typography>
             </Box>
             <CardContent sx={{ p: 3 }}>
               <Stack spacing={3}>
-                <FormControl fullWidth size="small">
-                  <InputLabel id="advisory-select-label" shrink>Active Advisory Target</InputLabel>
-                  <Select
-                    labelId="advisory-select-label"
-                    value={selectedAdvisoryId}
-                    label="Active Advisory Target"
-                    onChange={handleAdvisorySelect}
-                    displayEmpty
-                    renderValue={selectedAdvisoryId === '' ? () => <span style={{ color: '#9e9e9e' }}>Select</span> : undefined}
-                  >
-                    <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
-                    {advisories
-                      .filter((a) => a.status !== 'resolved' || a.id === selectedAdvisoryId)
-                      .map((a) => (
-                        <MenuItem key={a.id} value={a.id}>
-                          [{a.status.toUpperCase()}] {a.asset} - {a.tag} ({a.severity})
-                        </MenuItem>
-                      ))}
-                  </Select>
-                </FormControl>
-
-                {activeAdvisory && (
-                  <Paper variant="outlined" sx={{ p: 2, bgcolor: '#f8fafc', borderColor: '#e2e8f0' }}>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      Advisory Details
-                    </Typography>
-                    <Typography variant="body2" sx={{ mb: 1 }}>
-                      <strong>Description:</strong> {activeAdvisory.description}
-                    </Typography>
-                    <Typography variant="body2">
-                      <strong>First Detected:</strong>{' '}
-                      {new Date(activeAdvisory.first_detected).toLocaleString()}
+                {activeAdvisory ? (
+                  <Paper variant="outlined" sx={{ p: 2.5, bgcolor: '#f8fafc', borderColor: '#e2e8f0', borderRadius: 2 }}>
+                    <Grid container spacing={3}>
+                      <Grid item xs={12} sm={6}>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>Asset</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 600, mt: 0.5 }}>{activeAdvisory.asset}</Typography>
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase', display: 'block', mb: 0.5 }}>Severity</Typography>
+                        <Chip
+                          label={getSeverityLevelFull(activeAdvisory.severity).toUpperCase()}
+                          size="small"
+                          sx={{
+                            backgroundColor: getSeverityBgColor(activeAdvisory.severity),
+                            color: getSeverityColor(activeAdvisory.severity),
+                            fontWeight: 700,
+                            minWidth: 32,
+                            justifyContent: 'center',
+                            borderRadius: '4px',
+                          }}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase', display: 'block', mb: 0.5 }}>Status</Typography>
+                        <StatusChip label={activeAdvisory.status.toUpperCase()} status={activeAdvisory.status} />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>First Detected</Typography>
+                        <Typography variant="body1" sx={{ mt: 0.5 }}>
+                          {new Date(activeAdvisory.first_detected).toLocaleString()}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>Advisory Message</Typography>
+                        <Typography variant="body1" sx={{ mt: 0.5 }}>{activeAdvisory.description}</Typography>
+                      </Grid>
+                    </Grid>
+                  </Paper>
+                ) : (
+                  <Paper variant="outlined" sx={{ p: 4, textAlign: 'center', borderRadius: 2 }}>
+                    <Typography variant="body1" color="text.secondary">
+                      No active advisory selected. Please navigate to the <strong>Advisories</strong> page and click <strong>Initiate RCA</strong> on an advisory.
                     </Typography>
                   </Paper>
                 )}
 
                 <Box
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => activeAdvisory && fileInputRef.current?.click()}
                   sx={{
                     width: '100%',
                     minHeight: 180,
@@ -222,7 +263,9 @@ export const RootCause: React.FC = () => {
                     alignItems: 'center',
                     textAlign: 'center',
                     p: 3,
-                    cursor: 'pointer',
+                    cursor: activeAdvisory ? 'pointer' : 'default',
+                    opacity: activeAdvisory ? 1 : 0.6,
+                    pointerEvents: activeAdvisory ? 'auto' : 'none',
                     '&:hover': {
                       borderColor: 'rgb(21, 137, 8)',
                       backgroundColor: 'rgba(62, 248, 56, 0.04)',
@@ -252,6 +295,7 @@ export const RootCause: React.FC = () => {
                     accept="image/png, image/jpeg"
                     onChange={handleFileChange}
                     hidden
+                    disabled={!activeAdvisory}
                   />
                 </Box>
 
@@ -263,6 +307,7 @@ export const RootCause: React.FC = () => {
                   fullWidth
                   value={rootCauseDescription}
                   onChange={(event) => setRootCauseDescription(event.target.value)}
+                  disabled={!activeAdvisory}
                 />
 
                 <TextField
@@ -273,6 +318,7 @@ export const RootCause: React.FC = () => {
                   rows={3}
                   value={actionTaken}
                   onChange={(event) => setActionTaken(event.target.value)}
+                  disabled={!activeAdvisory}
                 />
 
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -282,6 +328,7 @@ export const RootCause: React.FC = () => {
                         checked={rcaStatus === 'resolved'}
                         onChange={(e) => setRcaStatus(e.target.checked ? 'resolved' : 'in_progress')}
                         color="primary"
+                        disabled={!activeAdvisory}
                       />
                     }
                     label="Mark as Resolved"
@@ -295,9 +342,9 @@ export const RootCause: React.FC = () => {
                     size="large"
                     onClick={handleUploadSubmit}
                     sx={{ minWidth: 180 }}
-                    disabled={!selectedAdvisoryId}
+                    disabled={!activeAdvisory || submitting}
                   >
-                    Submit & Close
+                    {submitting ? <CircularProgress size={24} color="inherit" /> : 'Submit & Close'}
                   </Button>
                 </Box>
               </Stack>

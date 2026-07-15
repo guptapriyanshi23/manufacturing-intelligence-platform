@@ -29,7 +29,8 @@ const TreeNode: React.FC<{
 }> = ({ node, depth, onSelect, selectedNodeId }) => {
   const theme = useTheme();
   const [open, setOpen] = useState(depth === 0); // Open root by default
-  const hasChildren = node.children && node.children.length > 0;
+  const nonSensorChildren = (node.children || []).filter(c => c.node_type !== 'sensor' && c.node_type !== 'component');
+  const hasChildren = nonSensorChildren.length > 0;
   const isSelected = selectedNodeId === node.id;
 
   const handleClick = (e: React.MouseEvent) => {
@@ -90,7 +91,7 @@ const TreeNode: React.FC<{
       {hasChildren && (
         <Collapse in={open} timeout="auto" unmountOnExit>
           <List component="div" disablePadding>
-            {node.children!.map((child) => (
+            {nonSensorChildren.map((child) => (
               <TreeNode
                 key={child.id}
                 node={child}
@@ -113,7 +114,9 @@ export const TreeView: React.FC<TreeViewProps> = ({ nodes, onSelectNode, selecte
     }
   };
 
-  if (!nodes || nodes.length === 0) {
+  const rootNodes = nodes.filter(n => n.node_type !== 'sensor' && n.node_type !== 'component');
+
+  if (!rootNodes || rootNodes.length === 0) {
     return (
       <Box sx={{ p: 2, textAlign: 'center' }}>
         <Typography variant="body2" color="text.secondary">
@@ -125,7 +128,7 @@ export const TreeView: React.FC<TreeViewProps> = ({ nodes, onSelectNode, selecte
 
   return (
     <List disablePadding>
-      {nodes.map((node) => (
+      {rootNodes.map((node) => (
         <TreeNode
           key={node.id}
           node={node}
