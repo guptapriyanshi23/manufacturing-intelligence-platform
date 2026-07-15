@@ -193,8 +193,10 @@ export const Dashboard: React.FC = () => {
   // Find active advisory details if initialNodeId is present
   const activeAdvisory = React.useMemo(() => {
     if (!initialNodeId || advisories.length === 0) return null;
-    return advisories.find(a => a.node_id === initialNodeId) || advisories[0] || null;
-  }, [initialNodeId, advisories]);
+    const descendants = getDescendantNodes(initialNodeId);
+    const descendantIds = descendants.map(d => d.id);
+    return advisories.find(a => a.node_id === initialNodeId || descendantIds.includes(a.node_id)) || null;
+  }, [initialNodeId, advisories, getDescendantNodes]);
 
   const initRange = getDateRange('last_24h');
   const [timeRange, setTimeRange] = useState('last_24h');
@@ -650,7 +652,11 @@ export const Dashboard: React.FC = () => {
 
   const renderLineChart = (data: any[], sensor: HierarchyNode, height: number) => {
     const unit = sensor.sensor_metadata?.unit || '';
-    const advPoint = activeAdvisory ? getAdvisoryMatchingPoint(data, activeAdvisory) : null;
+    const isMatchingAdvisory = activeAdvisory && (
+      activeAdvisory.node_id === sensor.id || 
+      activeAdvisory.sensor_id === sensor.sensor_metadata?.sensor_id
+    );
+    const advPoint = isMatchingAdvisory ? getAdvisoryMatchingPoint(data, activeAdvisory) : null;
 
     return (
       <ResponsiveContainer width="100%" height={height}>
@@ -1021,7 +1027,7 @@ export const Dashboard: React.FC = () => {
               return { start: sTime, end: eTime };
             };
             const { start, end } = getExpStartEnd();
-            const data = getBucketedDataPoints(expandedTelemetry, sid, start, end, expandedGranularity);
+            const data = getBucketedDataPoints(expandedTelemetry, expandedSensor, start, end, expandedGranularity);
             const unit = expandedSensor.sensor_metadata?.unit || '';
             return (
               <>
