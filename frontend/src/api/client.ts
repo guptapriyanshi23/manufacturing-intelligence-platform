@@ -129,6 +129,8 @@ export const api = {
       const queryString = params.toString();
       return request<any[]>(queryString ? `/advisories?${queryString}` : '/advisories');
     },
+    get: (id: number) =>
+      request<any>(`/advisories/${id}`),
     update: (id: number, data: any) =>
       request<any>(`/advisories/${id}`, {
         method: 'PATCH',

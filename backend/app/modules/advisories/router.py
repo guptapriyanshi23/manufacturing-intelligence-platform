@@ -62,7 +62,8 @@ def resolve_advisory_details(db: Session, adv) -> dict:
 def resolve_all_advisories(db: Session, advisories: List) -> List[dict]:
     if not advisories:
         return []
-    nodes = db.query(HierarchyNode).all()
+    from sqlalchemy.orm import joinedload
+    nodes = db.query(HierarchyNode).options(joinedload(HierarchyNode.sensor_metadata)).all()
     node_map = {n.id: n for n in nodes}
     
     adv_ids = [a.id for a in advisories]
@@ -147,6 +148,23 @@ def get_advisories(
             return []
         advisories = [a for a in advisories if a.node_id in allowed_ids]
     return resolve_all_advisories(db, advisories)
+
+@router.get("/{advisory_id}", response_model=AdvisoryResponse)
+def get_advisory(
+    advisory_id: int,
+    current_user = Depends(check_permissions(["advisories:view"])),
+    db: Session = Depends(get_db)
+):
+    """
+    Retrieve a single advisory by its ID.
+    """
+    advisory = service.get_advisory(db, advisory_id)
+    if not advisory:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Advisory with ID {advisory_id} not found"
+        )
+    return resolve_advisory_details(db, advisory)
 
 @router.patch("/{advisory_id}", response_model=AdvisoryResponse)
 def update_advisory(

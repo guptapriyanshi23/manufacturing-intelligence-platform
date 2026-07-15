@@ -51,7 +51,8 @@ def resolve_alert_details(db: Session, alert) -> dict:
 def resolve_all_alerts(db: Session, alerts: List) -> List[dict]:
     if not alerts:
         return []
-    nodes = db.query(HierarchyNode).all()
+    from sqlalchemy.orm import joinedload
+    nodes = db.query(HierarchyNode).options(joinedload(HierarchyNode.sensor_metadata)).all()
     node_map = {n.id: n for n in nodes}
     
     asset_cache = {}

@@ -192,7 +192,7 @@ export const Advisories: React.FC = () => {
 
   const handleInitiateRcaFromDetails = (advisory: any) => {
     handleCloseDetails();
-    navigate(`/root-cause?advisoryId=${advisory.id}&selectedNodeName=${encodeURIComponent(advisory.asset)}`);
+    navigate('/root-cause', { state: { advisoryId: advisory.id, selectedNodeName: advisory.asset } });
   };
 
   return (

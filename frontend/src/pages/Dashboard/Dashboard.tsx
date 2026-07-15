@@ -700,7 +700,7 @@ export const Dashboard: React.FC = () => {
   };
 
   const handleInitiateRca = (advisory: any) =>
-    navigate(`/root-cause?advisoryId=${advisory.id}&selectedNodeName=${encodeURIComponent(advisory.asset)}`);
+    navigate('/root-cause', { state: { advisoryId: advisory.id, selectedNodeName: advisory.asset } });
 
   // Expand dialog filter bar helper
   const renderExpandFilters = (
@@ -990,7 +990,7 @@ export const Dashboard: React.FC = () => {
                     color="secondary"
                     size="small"
                     onClick={() => {
-                      navigate(`/root-cause?advisoryId=${activeAdvisory.id}&selectedNodeName=${encodeURIComponent(activeAdvisory.asset || '')}`);
+                      navigate('/root-cause', { state: { advisoryId: activeAdvisory.id, selectedNodeName: activeAdvisory.asset || '' } });
                     }}
                     sx={{ fontWeight: 700, py: 1 }}
                   >

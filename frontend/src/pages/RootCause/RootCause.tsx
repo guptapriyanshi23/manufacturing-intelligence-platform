@@ -39,28 +39,33 @@ export const RootCause: React.FC = () => {
   useEffect(() => {
     api.hierarchy.list(true)
       .then(setFlatNodes)
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   useEffect(() => {
-    api.advisories.list()
-      .then((res) => {
-        setAdvisories(res);
-        const advId = searchParams.get('advisoryId');
-        if (advId) {
-          const found = res.find((a) => a.id === Number(advId));
-          if (found) {
-            setSelectedAdvisoryId(found.id);
-            setRootCauseDescription(found.root_cause_description || '');
-            setActionTaken(found.action_taken || '');
-            setRcaStatus(found.status === 'resolved' ? 'resolved' : 'in_progress');
-          }
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to load advisories for RCA:', err);
-      });
-  }, [location.search]);
+    const advId = location.state?.advisoryId || searchParams.get('advisoryId');
+    if (advId) {
+      api.advisories.get(Number(advId))
+        .then((res) => {
+          setAdvisories([res]);
+          setSelectedAdvisoryId(res.id);
+          setRootCauseDescription(res.root_cause_description || '');
+          setActionTaken(res.action_taken || '');
+          setRcaStatus(res.status === 'resolved' ? 'resolved' : 'in_progress');
+        })
+        .catch((err) => {
+          console.error('Failed to load single advisory for RCA:', err);
+        });
+    } else {
+      api.advisories.list()
+        .then((res) => {
+          setAdvisories(res);
+        })
+        .catch((err) => {
+          console.error('Failed to load advisories for RCA:', err);
+        });
+    }
+  }, [location.search, location.state]);
 
   const activeAdvisory = advisories.find((a) => a.id === selectedAdvisoryId);
 
@@ -163,7 +168,7 @@ export const RootCause: React.FC = () => {
                   fontWeight: 700,
                 }}
               >
-                {activeAdvisory ? `${activeAdvisory.asset} - ${activeAdvisory.tag}` : 'Select Advisory to Initiate RCA'}
+                {activeAdvisory ? `${activeAdvisory.asset}` : 'Select Advisory to Initiate RCA'}
               </Typography>
             </Box>
             <CardContent sx={{ p: 3 }}>
@@ -270,18 +275,18 @@ export const RootCause: React.FC = () => {
                   onChange={(event) => setActionTaken(event.target.value)}
                 />
 
-                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                   <FormControlLabel
-                     control={
-                       <Checkbox
-                         checked={rcaStatus === 'resolved'}
-                         onChange={(e) => setRcaStatus(e.target.checked ? 'resolved' : 'in_progress')}
-                         color="primary"
-                       />
-                     }
-                     label="Mark as Resolved"
-                   />
-                 </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={rcaStatus === 'resolved'}
+                        onChange={(e) => setRcaStatus(e.target.checked ? 'resolved' : 'in_progress')}
+                        color="primary"
+                      />
+                    }
+                    label="Mark as Resolved"
+                  />
+                </Box>
 
                 <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
                   <Button
