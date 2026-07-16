@@ -13,6 +13,7 @@ import { api } from '../../api/client';
 import { getSeverityColor, getSeverityLevel, SEVERITY_LEVEL_MAP } from '../../constants/severity';
 import type { HierarchyNode } from '../../types/hierarchy';
 import { getStatusColor } from '../../constants/status';
+import './Reports.scss';
 
 
 const TIME_RANGE_OPTIONS = [
@@ -33,6 +34,16 @@ const getDateRange = (rangeValue: string) => {
   const from = new Date(now.getTime() - hours * 60 * 60 * 1000);
   return { from: from.toISOString().slice(0, 16), to: now.toISOString().slice(0, 16) };
 };
+
+const BellIcon = () => (
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" /></svg>
+);
+const CheckCircleIcon = () => (
+  <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" /></svg>
+);
+const WarningIcon = () => (
+  <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" /></svg>
+);
 
 export const Reports: React.FC = () => {
   const location = useLocation();
@@ -154,8 +165,8 @@ export const Reports: React.FC = () => {
   return (
     <PageContainer>
       <PageHeader
-        title="Generate Reports"
-        subtitle="Generate Advisory summaries - for a single asset, a set of equipment or an entire process line."
+        title="Advisory Report"
+        url="/reports"
       />
 
       {/* Filter bar */}

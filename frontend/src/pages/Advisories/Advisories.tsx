@@ -248,8 +248,8 @@ export const Advisories: React.FC = () => {
   return (
     <PageContainer>
       <PageHeader
-        title="Advisories"
-        subtitle="Active system advisories for equipment health, severity tracking, and remediation actions. Click any row to view full details."
+        title="Advisory Summary"
+        url="/advisories"
       />
 
       {breadcrumbs.length > 0 && (

@@ -735,8 +735,9 @@ export const Admin: React.FC = () => {
   return (
     <PageContainer>
       <PageHeader
-        title="Administration"
-        subtitle="Manage hierarchy nodes, configure alert rules and user permissions."
+        title="Asset Hierarchy & Severity Thresholds"
+        url="/admin"
+        subtitle='Defines the hierarchy and severity thresholds every operator screen relies on'
       />
 
       <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ mb: 3, borderBottom: '1px solid #ccc' }}>
