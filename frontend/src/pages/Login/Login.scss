@@ -1,0 +1,226 @@
+.login {
+	display: flex;
+	flex-direction: column;
+	min-height: 100vh;
+	padding-bottom: 40px;
+}
+
+.login-container {
+	display: flex;
+	flex: 1;
+	overflow: hidden;
+}
+
+/* ── Left Side - Background Image ─────────────────────────────────── */
+.login-left {
+	flex: 1;
+	background-image: url('/loginbg.png');
+	background-size: cover;
+	background-position: center;
+	background-repeat: no-repeat;
+	position: relative;
+	display: flex;
+	align-items: flex-start;
+	padding: 3rem 3rem;
+	min-height: calc(100vh - 40px);
+}
+
+.login-left__overlay {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 1.2rem;
+        position: fixed;
+    top: 14px;
+    left: 15px;
+}
+
+.login-left__logo {
+	height: 17px;
+	width: auto;
+	display: block;
+}
+
+.login-left__divider {
+	width: 1px;
+	height: 28px;
+	background: rgba(255, 255, 255, 0.4);
+}
+
+.login-left__project-name {
+	font-size: 1rem;
+	font-weight: 600;
+	color: #ffffff;
+	letter-spacing: 0.02em;
+}
+
+/* ── Right Side - Login Panel ─────────────────────────────────────── */
+.login-right {
+	width: 400px;
+	flex-shrink: 0;
+	background: #ffffff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 3rem 2rem;
+	min-height: calc(100vh - 40px);
+}
+
+.login-panel {
+	width: 100%;
+	max-width: 400px;
+}
+
+.login-title {
+	font-size: 1.4rem;
+	font-weight: 500;
+	color: #1e293b;
+	margin-bottom: 2rem;
+	text-align: center;
+}
+
+.login-form {
+	width: 100%;
+}
+
+.form-label {
+	margin-bottom: 4px;
+	font-size: 0.92rem;
+}
+
+.field-group {
+	margin-bottom: 1.2rem;
+}
+
+.validation-text {
+	color: #b42318;
+	font-size: 12px;
+	margin-top: 4px;
+}
+
+.meta-row {
+	margin-bottom: 18px;
+
+	.MuiFormControlLabel-root {
+		margin: 0;
+
+		.MuiTypography-root {
+			font-size: 0.85rem;
+			color: #64748b;
+		}
+	}
+}
+
+.forgot-btn {
+	font-size: 0.85rem;
+	font-weight: 500;
+	color: #64748b !important;
+
+	&:hover {
+		color: #334155 !important;
+	}
+}
+
+.login-btn {
+	min-height: 44px;
+	background-color: var(--color-primary) !important;
+	border-color: var(--color-primary) !important;
+	color: #ffffff !important;
+	font-weight: 600 !important;
+	text-transform: none !important;
+	font-size: 0.95rem !important;
+	margin-top: 0.5rem;
+
+	&:hover {
+		background-color: var(--color-primary-dark) !important;
+		border-color: var(--color-primary-dark) !important;
+	}
+}
+
+.version-text {
+	color: #94a3b8;
+	font-weight: 400;
+	font-size: 0.75rem;
+	margin-top: 16px;
+}
+
+@media (max-width: 991.98px) {
+	.login-container {
+		flex-direction: column;
+	}
+
+	.login-left {
+		min-height: 200px;
+		padding: 2rem;
+	}
+
+	.login-left__overlay {
+		gap: 1rem;
+	}
+
+	.login-left__logo {
+		height: 20px;
+	}
+
+	.login-left__divider {
+		height: 24px;
+	}
+
+	.login-left__project-name {
+		font-size: 0.9rem;
+	}
+
+	.login-right {
+		width: 100%;
+		min-height: auto;
+		padding: 2rem;
+	}
+
+	.login-panel {
+		max-width: 100%;
+	}
+}
+
+@media (max-width: 575.98px) {
+	.login-left {
+		min-height: 140px;
+		padding: 1.5rem;
+	}
+
+	.login-left__overlay {
+		gap: 0.8rem;
+	}
+
+	.login-left__logo {
+		height: 16px;
+	}
+
+	.login-left__divider {
+		height: 20px;
+	}
+
+	.login-left__project-name {
+		font-size: 0.8rem;
+	}
+
+	.login-right {
+		padding: 1.5rem 1rem;
+	}
+
+	.login-title {
+		font-size: 1.5rem;
+		margin-bottom: 1.5rem;
+	}
+
+	.field-group {
+		margin-bottom: 1rem;
+	}
+
+	.meta-row {
+		margin-bottom: 14px;
+	}
+
+	.login-btn {
+		min-height: 40px;
+	}
+}

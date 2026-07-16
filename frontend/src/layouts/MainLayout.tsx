@@ -29,6 +29,7 @@ import {
 } from '@mui/icons-material';
 import { TreeView } from '../components/Tree/TreeView';
 import type { HierarchyNode } from '../types/hierarchy';
+import Header from '../components/Header';
 
 const drawerWidth = 280;
 
@@ -169,8 +170,10 @@ export const MainLayout: React.FC = () => {
   );
 
   return (
+    <>
+    <Header />
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
-      {/* Top Header */}
+      {/* Top Header
       <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, border: '1px solid #ccc' }}>
         <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -184,7 +187,7 @@ export const MainLayout: React.FC = () => {
           </Box>
           
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            {/* Tabs switcher */}
+            Tabs switcher
             <List sx={{ px: 1, display: 'flex' }}>
               {allowedNavItems.map((item) => {
                 const isActive = location.pathname === item.path;
@@ -214,7 +217,7 @@ export const MainLayout: React.FC = () => {
               })}
             </List>
 
-            {/* Profile Info and Logout */}
+            Profile Info and Logout
             {profile && (
               <Box sx={{ display: 'flex', alignItems: 'center', borderLeft: '1px solid #e0e0e0', pl: 2 }}>
                 <IconButton
@@ -290,7 +293,7 @@ export const MainLayout: React.FC = () => {
             )}
           </Box>
         </Toolbar>
-      </AppBar>
+      </AppBar> */}
 
       {/* Sidebar Navigation */}
       <Drawer
@@ -354,6 +357,7 @@ export const MainLayout: React.FC = () => {
         <Outlet context={{ selectedNodeId: selectedNode?.id }} />
       </Box>
     </Box>
+    </>
   );
 };
 

@@ -7,14 +7,40 @@ import {
   Typography,
   InputAdornment,
   CircularProgress,
+  Link,
+  SvgIcon,
   Alert,
+  FormControlLabel,
+  Checkbox,
+  IconButton,
 } from '@mui/material';
-import {
-  PersonOutlined as PersonIcon,
-  LockOutlined as LockIcon,
-  VpnKeyOutlined as KeysIcon,
-} from '@mui/icons-material';
 import { api } from '../../api/client';
+import Footer from '../../components/Footer';
+import './Login.scss';
+
+/* ── Inline SVG icons (avoids @mui/icons-material dependency) ── */
+const PersonIcon = () => (
+  <SvgIcon fontSize="small">
+    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+  </SvgIcon>
+);
+const LockIcon = () => (
+  <SvgIcon fontSize="small">
+    <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
+  </SvgIcon>
+);
+const VisibilityIcon = () => (
+  <SvgIcon fontSize="small">
+    <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
+  </SvgIcon>
+);
+const VisibilityOffIcon = () => (
+  <SvgIcon fontSize="small">
+    <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75C21.27 7.61 17 4.5 12 4.5c-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zm7.53 5.53 1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78 3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z" />
+  </SvgIcon>
+);
+
+const APP_VERSION = '1.0.0';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -22,6 +48,8 @@ export const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const [authConfig, setAuthConfig] = useState({ jwt_enabled: true, sso_enabled: true });
 
@@ -62,258 +90,136 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', width: '100vw', overflow: 'hidden' }}>
-      {/* Left Panel: Deloitte/AssetWize Glowing Illustration */}
-      <Box
-        sx={{
-          flex: 2,
-          backgroundColor: '#000000',
-          color: 'white',
-          p: 4,
-          display: { xs: 'none', md: 'flex' },
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          position: 'relative',
-          backgroundImage: 'radial-gradient(circle at 40% 50%, rgba(16, 185, 129, 0.08) 0%, transparent 60%)',
-        }}
-      >
-        {/* Brand Header */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Typography variant="h5" sx={{ fontWeight: 800, color: 'white', letterSpacing: '0.5px' }}>
-            Deloitte<span style={{ color: '#84CC16' }}>.</span>
-          </Typography>
-          <Typography variant="h6" sx={{ fontWeight: 300, opacity: 0.5 }}>
-            |
-          </Typography>
-          <Typography variant="h6" sx={{ fontWeight: 400, color: '#f3f4f6', letterSpacing: '0.5px' }}>
-            AssetWize
-          </Typography>
-        </Box>
+    <Box className="login">
 
-        {/* Central Illustration - Circular glowing gear/hand */}
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            flexGrow: 1,
-          }}
-        >
-          <Box
-            sx={{
-              width: 320,
-              height: 320,
-              borderRadius: '50%',
-              border: '2px solid rgba(132, 204, 22, 0.2)',
-              position: 'relative',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              boxShadow: '0 0 40px rgba(132, 204, 22, 0.1)',
-            }}
-          >
-            {/* Nested tech circles */}
-            <Box
-              sx={{
-                width: 250,
-                height: 250,
-                borderRadius: '50%',
-                border: '1px dashed rgba(132, 204, 22, 0.4)',
-                position: 'absolute',
-              }}
+      <Box className="login-container">
+          {/* Left Side - Background Image */}
+        <Box className="login-left">
+          <Box className="login-left__overlay">
+            <img
+              src="/deloitteLogoWhite.png"
+              alt="Deloitte"
+              className="login-left__logo"
             />
-            <Box
-              sx={{
-                width: 180,
-                height: 180,
-                borderRadius: '50%',
-                border: '2px solid rgba(132, 204, 22, 0.6)',
-                position: 'absolute',
-                boxShadow: '0 0 25px rgba(132, 204, 22, 0.15)',
-              }}
-            />
-            {/* Core hand/gear image wrapper */}
-            <Box
-              sx={{
-                width: 100,
-                height: 100,
-                borderRadius: '50%',
-                backgroundColor: 'rgba(132, 204, 22, 0.15)',
-                position: 'absolute',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                boxShadow: '0 0 30px rgba(132, 204, 22, 0.3)',
-              }}
-            >
-              <Box
-                component="img"
-                src="/deloitte_logo_black.svg"
-                alt="Deloitte Core"
-                sx={{
-                  width: '60%',
-                  filter: 'brightness(0) invert(1)',
-                }}
-              />
-            </Box>
+            <span className="login-left__divider" aria-hidden="true" />
+            <Typography className="login-left__project-name">
+              Asset Digital Twin
+            </Typography>
           </Box>
         </Box>
 
-        {/* Footer */}
-        <Typography variant="caption" sx={{ opacity: 0.5, fontSize: '0.7rem' }}>
-          Copyright ©2026 Deloitte Touche Tohmatsu India LLP. Member of Deloitte Touche Tohmatsu Limited. | Disclaimer
-        </Typography>
-      </Box>
+         {/* Right Side - Login Form */}
+        <Box className="login-right">
+          <Box className="login-panel">
+            {/* Login title */}
+            <h5 className="login-title" >
+              Login
+            </h5>
 
-      {/* Right Panel: Clean Login Form */}
-      <Box
-        sx={{
-          flex: 1,
-          backgroundColor: '#ffffff',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          px: { xs: 4, sm: 8 },
-        }}
-      >
-        <Box sx={{ width: '100%', maxWidth: 360 }}>
-          <Typography variant="h4" sx={{ fontWeight: 500, mb: 4, color: '#333333', textAlign: 'center' }}>
-            Login
-          </Typography>
-
-          {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              {error}
-            </Alert>
-          )}
-
-          <form onSubmit={handleLogin}>
-            {authConfig.jwt_enabled && (
-              <>
-                {/* Username Input */}
+            {/* Form */}
+            <Box component="form" onSubmit={handleLogin} noValidate className="login-form">
+              {authConfig.jwt_enabled && ( <>
+              <Box className="field-group">
                 <TextField
                   fullWidth
+                  label="Username"
                   variant="outlined"
-                  placeholder="User name"
+                  size="small"
+                  autoComplete="username"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  sx={{
-                    mb: 2,
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: '#ffffff',
-                      borderRadius: 1,
-                    },
-                  }}
                   slotProps={{
                     input: {
                       startAdornment: (
                         <InputAdornment position="start">
-                          <PersonIcon sx={{ color: '#999999' }} />
+                          <PersonIcon />
                         </InputAdornment>
                       ),
-                    }
+                    },
                   }}
                 />
+              </Box>
 
-                {/* Password Input */}
+              <Box className="field-group">
                 <TextField
                   fullWidth
+                  label="Password"
+                  type={showPassword ? 'text' : 'password'}
                   variant="outlined"
-                  type="password"
-                  placeholder="Password"
+                  size="small"
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  sx={{
-                    mb: 3,
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: '#ffffff',
-                      borderRadius: 1,
-                    },
-                  }}
                   slotProps={{
                     input: {
                       startAdornment: (
                         <InputAdornment position="start">
-                          <LockIcon sx={{ color: '#999999' }} />
+                          <LockIcon />
                         </InputAdornment>
                       ),
-                    }
-                  }}
-                />
-
-                {/* Submit button */}
-                <Button
-                  fullWidth
-                  variant="contained"
-                  type="submit"
-                  disabled={loading}
-                  sx={{
-                    backgroundColor: '#1a7f18',
-                    color: 'white',
-                    py: 1.5,
-                    fontSize: '1rem',
-                    textTransform: 'none',
-                    borderRadius: 1,
-                    fontWeight: 600,
-                    boxShadow: 'none',
-                    '&:hover': {
-                      backgroundColor: '#146312',
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            size="small"
+                            onClick={() => setShowPassword((prev) => !prev)}
+                            edge="end"
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                          >
+                            {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
                     },
                   }}
-                >
-                  {loading ? <CircularProgress size={24} color="inherit" /> : 'Login'}
-                </Button>
-              </>
-            )}
+                />
+              </Box>
 
-            {/* SSO Integration Provision */}
-            {authConfig.sso_enabled && (
+              {/* Remember me & forgot password */}
+              <Box
+                className="meta-row"
+                sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+              >
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                    />
+                  }
+                  label={
+                    <Typography variant="body2">Remember Me</Typography>
+                  }
+                />
+                <Link href="#" className="forgot-btn" underline="hover">
+                  Forgot Password?
+                </Link>
+              </Box>
+
               <Button
+                type="submit"
                 fullWidth
-                variant="outlined"
-                onClick={handleSsoLogin}
-                sx={{
-                  mt: authConfig.jwt_enabled ? 2 : 0,
-                  py: 1.5,
-                  color: '#1a7f18',
-                  borderColor: '#1a7f18',
-                  textTransform: 'none',
-                  borderRadius: 1,
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 1,
-                  '&:hover': {
-                    borderColor: '#146312',
-                    backgroundColor: 'rgba(26, 127, 24, 0.04)',
-                  },
-                }}
+                variant="contained"
+                className="login-btn"
               >
-                <KeysIcon fontSize="small" />
-                Login with SSO
+                Login
               </Button>
-            )}
 
-            {/* Forgot password */}
-            <Box sx={{ mt: 3, textAlign: 'left' }}>
               <Typography
-                variant="body2"
-                sx={{
-                  color: '#1a7f18',
-                  cursor: 'pointer',
-                  fontWeight: 500,
-                  textDecoration: 'none',
-                  '&:hover': { textDecoration: 'underline' },
-                }}
+                className="version-text"
+                variant="caption"
+                sx={{ display: 'block', textAlign: 'center' }}
               >
-                Forgot Password ?
+                v{APP_VERSION}
               </Typography>
+
+              </>)}
             </Box>
-          </form>
+          </Box>
         </Box>
       </Box>
+
+      <Footer />
     </Box>
   );
 };
