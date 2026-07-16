@@ -17,37 +17,8 @@ def get_flat_nodes(db: Session) -> List[HierarchyNode]:
         joinedload(HierarchyNode.sensor_metadata)
     ).order_by(HierarchyNode.sort_order, HierarchyNode.id).all()
 
-def get_hierarchy_tree(db: Session) -> List[HierarchyNode]:
-    # Fetch all nodes from database with metadata preloaded to solve N+1 queries
-    nodes = db.query(HierarchyNode).options(
-        joinedload(HierarchyNode.plant_metadata),
-        joinedload(HierarchyNode.asset_metadata),
-        joinedload(HierarchyNode.sensor_metadata)
-    ).order_by(HierarchyNode.sort_order, HierarchyNode.id).all()
-    
-    # Map nodes by their ID for easy tree construction
-    nodes_map: Dict[int, HierarchyNode] = {}
-    roots: List[HierarchyNode] = []
-    
-    for node in nodes:
-        # Create a copy or bind children to empty list for clean tree construction
-        node.children = []
-        nodes_map[node.id] = node
-        
-    for node in nodes:
-        if node.parent_id is None:
-            roots.append(node)
-        else:
-            parent = nodes_map.get(node.parent_id)
-            if parent:
-                parent.children.append(node)
-            else:
-                # If parent not found (e.g., deleted or orphaned), treat as root
-                roots.append(node)
-                
-    return roots
-
 def create_node(db: Session, node_in: HierarchyNodeCreate) -> HierarchyNode:
+
     # 1. Create the base node
     db_node = HierarchyNode(
         parent_id=node_in.parent_id,

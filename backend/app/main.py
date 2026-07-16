@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.app.core.config import settings
 from backend.app.core.database import engine, Base
+from contextlib import asynccontextmanager
 
 # Import models to ensure they are registered for auto-creation
 from backend.app.models import hierarchy  # noqa
@@ -23,11 +24,21 @@ from backend.app.modules.admin.users_router import router as admin_users_router
 from fastapi.staticfiles import StaticFiles
 import os
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Auto-create tables on startup (useful if migration has not run yet)
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        print(f"Warning: Database tables could not be initialized on startup: {e}")
+    yield
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 # Set up CORS middleware to support local frontend development
@@ -43,20 +54,6 @@ app.add_middleware(
 os.makedirs("backend/app/static/uploads", exist_ok=True)
 app.mount("/static", StaticFiles(directory="backend/app/static"), name="static")
 
-# Auto-create tables on startup (useful if migration has not run yet)
-@app.on_event("startup")
-def startup_event():
-    try:
-        Base.metadata.create_all(bind=engine)
-        from backend.app.core.database import SessionLocal
-        from backend.app.modules.alerts.service import ensure_alert_columns
-        db = SessionLocal()
-        try:
-            ensure_alert_columns(db)
-        finally:
-            db.close()
-    except Exception as e:
-        print(f"Warning: Database tables could not be initialized on startup: {e}")
 
 # Register modular routes under settings.API_V1_STR
 api_router_prefix = settings.API_V1_STR

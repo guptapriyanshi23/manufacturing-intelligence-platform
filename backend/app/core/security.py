@@ -74,12 +74,12 @@ def get_allowed_node_ids(user: User, db: Session) -> set:
     if 'admin:view' in user_perms:
         return None # Admin has no restrictions
     
-    # Query assigned node IDs
-    stmt = text("SELECT node_id FROM user_hierarchy_permissions WHERE user_id = :user_id")
-    explicit_ids = [r[0] for r in db.execute(stmt, {"user_id": user.id}).fetchall()]
+    # Query assigned node IDs using ORM
+    explicit_ids = [p.node_id for p in user.hierarchy_permissions]
     if not explicit_ids:
         # Default to full access if no node constraint is explicitly set
         return None
+
         
     # Get all nodes to build descendants tree
     node_stmt = text("SELECT id, parent_id FROM hierarchy_nodes")

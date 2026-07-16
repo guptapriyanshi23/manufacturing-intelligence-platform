@@ -1,10 +1,16 @@
-export enum Severity {
-  CRITICAL = 1,
-  HIGH = 2,
-  WARNING = 3,
-  LOW = 4,
-  INFO = 5,
-}
+export const Severity = {
+  CRITICAL: 1,
+  HIGH: 2,
+  WARNING: 3,
+  LOW: 4,
+  INFO: 5,
+  1: 'CRITICAL',
+  2: 'HIGH',
+  3: 'WARNING',
+  4: 'LOW',
+  5: 'INFO',
+} as const;
+export type Severity = typeof Severity[keyof typeof Severity];
 
 export const SEVERITY_COLORS: Record<string, string> = {
   S1: '#B91C1C',
@@ -61,8 +67,8 @@ export const getSeverityLevel = (severity: string | number): string => {
 export const getSeverityName = (severity: string | number): string => {
   if (severity === undefined || severity === null) return 'INFO';
   const val = typeof severity === 'string' ? parseInt(severity, 10) : severity;
-  if (!isNaN(Number(val)) && Severity[Number(val)]) {
-    return Severity[Number(val)];
+  if (!isNaN(Number(val)) && Number(val) in Severity) {
+    return Severity[Number(val) as keyof typeof Severity] as unknown as string;
   }
   const key = String(severity).toUpperCase();
   if (key === 'CRITICAL' || key === 'HIGH' || key === 'WARNING' || key === 'LOW' || key === 'INFO') {

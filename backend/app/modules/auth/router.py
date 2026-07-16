@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from backend.app.core.database import get_db
 from backend.app.core.security import verify_password, create_access_token, get_current_user
+from backend.app.core.config import settings
 from backend.app.models.users import User
 from backend.app.modules.auth.schemas import LoginRequest, Token, UserOut
 
@@ -14,11 +15,11 @@ def get_auth_config():
     Returns the auth configuration settings.
     This allows configuring whether standard password login, SSO login, or both are enabled.
     """
-    # By default enable both or read from environment variables
     return {
-        "jwt_enabled": os.getenv("ENABLE_JWT_LOGIN", "true").lower() == "true",
-        "sso_enabled": os.getenv("ENABLE_SSO_LOGIN", "true").lower() == "true"
+        "jwt_enabled": settings.ENABLE_JWT_LOGIN,
+        "sso_enabled": settings.ENABLE_SSO_LOGIN
     }
+
 
 @router.post("/login", response_model=Token)
 def login(login_data: LoginRequest, db: Session = Depends(get_db)):

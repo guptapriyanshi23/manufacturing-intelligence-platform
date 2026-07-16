@@ -8,10 +8,6 @@ import {
   Typography,
   Button,
   TextField,
-  MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
   Paper,
   Stack,
   FormControlLabel,
@@ -26,6 +22,8 @@ import { PageHeader } from '../../components/Cards/PageHeader';
 import { StatusChip } from '../../components/Forms/StatusChip';
 import { api } from '../../api/client';
 import { getSeverityLevelFull, getSeverityColor, getSeverityBgColor } from '../../constants/severity';
+import type { Advisory } from '../../types/api_types';
+import { AdvisoryStatus } from '../../types/enums';
 
 const getBreadcrumbsPath = (nodeId: number, flatNodes: any[]): string[] => {
   const path: string[] = [];
@@ -41,10 +39,10 @@ export const RootCause: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [rcaStatus, setRcaStatus] = useState<'in_progress' | 'resolved'>('in_progress');
+  const [rcaStatus, setRcaStatus] = useState<AdvisoryStatus>(AdvisoryStatus.IN_PROGRESS);
   const [rootCauseDescription, setRootCauseDescription] = useState('');
   const [actionTaken, setActionTaken] = useState('');
-  const [advisories, setAdvisories] = useState<any[]>([]);
+  const [advisories, setAdvisories] = useState<Advisory[]>([]);
   const [selectedAdvisoryId, setSelectedAdvisoryId] = useState<number | ''>('');
   const [flatNodes, setFlatNodes] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -67,7 +65,7 @@ export const RootCause: React.FC = () => {
           setSelectedAdvisoryId(res.id);
           setRootCauseDescription(res.root_cause_description || '');
           setActionTaken(res.action_taken || '');
-          setRcaStatus(res.status === 'resolved' ? 'resolved' : 'in_progress');
+          setRcaStatus(res.status === AdvisoryStatus.RESOLVED ? AdvisoryStatus.RESOLVED : AdvisoryStatus.IN_PROGRESS);
         })
         .catch((err) => {
           console.error('Failed to load single advisory for RCA:', err);
@@ -101,20 +99,7 @@ export const RootCause: React.FC = () => {
     setSelectedFile(file);
   };
 
-  const handleAdvisorySelect = (event: any) => {
-    const id = event.target.value;
-    setSelectedAdvisoryId(id);
-    const found = advisories.find((a) => a.id === id);
-    if (found) {
-      setRootCauseDescription(found.root_cause_description || '');
-      setActionTaken(found.action_taken || '');
-      setRcaStatus(found.status === 'resolved' ? 'resolved' : 'in_progress');
-    } else {
-      setRootCauseDescription('');
-      setActionTaken('');
-      setRcaStatus('in_progress');
-    }
-  };
+
 
   const handleUploadSubmit = async () => {
     if (!selectedAdvisoryId || !activeAdvisory) {
@@ -207,11 +192,11 @@ export const RootCause: React.FC = () => {
                 {activeAdvisory ? (
                   <Paper variant="outlined" sx={{ p: 2.5, bgcolor: '#f8fafc', borderColor: '#e2e8f0', borderRadius: 2 }}>
                     <Grid container spacing={3}>
-                      <Grid item xs={12} sm={6}>
+                      <Grid size={{ xs: 12, sm: 6 }}>
                         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>Asset</Typography>
                         <Typography variant="body1" sx={{ fontWeight: 600, mt: 0.5 }}>{activeAdvisory.asset}</Typography>
                       </Grid>
-                      <Grid item xs={12} sm={6}>
+                      <Grid size={{ xs: 12, sm: 6 }}>
                         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase', display: 'block', mb: 0.5 }}>Severity</Typography>
                         <Chip
                           label={getSeverityLevelFull(activeAdvisory.severity).toUpperCase()}
@@ -226,17 +211,17 @@ export const RootCause: React.FC = () => {
                           }}
                         />
                       </Grid>
-                      <Grid item xs={12} sm={6}>
+                      <Grid size={{ xs: 12, sm: 6 }}>
                         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase', display: 'block', mb: 0.5 }}>Status</Typography>
                         <StatusChip label={activeAdvisory.status.toUpperCase()} status={activeAdvisory.status} />
                       </Grid>
-                      <Grid item xs={12} sm={6}>
+                      <Grid size={{ xs: 12, sm: 6 }}>
                         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>First Detected</Typography>
                         <Typography variant="body1" sx={{ mt: 0.5 }}>
-                          {new Date(activeAdvisory.first_detected).toLocaleString()}
+                          {new Date(activeAdvisory.detected_at).toLocaleString()}
                         </Typography>
                       </Grid>
-                      <Grid item xs={12}>
+                      <Grid size={{ xs: 12 }}>
                         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>Advisory Message</Typography>
                         <Typography variant="body1" sx={{ mt: 0.5 }}>{activeAdvisory.description}</Typography>
                       </Grid>

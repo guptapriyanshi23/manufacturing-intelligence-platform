@@ -34,7 +34,6 @@ import {
   TableHead,
   TableRow,
   Chip,
-  Paper,
   Checkbox,
   IconButton,
 } from '@mui/material';
@@ -44,6 +43,7 @@ import { PageHeader } from '../../components/Cards/PageHeader';
 import { api } from '../../api/client';
 import type { HierarchyNode, NodeType } from '../../types/hierarchy';
 import { getSeverityColor, getSeverityBgColor, getSeverityLevelFull } from '../../constants/severity';
+import { SeverityLevel, AlertStatus } from '../../types/enums';
 
 // ─── Hierarchy constants ────────────────────────────────────────────────────
 const LEVELS: NodeType[] = ['enterprise','site','area','line','station','asset','component','sensor'];
@@ -455,20 +455,28 @@ export const Admin: React.FC = () => {
   };
 
   const handleAlertSubmit = () => {
+    const SEVERITY_LEVEL_MAP_TO_NUM: Record<string, number> = {
+      critical: 1,
+      high: 2,
+      warning: 3,
+      low: 4,
+      info: 5,
+    };
+
     const payload = {
       name: alertForm.name,
       description: alertForm.description || null,
-      severity: alertForm.severity,
+      severity: (SEVERITY_LEVEL_MAP_TO_NUM[alertForm.severity] || Number(alertForm.severity) || 5) as SeverityLevel,
       node_id: Number(alertForm.assetId),
       condition_type: alertForm.conditionType || null,
       sensor_id: alertForm.trigger || null,
       alert_type: alertForm.alertType || null,
-      value: alertForm.value ? Number(alertForm.value) : null,
+      threshold: alertForm.value ? Number(alertForm.value) : null,
       delay: alertForm.delay ? Number(alertForm.delay) : null,
       pending_period: alertForm.pendingPeriod || null,
       keep_firing: alertForm.keepFiring || null,
       notify_email: alertForm.notifyEmail || null,
-      status: 'Active',
+      status: AlertStatus.ACTIVE,
     };
 
     const action = editingRuleId 

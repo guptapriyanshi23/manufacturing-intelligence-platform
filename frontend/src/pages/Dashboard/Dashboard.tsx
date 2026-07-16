@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useLocation, useNavigate, useOutletContext } from 'react-router-dom';
 import {
-  Grid, Typography, Paper, Box, useTheme, Chip, Checkbox, CircularProgress,
-  FormControl, InputLabel, Select, MenuItem, ListItemText, Button, Stack,
+  Grid, Typography, Paper, Box, useTheme, Chip, CircularProgress,
+  FormControl, InputLabel, Select, MenuItem, Button,
   IconButton, Dialog, DialogContent, TextField, Breadcrumbs,
 } from '@mui/material';
 import {
@@ -14,7 +14,7 @@ import { api } from '../../api/client';
 import type { HierarchyNode } from '../../types/hierarchy';
 import { getSeverityBgColor, getSeverityColor, getSeverityLevelFull } from '../../constants/severity';
 import { PageHeader } from '../../components/Cards/PageHeader';
-import { HierarchySelector } from '../../components/Filters/HierarchySelector';
+import { AdvisoryStatus } from '../../types/enums';
 
 const TIME_RANGE_OPTIONS = [
   { value: 'last_1h', label: 'Last 1 Hour' },
@@ -34,10 +34,10 @@ const getDateRange = (rangeValue: string) => {
 };
 
 interface TelemetryPoint {
-  timestamp: string;
+  timestamp: string | null;
   sensor_id: string;
   sensor_name: string;
-  value: number;
+  value: number | null;
 }
 
 const getBreadcrumbsPath = (nodeId: number, flatNodes: HierarchyNode[]): string[] => {
@@ -45,7 +45,8 @@ const getBreadcrumbsPath = (nodeId: number, flatNodes: HierarchyNode[]): string[
   let current = flatNodes.find(n => n.id === nodeId);
   while (current) {
     path.unshift(current.display_name);
-    current = current.parent_id ? flatNodes.find(n => n.id === current.parent_id) : undefined;
+    const pid = current.parent_id;
+    current = pid ? flatNodes.find(n => n.id === pid) : undefined;
   }
   return path;
 };
@@ -58,30 +59,18 @@ export const Dashboard: React.FC = () => {
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const context = useOutletContext<{ selectedNodeId?: number | null }>();
   const initialNodeId = context?.selectedNodeId ?? (location.state?.selectedNodeId ? Number(location.state.selectedNodeId) : (searchParams.get('selectedNodeId') ? Number(searchParams.get('selectedNodeId')) : null));
-  const alertId = location.state?.alertId ? Number(location.state.alertId) : (searchParams.get('alertId') ? Number(searchParams.get('alertId')) : null);
-
   const [hierarchyLoading, setHierarchyLoading] = useState(true);
   const [telemetryLoading, setTelemetryLoading] = useState(false);
   const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
-  const [descendantSensors, setDescendantSensors] = useState<HierarchyNode[]>([]);
-  const [selectedSensorIds, setSelectedSensorIds] = useState<string[]>([]);
   const [telemetryPoints, setTelemetryPoints] = useState<TelemetryPoint[]>([]);
   const [advisories, setAdvisories] = useState<any[]>([]);
   const [advisoriesFetched, setAdvisoriesFetched] = useState(false);
-  const [alerts, setAlerts] = useState<any[]>([]);
-  const [selectedNode, setSelectedNode] = useState<HierarchyNode | null>(null);
   const [appliedSensors, setAppliedSensors] = useState<HierarchyNode[]>([]);
-  const [appliedSensorIds, setAppliedSensorIds] = useState<string[]>([]);
 
   const [selectedSiteId, setSelectedSiteId] = useState<number | ''>('');
 
   // Dropdown filter states
   const [selectedSensorId, setSelectedSensorId] = useState<number | ''>('');
-  const [appliedSensorId, setAppliedSensorId] = useState<number | ''>('');
-
-  const sites = React.useMemo(() => {
-    return flatNodes.filter(n => n.node_type === 'site');
-  }, [flatNodes]);
 
   React.useEffect(() => {
     if (flatNodes.length > 0) {
@@ -152,7 +141,6 @@ export const Dashboard: React.FC = () => {
 
     if (!initialNodeId) {
       setSelectedSensorId('');
-      setAppliedSensorId('');
       return;
     }
 
@@ -161,7 +149,6 @@ export const Dashboard: React.FC = () => {
       const sensorNode = flatNodes.find(n => n.id === incomingSensorId);
       if (sensorNode && sensorNode.node_type === 'sensor') {
         setSelectedSensorId(sensorNode.id);
-        setAppliedSensorId(sensorNode.id);
         return;
       }
     }
@@ -171,11 +158,9 @@ export const Dashboard: React.FC = () => {
 
     if (node.node_type === 'sensor') {
       setSelectedSensorId(node.id);
-      setAppliedSensorId(node.id);
     } else {
       if (selectedSensorId && !availableSensors.some(s => s.id === selectedSensorId)) {
         setSelectedSensorId('');
-        setAppliedSensorId('');
       }
     }
   }, [initialNodeId, flatNodes, availableSensors, location.state?.originalSensorNodeId]);
@@ -276,19 +261,8 @@ export const Dashboard: React.FC = () => {
       .finally(() => setExpandedTelemetryLoading(false));
   }, [expandedSensor, sensorExpTimeRange, expandedGranularity, sensorExpFrom, sensorExpTo]);
 
-  const [profile, setProfile] = useState<{ email: string; permissions: string[] } | null>(null);
 
-  useEffect(() => {
-    const cached = localStorage.getItem('user_profile');
-    if (cached) {
-      try {
-        setProfile(JSON.parse(cached));
-      } catch (e) { }
-    }
-  }, []);
 
-  const canAcknowledge = profile?.permissions.includes('advisories:acknowledge') ?? false;
-  const canRca = profile?.permissions.includes('advisories:rca') ?? false;
 
   const fetchAdvisories = () => {
     const filters = initialNodeId ? { node_id: initialNodeId } : undefined;
@@ -305,10 +279,6 @@ export const Dashboard: React.FC = () => {
 
   useEffect(() => {
     fetchAdvisories();
-    const alertFilters = initialNodeId ? { node_id: initialNodeId } : undefined;
-    api.alerts.list(alertFilters)
-      .then(setAlerts)
-      .catch((err) => console.error('Failed to load alerts:', err));
   }, [initialNodeId]);
 
   useEffect(() => {
@@ -319,7 +289,7 @@ export const Dashboard: React.FC = () => {
   }, []);
 
   const getAdvisoryTimeWindow = (adv: any) => {
-    const detectedTime = new Date(adv.first_detected).getTime();
+    const detectedTime = new Date(adv.detected_at).getTime();
     const now = Date.now();
     
     let startTime: number;
@@ -378,8 +348,6 @@ export const Dashboard: React.FC = () => {
     if (!activeNodeId) {
       setTelemetryPoints([]);
       setAppliedSensors([]);
-      setAppliedSensorIds([]);
-      setAppliedSensorId(selectedSensorId);
       return;
     }
 
@@ -408,8 +376,6 @@ export const Dashboard: React.FC = () => {
     if (sensorIds.length === 0) {
       setTelemetryPoints([]);
       setAppliedSensors([]);
-      setAppliedSensorIds([]);
-      setAppliedSensorId(selectedSensorId);
       return;
     }
 
@@ -427,8 +393,6 @@ export const Dashboard: React.FC = () => {
       .then((res) => {
         setTelemetryPoints(res);
         setAppliedSensors(sensors);
-        setAppliedSensorIds(sensorIds);
-        setAppliedSensorId(selectedSensorId);
         setAppliedTimeRange(timeRange);
         setAppliedFromDate(fromDate);
         setAppliedToDate(toDate);
@@ -436,8 +400,6 @@ export const Dashboard: React.FC = () => {
       .catch(() => {
         setTelemetryPoints([]);
         setAppliedSensors([]);
-        setAppliedSensorIds([]);
-        setAppliedSensorId(selectedSensorId);
       })
       .finally(() => setTelemetryLoading(false));
   };
@@ -486,10 +448,6 @@ export const Dashboard: React.FC = () => {
           .then((res) => {
             setTelemetryPoints(res);
             setAppliedSensors(sensors);
-            setAppliedSensorIds(sensorIds);
-            if (incomingSensorId) {
-              setAppliedSensorId(incomingSensorId);
-            }
             if (activeAdvisory && !isTimeOverridden) {
               const win = getAdvisoryTimeWindow(activeAdvisory);
               setAppliedTimeRange('custom');
@@ -504,7 +462,6 @@ export const Dashboard: React.FC = () => {
           .catch(() => {
             setTelemetryPoints([]);
             setAppliedSensors([]);
-            setAppliedSensorIds([]);
           })
           .finally(() => setTelemetryLoading(false));
       }
@@ -521,8 +478,7 @@ export const Dashboard: React.FC = () => {
     const sensorId = sensor.sensor_metadata?.sensor_id || '';
     const sensorPoints = points.filter(p => p.sensor_id === sensorId);
 
-    const alarmLimit = sensor.sensor_metadata?.alarm_limit ?? 0;
-    const tripLimit = sensor.sensor_metadata?.trip_limit ?? 0;
+
 
     let intervalMs = 10 * 60 * 1000; // default 10m
     const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
@@ -555,7 +511,7 @@ export const Dashboard: React.FC = () => {
 
     const timePointsMap = new Map<number, any>();
     sensorPoints.forEach(p => {
-      const pTime = new Date(p.timestamp).getTime();
+      const pTime = new Date(p.timestamp || '').getTime();
       const bucketTime = Math.floor(pTime / intervalMs) * intervalMs;
       timePointsMap.set(bucketTime, p);
     });
@@ -608,29 +564,11 @@ export const Dashboard: React.FC = () => {
     return getBucketedDataPoints(telemetryPoints, sensor, start, end);
   };
 
-  const handleDropdownSelectChange = (event: any) => {
-    const value = event.target.value;
-    const arrayValue = typeof value === 'string' ? value.split(',') : value;
-    if (arrayValue.includes('__clear_all__')) {
-      setSelectedSensorIds([]);
-    } else {
-      setSelectedSensorIds(arrayValue);
-    }
-  };
-
-  const getAdvisoryTimestampStr = (adv: any) => {
-    if (!adv) return null;
-    const tDate = new Date(adv.first_detected);
-    return tDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
-  };
-
   const getAdvisoryMatchingPoint = (data: any[], adv: any) => {
     if (!adv || data.length === 0) return null;
-    const advMs = new Date(adv.first_detected).getTime();
-    
-    // Check if the advisory time is within the bounds of the current chart X-axis range
     const startMs = data[0].timestampMs || 0;
     const endMs = data[data.length - 1].timestampMs || 0;
+    const advMs = new Date(adv.detected_at).getTime();
     if (advMs < startMs || advMs > endMs) {
       return null;
     }
@@ -688,17 +626,7 @@ export const Dashboard: React.FC = () => {
     .filter(a => a.status === 'open')
     .sort((a, b) => (severityPriority[a.severity] || 99) - (severityPriority[b.severity] || 99));
 
-  const handleAcknowledge = async (advisoryId: number) => {
-    try {
-      await api.advisories.update(advisoryId, { status: 'acknowledged' });
-      const nodeParam = selectedNode ? `&nodeId=${selectedNode.id}` : '';
-      navigate(`/advisories?siteId=${selectedSiteId}${nodeParam}`);
-    }
-    catch (error) { console.error('Failed to acknowledge advisory:', error); }
-  };
 
-  const handleInitiateRca = (advisory: any) =>
-    navigate('/root-cause', { state: { advisoryId: advisory.id, selectedNodeName: advisory.asset } });
 
   // Expand dialog filter bar helper
   const renderExpandFilters = (
@@ -895,14 +823,12 @@ export const Dashboard: React.FC = () => {
                     return aPriority - bPriority;
                   })
                   .map(sensor => {
-                    const sid = sensor.sensor_metadata?.sensor_id || '';
                     const data = getSensorDataPoints(sensor);
                     const unit = sensor.sensor_metadata?.unit || '';
-                    const matchingAdvisory = openAdvisories.find(a => a.sensor_id === sid);
 
                     return (
                       <Grid size={12} key={sensor.id}>
-                        <Grid container spacing={3} alignItems="stretch">
+                        <Grid container spacing={3} sx={{ alignItems: 'stretch' }}>
                           {/* Chart Area */}
                           <Grid size={12}>
                             <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc', height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -971,8 +897,8 @@ export const Dashboard: React.FC = () => {
                     disabled={activeAdvisory.status === 'acknowledged'}
                     onClick={async () => {
                       try {
-                        await api.advisories.update(activeAdvisory.id, { status: 'acknowledged' });
-                        setAdvisories(prev => prev.map(a => a.id === activeAdvisory.id ? { ...a, status: 'acknowledged' } : a));
+                        await api.advisories.update(activeAdvisory.id, { status: AdvisoryStatus.ACKNOWLEDGED });
+                        setAdvisories(prev => prev.map(a => a.id === activeAdvisory.id ? { ...a, status: AdvisoryStatus.ACKNOWLEDGED } : a));
                       } catch (err) {
                         console.error("Failed to acknowledge advisory:", err);
                       }
@@ -1010,7 +936,6 @@ export const Dashboard: React.FC = () => {
       >
         <DialogContent sx={{ p: 3 }}>
           {expandedSensor && (() => {
-            const sid = expandedSensor.sensor_metadata?.sensor_id || '';
             const getExpStartEnd = () => {
               const now = new Date();
               const map: Record<string, number> = { last_1h: 1, last_8h: 8, last_24h: 24, last_7d: 168, last_30d: 720 };

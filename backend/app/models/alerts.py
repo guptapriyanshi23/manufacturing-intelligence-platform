@@ -1,6 +1,8 @@
 import datetime
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enum
+from sqlalchemy.orm import relationship
 from backend.app.core.database import Base
+from backend.app.core.enums import AlertStatus
 
 class SensorThreshold(Base):
     __tablename__ = "sensor_thresholds"
@@ -21,8 +23,10 @@ class Alert(Base):
     threshold = Column(Float, nullable=True)
     severity = Column(Integer, nullable=False)  # 1 = critical, 2 = high, 3 = warning, 4 = low, 5 = info
     message = Column(String, nullable=False)
-    status = Column(String, nullable=False, default="active")  # 'active', 'acknowledged', 'resolved'
+    status = Column(Enum(AlertStatus, native_enum=False, values_callable=lambda x: [item.value for item in x]), nullable=False, default=AlertStatus.ACTIVE)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
 
 class AlertRule(Base):
@@ -31,14 +35,25 @@ class AlertRule(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
-    severity = Column(String, nullable=False, default="warning")
-    node_id = Column(Integer, nullable=False)
+    severity = Column(Integer, nullable=False, default=3)  # 1 = critical, 2 = high, 3 = warning, 4 = low, 5 = info
+    node_id = Column(Integer, ForeignKey("hierarchy_nodes.id", ondelete="CASCADE"), nullable=False)
     condition_type = Column(String, nullable=True)
-    sensor_id = Column(String, nullable=True)
     alert_type = Column(String, nullable=True)
-    value = Column(Float, nullable=True)
+    threshold = Column(Float, nullable=True)
     delay = Column(Integer, nullable=True)
     pending_period = Column(String, nullable=True)
     keep_firing = Column(String, nullable=True)
     notify_email = Column(String, nullable=True)
-    status = Column(String, nullable=False, default="Active")
+    status = Column(Enum(AlertStatus, native_enum=False, values_callable=lambda x: [item.value for item in x]), nullable=False, default=AlertStatus.ACTIVE)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    node = relationship("HierarchyNode", foreign_keys=[node_id])
+
+    @property
+    def sensor_id(self) -> str | None:
+        if self.node and self.node.sensor_metadata:
+            return self.node.sensor_metadata.sensor_id
+        return None
+
+

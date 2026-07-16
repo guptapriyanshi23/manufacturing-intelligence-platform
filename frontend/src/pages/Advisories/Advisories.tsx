@@ -33,14 +33,15 @@ import { api } from '../../api/client';
 import { getSeverityColor, getSeverityBgColor, severityOptions, getSeverityLevelFull } from '../../constants/severity';
 import { statusOptions } from '../../constants/status';
 import type { HierarchyNode } from '../../types/hierarchy';
-import { HierarchySelector } from '../../components/Filters/HierarchySelector';
+import { AdvisoryStatus } from '../../types/enums';
 
 const getBreadcrumbsPath = (nodeId: number, flatNodes: HierarchyNode[]): string[] => {
   const path: string[] = [];
   let current = flatNodes.find(n => n.id === nodeId);
   while (current) {
     path.unshift(current.display_name);
-    current = current.parent_id ? flatNodes.find(n => n.id === current.parent_id) : undefined;
+    const pid = current.parent_id;
+    current = pid ? flatNodes.find(n => n.id === pid) : undefined;
   }
   return path;
 };
@@ -59,7 +60,6 @@ export const Advisories: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
-  const [hierarchyLoading, setHierarchyLoading] = useState(true);
 
 
   const context = useOutletContext<{ selectedNodeId?: number | null }>();
@@ -152,7 +152,7 @@ export const Advisories: React.FC = () => {
   useEffect(() => {
     if (flatNodes.length === 0) return;
     const matchingNode = treeNodeId ? flatNodes.find(n => n.id === treeNodeId) : null;
-    setAppliedNode(matchingNode);
+    setAppliedNode(matchingNode || null);
 
     if (treeNodeId) {
       setSelectedSensorId('');
@@ -180,8 +180,7 @@ export const Advisories: React.FC = () => {
   useEffect(() => {
     api.hierarchy.list(true)
       .then(setFlatNodes)
-      .catch(() => setFlatNodes([]))
-      .finally(() => setHierarchyLoading(false));
+      .catch(() => setFlatNodes([]));
   }, []);
 
   // Reactive effect to fetch advisories from server whenever applied filters change
@@ -205,7 +204,7 @@ export const Advisories: React.FC = () => {
 
   const filteredRows = advisories;
 
-  const isAllActive = !statusFilter && !severityFilter && !selectedSensorId && !appliedStatus && !appliedSeverity && !appliedNode;
+
 
   const handleApplyFilters = () => {
     setAppliedStatus(statusFilter);
@@ -218,22 +217,14 @@ export const Advisories: React.FC = () => {
     }));
   };
 
-  const handleResetFilters = () => {
-    setStatusFilter('');
-    setSeverityFilter('');
-    setSelectedSensorId('');
-    setAppliedStatus('');
-    setAppliedSeverity('');
-    setAppliedSensorId('');
-    localStorage.removeItem('advisories_applied_filters');
-  };
+
 
   const handleRowClick = (advisory: any) => { setSelectedAdvisory(advisory); setDetailsOpen(true); };
   const handleCloseDetails = () => { setDetailsOpen(false); setSelectedAdvisory(null); };
 
   const handleAcknowledgeFromDetails = async (advisoryId: number) => {
     try {
-      await api.advisories.update(advisoryId, { status: 'acknowledged' });
+      await api.advisories.update(advisoryId, { status: AdvisoryStatus.ACKNOWLEDGED });
       if (appliedNode) {
         api.advisories.list({
           node_id: appliedNode.id,
@@ -489,7 +480,7 @@ export const Advisories: React.FC = () => {
                       src={
                         selectedAdvisory.image_path.startsWith('http')
                           ? selectedAdvisory.image_path
-                          : `http://127.0.0.1:8000${selectedAdvisory.image_path}`
+                          : `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'}${selectedAdvisory.image_path}`
                       }
                       alt="RCA Evidence"
                       sx={{ maxWidth: '100%', maxHeight: 300, objectFit: 'contain', borderRadius: 1, border: '1px solid #e2e8f0', mt: 1 }}

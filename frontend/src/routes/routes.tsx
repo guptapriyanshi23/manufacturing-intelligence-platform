@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
+import { createBrowserRouter, Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { Box, CircularProgress, Typography, Button } from '@mui/material';
 import MainLayout from '../layouts/MainLayout';
 import Dashboard from '../pages/Dashboard/Dashboard';
@@ -81,21 +81,22 @@ const ProtectedRoute: React.FC<{ requiredPermission?: string }> = ({ requiredPer
 };
 
 const UnauthorizedPage: React.FC = () => {
+  const navigate = useNavigate();
   const handleBack = () => {
     const cachedProfile = localStorage.getItem('user_profile');
     if (cachedProfile) {
       try {
         const profile = JSON.parse(cachedProfile);
         if (profile.permissions.includes('dashboard:view')) {
-          window.location.href = '/dashboard';
+          navigate('/dashboard');
           return;
         } else if (profile.permissions.includes('alerts:view')) {
-          window.location.href = '/';
+          navigate('/');
           return;
         }
       } catch {}
     }
-    window.location.href = '/login';
+    navigate('/login');
   };
 
   return (
@@ -106,6 +107,7 @@ const UnauthorizedPage: React.FC = () => {
     </Box>
   );
 };
+
 
 export const router = createBrowserRouter([
   {

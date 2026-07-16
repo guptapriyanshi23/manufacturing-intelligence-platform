@@ -65,9 +65,7 @@ def get_user_hierarchy(user_id: int, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    stmt = text("SELECT node_id FROM user_hierarchy_permissions WHERE user_id = :user_id")
-    node_ids = [r[0] for r in db.execute(stmt, {"user_id": user_id}).fetchall()]
-    return node_ids
+    return [p.node_id for p in user.hierarchy_permissions]
 
 @router.put("/users/{user_id}/hierarchy", dependencies=[Depends(check_permissions(["admin:view"]))])
 def update_user_hierarchy(user_id: int, payload: UserHierarchyUpdate, db: Session = Depends(get_db)):
@@ -75,14 +73,23 @@ def update_user_hierarchy(user_id: int, payload: UserHierarchyUpdate, db: Sessio
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
         
-    db.execute(text("DELETE FROM user_hierarchy_permissions WHERE user_id = :user_id"), {"user_id": user_id})
-    
-    if payload.nodes:
-        mappings = [{"user_id": user_id, "node_id": nid} for nid in payload.nodes]
-        db.execute(text("""
-            INSERT INTO user_hierarchy_permissions (user_id, node_id)
-            VALUES (:user_id, :node_id)
-        """), mappings)
+    try:
+        from backend.app.models.users import UserHierarchyPermission
+        from sqlalchemy.exc import SQLAlchemyError
         
-    db.commit()
+        with db.begin_nested():
+            # Delete existing
+            db.query(UserHierarchyPermission).filter(UserHierarchyPermission.user_id == user_id).delete()
+            
+            # Insert new mappings
+            if payload.nodes:
+                for nid in payload.nodes:
+                    db.add(UserHierarchyPermission(user_id=user_id, node_id=nid))
+                    
+        db.commit()
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database transaction failed: {str(e)}")
+        
     return {"message": "User hierarchy permissions updated successfully"}
+

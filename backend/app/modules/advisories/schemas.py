@@ -1,20 +1,21 @@
 from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel
+from backend.app.core.enums import AdvisoryStatus, RcaStatus, SeverityLevel
 
 class AdvisoryBase(BaseModel):
     node_id: Optional[int] = None
-    severity: int  # 1 = critical, 2 = high, 3 = warning, 4 = low, 5 = info
+    severity: SeverityLevel
     description: str
-    first_detected: datetime
-    status: str
+    detected_at: datetime
+    status: AdvisoryStatus
     image_path: Optional[str] = None
 
 class AdvisoryCreate(AdvisoryBase):
     pass
 
 class AdvisoryUpdate(BaseModel):
-    status: Optional[str] = None
+    status: Optional[AdvisoryStatus] = None
     image_path: Optional[str] = None
     root_cause_description: Optional[str] = None
     action_taken: Optional[str] = None
@@ -38,7 +39,7 @@ class RCABase(BaseModel):
     root_cause_description: Optional[str] = None
     action_taken: Optional[str] = None
     user_id: Optional[int] = None
-    status: str = "initiated"
+    status: RcaStatus = RcaStatus.INITIATED
 
 class RCACreate(RCABase):
     pass
@@ -49,4 +50,5 @@ class RCAResponse(RCABase):
 
     class Config:
         from_attributes = True
+
 

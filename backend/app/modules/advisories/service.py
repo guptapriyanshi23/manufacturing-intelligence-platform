@@ -44,27 +44,43 @@ def update_advisory(db: Session, advisory_id: int, advisory_in: AdvisoryUpdate) 
     if not advisory:
         return None
     
-    update_data = advisory_in.model_dump(exclude_unset=True)
-    
-    # Extract RCA fields
-    rca_desc = update_data.pop("root_cause_description", None)
-    rca_action = update_data.pop("action_taken", None)
-    
-    # Update advisory fields
-    for field, value in update_data.items():
-        setattr(advisory, field, value)
+    try:
+        from sqlalchemy.exc import SQLAlchemyError
+        from backend.app.core.enums import AdvisoryStatus, RcaStatus
         
-    # Update or create RCA record
-    if rca_desc is not None or rca_action is not None:
-        rca = db.query(RCA).filter(RCA.advisory_id == advisory_id).first()
-        if not rca:
-            rca = RCA(advisory_id=advisory_id)
-            db.add(rca)
-        if rca_desc is not None:
-            rca.root_cause_description = rca_desc
-        if rca_action is not None:
-            rca.action_taken = rca_action
-            
-    db.commit()
-    db.refresh(advisory)
-    return advisory
+        update_data = advisory_in.model_dump(exclude_unset=True)
+        
+        # Extract RCA fields
+        rca_desc = update_data.pop("root_cause_description", None)
+        rca_action = update_data.pop("action_taken", None)
+        
+        with db.begin_nested():
+            # Update advisory fields
+            for field, value in update_data.items():
+                setattr(advisory, field, value)
+                
+            # Update or create RCA record
+            if rca_desc is not None or rca_action is not None:
+                rca = db.query(RCA).filter(RCA.advisory_id == advisory_id).first()
+                if not rca:
+                    rca = RCA(advisory_id=advisory_id, status=RcaStatus.INITIATED)
+                    db.add(rca)
+                if rca_desc is not None:
+                    rca.root_cause_description = rca_desc
+                if rca_action is not None:
+                    rca.action_taken = rca_action
+                
+                # Align RCA status with advisory status
+                current_status = update_data.get("status") or advisory.status
+                if current_status in (AdvisoryStatus.RESOLVED, "resolved"):
+                    rca.status = RcaStatus.COMPLETED
+                else:
+                    rca.status = RcaStatus.INITIATED
+                    
+        db.commit()
+        db.refresh(advisory)
+        return advisory
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise e
+

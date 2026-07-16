@@ -1,4 +1,14 @@
 import type { HierarchyNode, HierarchyNodeCreateInput } from '../types/hierarchy';
+import type {
+  Alert,
+  AlertRule,
+  Advisory,
+  User,
+  DashboardSummaryResponse,
+  TelemetryDataPoint,
+  RootCauseAnalysisResponse
+} from '../types/api_types';
+import { AlertStatus } from '../types/enums';
 
 const BASE_URL =
   `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'}/api/v1`; 
@@ -44,8 +54,7 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       }),
-    getMe: () =>
-      request<{ id: number; email: string; is_active: boolean; permissions: string[] }>('/auth/me'),
+    getMe: () => request<User>('/auth/me'),
   },
   hierarchy: {
     list: (flat?: boolean) => request<HierarchyNode[]>(flat ? '/hierarchy?flat=true' : '/hierarchy'),
@@ -72,27 +81,27 @@ export const api = {
       if (filters?.severity) params.append('severity', filters.severity);
       if (filters?.status) params.append('status', filters.status);
       const query = params.toString();
-      return request<any[]>(`/alerts${query ? `?${query}` : ''}`);
+      return request<Alert[]>(`/alerts${query ? `?${query}` : ''}`);
     },
-    listRules: () => request<any[]>('/alerts/rules'),
-    createRule: (data: any) => request<any>('/alerts/rules', {
+    listRules: () => request<AlertRule[]>('/alerts/rules'),
+    createRule: (data: Omit<AlertRule, 'id'>) => request<AlertRule>('/alerts/rules', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-    updateRule: (id: number, data: any) => request<any>(`/alerts/rules/${id}`, {
+    updateRule: (id: number, data: Partial<AlertRule>) => request<AlertRule>(`/alerts/rules/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
     deleteRule: (id: number) => request<void>(`/alerts/rules/${id}`, {
       method: 'DELETE',
     }),
-    update: (id: number, data: { status: string }) => request<any>(`/alerts/${id}`, {
+    update: (id: number, data: { status: AlertStatus }) => request<Alert>(`/alerts/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
   },
   dashboard: {
-    getSummary: () => request<any>('/dashboard/summary'),
+    getSummary: () => request<DashboardSummaryResponse>('/dashboard/summary'),
     getTelemetry: (
       sensorIds: string[],
       hours: number = 24,
@@ -114,11 +123,11 @@ export const api = {
       if (endTime) {
         params.append('end_time', endTime);
       }
-      return request<any[]>(`/dashboard/telemetry?${params.toString()}`);
+      return request<TelemetryDataPoint[]>(`/dashboard/telemetry?${params.toString()}`);
     },
   },
   rootCause: {
-    get: (eventId: string) => request<any>(`/root-cause/${eventId}`),
+    get: (eventId: string) => request<RootCauseAnalysisResponse>(`/root-cause/${eventId}`),
   },
   advisories: {
     list: (filters?: { node_id?: number | null; status?: string; severity?: string }) => {
@@ -127,12 +136,12 @@ export const api = {
       if (filters?.status) params.append('status', filters.status);
       if (filters?.severity) params.append('severity', filters.severity);
       const queryString = params.toString();
-      return request<any[]>(queryString ? `/advisories?${queryString}` : '/advisories');
+      return request<Advisory[]>(queryString ? `/advisories?${queryString}` : '/advisories');
     },
     get: (id: number) =>
-      request<any>(`/advisories/${id}`),
-    update: (id: number, data: any) =>
-      request<any>(`/advisories/${id}`, {
+      request<Advisory>(`/advisories/${id}`),
+    update: (id: number, data: Partial<Advisory> & { root_cause_description?: string | null; action_taken?: string | null }) =>
+      request<Advisory>(`/advisories/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(data),
       }),
@@ -140,7 +149,7 @@ export const api = {
       const formData = new FormData();
       formData.append('file', file);
       const token = localStorage.getItem('auth_token');
-      return fetch('http://127.0.0.1:8000/api/v1/advisories/upload', {
+      return fetch(`${BASE_URL}/advisories/upload`, {
         method: 'POST',
         headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData,
@@ -151,21 +160,21 @@ export const api = {
     },
   },
   reports: {
-    list: () => request<any[]>('/reports'),
+    list: () => request<{ id: number; name: string; report_type: string; status: string; created_at: string; download_url: string }[]>('/reports'),
   },
   admin: {
-    getStatus: () => request<any>('/admin/status'),
-    listUsers: () => request<any[]>('/admin/users'),
-    listPermissions: () => request<any[]>('/admin/permissions'),
+    getStatus: () => request<{ database_connected: boolean; version: string; uptime_seconds: number; nodes_count: number }>('/admin/status'),
+    listUsers: () => request<User[]>('/admin/users'),
+    listPermissions: () => request<{ name: string; description: string }[]>('/admin/permissions'),
     updatePermissions: (userId: number, permissions: string[]) =>
-      request<any>(`/admin/users/${userId}/permissions`, {
+      request<{ message: string }>(`/admin/users/${userId}/permissions`, {
         method: 'PUT',
         body: JSON.stringify({ permissions }),
       }),
     getUserHierarchy: (userId: number) =>
       request<number[]>(`/admin/users/${userId}/hierarchy`),
     updateUserHierarchy: (userId: number, nodes: number[]) =>
-      request<any>(`/admin/users/${userId}/hierarchy`, {
+      request<{ message: string }>(`/admin/users/${userId}/hierarchy`, {
         method: 'PUT',
         body: JSON.stringify({ nodes }),
       }),

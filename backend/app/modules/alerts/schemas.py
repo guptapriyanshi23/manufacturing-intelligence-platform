@@ -1,6 +1,7 @@
 from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel
+from backend.app.core.enums import AlertStatus, SeverityLevel
 
 class AlertBase(BaseModel):
     node_id: int
@@ -8,9 +9,9 @@ class AlertBase(BaseModel):
     description: Optional[str] = None
     condition: Optional[str] = None
     threshold: Optional[float] = None
-    severity: int  # 1 = critical, 2 = high, 3 = warning, 4 = low, 5 = info
+    severity: SeverityLevel
     message: str
-    status: str  # 'active', 'acknowledged', 'resolved'
+    status: AlertStatus
 
 class AlertCreate(AlertBase):
     pass
@@ -29,17 +30,17 @@ class AlertResponse(AlertBase):
 class AlertRuleBase(BaseModel):
     name: str
     description: Optional[str] = None
-    severity: str
+    severity: SeverityLevel
     node_id: int
     condition_type: Optional[str] = None
     sensor_id: Optional[str] = None
     alert_type: Optional[str] = None
-    value: Optional[float] = None
+    threshold: Optional[float] = None
     delay: Optional[int] = None
     pending_period: Optional[str] = None
     keep_firing: Optional[str] = None
     notify_email: Optional[str] = None
-    status: str = "Active"
+    status: AlertStatus = AlertStatus.ACTIVE
 
 
 class AlertRuleCreate(AlertRuleBase):
@@ -51,3 +52,4 @@ class AlertRuleResponse(AlertRuleBase):
 
     class Config:
         from_attributes = True
+

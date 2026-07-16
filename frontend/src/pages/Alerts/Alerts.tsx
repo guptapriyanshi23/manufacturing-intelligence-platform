@@ -26,48 +26,9 @@ import { PageHeader } from '../../components/Cards/PageHeader';
 import { getSeverityColor, getSeverityBgColor, getSeverityLevel } from '../../constants/severity';
 import { api } from '../../api/client';
 import type { HierarchyNode } from '../../types/hierarchy';
+import { AlertStatus } from '../../types/enums';
 
-const demoAlerts = [
-  {
-    id: 101,
-    name: 'Spindle Overheating',
-    description: 'Bearing temperature exceeded normal operating limit of 80°C.',
-    asset_name: 'CNC Milling Center A',
-    sensor_name: 'Spindle Temperature Sensor',
-    condition: 'bearing_temperature > 80',
-    threshold: 80,
-    severity: 'critical',
-    status: 'active',
-    timestamp: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
-    node_id: 3,
-  },
-  {
-    id: 102,
-    name: 'High Axis Vibration',
-    description: 'Vibration levels on the Y-Axis exceeded warning threshold of 2.5 mm/s².',
-    asset_name: 'CNC Milling Center A',
-    sensor_name: 'Spindle Vibration Y-Axis',
-    condition: 'spindle_vibration > 2.5',
-    threshold: 2.5,
-    severity: 'warning',
-    status: 'active',
-    timestamp: new Date(Date.now() - 1000 * 60 * 42).toISOString(),
-    node_id: 3,
-  },
-  {
-    id: 103,
-    name: 'Voltage Sag Detected',
-    description: 'Arc voltage dropped below 18V during active weld.',
-    asset_name: 'Robotic Welder Cell 7',
-    sensor_name: 'Welding Power Arc Voltage',
-    condition: 'arc_voltage < 18',
-    threshold: 18,
-    severity: 'info',
-    status: 'acknowledged',
-    timestamp: new Date(Date.now() - 1000 * 60 * 80).toISOString(),
-    node_id: 6,
-  },
-];
+
 
 const SEVERITY_DISPLAY_MAP: Record<string, string> = {
   S1: 'S1 - Critical',
@@ -101,7 +62,8 @@ const getBreadcrumbsPath = (nodeId: number, flatNodes: HierarchyNode[]): string[
   let current = flatNodes.find(n => n.id === nodeId);
   while (current) {
     path.unshift(current.display_name);
-    current = current.parent_id ? flatNodes.find(n => n.id === current.parent_id) : undefined;
+    const pid = current.parent_id;
+    current = pid ? flatNodes.find(n => n.id === pid) : undefined;
   }
   return path;
 };
@@ -356,9 +318,9 @@ export const Alerts: React.FC = () => {
   const handleAcknowledge = async () => {
     try {
       await Promise.all(
-        selectedIds.map(id => api.alerts.update(id, { status: 'acknowledged' }))
+        selectedIds.map(id => api.alerts.update(id, { status: AlertStatus.ACKNOWLEDGED }))
       );
-      setAlerts(prev => prev.map(a => selectedIds.includes(a.id) ? { ...a, status: 'acknowledged' } : a));
+      setAlerts(prev => prev.map(a => selectedIds.includes(a.id) ? { ...a, status: AlertStatus.ACKNOWLEDGED } : a));
       setSelectedIds([]);
     } catch (err) {
       console.error("Failed to acknowledge alerts:", err);

@@ -11,9 +11,9 @@ import { PageHeader } from '../../components/Cards/PageHeader';
 import { MetricCard } from '../../components/Cards/MetricCard';
 import { api } from '../../api/client';
 import { getSeverityColor, getSeverityLevel, SEVERITY_LEVEL_MAP } from '../../constants/severity';
-import { getStatusColor } from '../../constants/status';
 import type { HierarchyNode } from '../../types/hierarchy';
-import { HierarchySelector } from '../../components/Filters/HierarchySelector';
+import { getStatusColor } from '../../constants/status';
+
 
 const TIME_RANGE_OPTIONS = [
   { value: 'last_1h', label: 'Last 1 Hour' },
@@ -38,7 +38,6 @@ export const Reports: React.FC = () => {
   const location = useLocation();
   const treeNodeId = location.state?.selectedNodeId ? Number(location.state.selectedNodeId) : null;
   const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
-  const [hierarchyLoading, setHierarchyLoading] = useState(true);
 
   // Applied filter states
   const [appliedNode, setAppliedNode] = useState<HierarchyNode | null>(null);
@@ -52,7 +51,7 @@ export const Reports: React.FC = () => {
   useEffect(() => {
     if (flatNodes.length === 0) return;
     const matchingNode = treeNodeId ? flatNodes.find(n => n.id === treeNodeId) : null;
-    setAppliedNode(matchingNode);
+    setAppliedNode(matchingNode || null);
   }, [treeNodeId, flatNodes]);
 
   const [advisories, setAdvisories] = useState<any[]>([]);
@@ -64,8 +63,7 @@ export const Reports: React.FC = () => {
       .catch(() => setLoading(false));
     api.hierarchy.list(true)
       .then(setFlatNodes)
-      .catch(() => setFlatNodes([]))
-      .finally(() => setHierarchyLoading(false));
+      .catch(() => setFlatNodes([]));
   }, []);
 
   const handleTimeRangeChange = (val: string) => {
