@@ -13,7 +13,11 @@ import { api } from '../../api/client';
 import { getSeverityColor, getSeverityLevel, SEVERITY_LEVEL_MAP } from '../../constants/severity';
 import type { HierarchyNode } from '../../types/hierarchy';
 import { getStatusColor } from '../../constants/status';
+import '../alerts/Alerts.scss';
 import './Reports.scss';
+
+type Severity = 'S1' | 'S2' | 'S3' | 'S4' | 'S5';
+type Status = 'Open' | 'Resolved' | 'Acknowledged';
 
 
 const TIME_RANGE_OPTIONS = [
@@ -45,6 +49,20 @@ const WarningIcon = () => (
   <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" /></svg>
 );
 
+const REPORT_ROWS: any[] = [
+  { id: 'r1', scope: 'Plant Machining', timestamp: new Date('2026-07-01T10:30:00'), severity: 'S1', status: 'Open' },
+  { id: 'r2', scope: 'Plant Machining', timestamp: new Date('2026-07-01T16:00:00'), severity: 'S2', status: 'Resolved' },
+  { id: 'r3', scope: 'Plant Machining', timestamp: new Date('2026-07-02T08:40:00'), severity: 'S3', status: 'Open' },
+  { id: 'r4', scope: 'Plant Utilities', timestamp: new Date('2026-07-02T11:20:00'), severity: 'S1', status: 'Open' },
+  { id: 'r5', scope: 'Plant Utilities', timestamp: new Date('2026-07-03T09:35:00'), severity: 'S4', status: 'Resolved' },
+  { id: 'r6', scope: 'Plant Utilities', timestamp: new Date('2026-07-03T15:10:00'), severity: 'S2', status: 'Acknowledged' },
+  { id: 'r7', scope: 'Plant Machining', timestamp: new Date('2026-07-04T12:10:00'), severity: 'S5', status: 'Resolved' },
+  { id: 'r8', scope: 'Plant Utilities', timestamp: new Date('2026-07-04T18:00:00'), severity: 'S3', status: 'Open' },
+  { id: 'r9', scope: 'Plant Machining', timestamp: new Date('2026-07-05T10:05:00'), severity: 'S2', status: 'Resolved' },
+  { id: 'r10', scope: 'Plant Utilities', timestamp: new Date('2026-07-05T13:45:00'), severity: 'S4', status: 'Open' },
+];
+
+
 export const Reports: React.FC = () => {
   const location = useLocation();
   const treeNodeId = location.state?.selectedNodeId ? Number(location.state.selectedNodeId) : null;
@@ -52,12 +70,19 @@ export const Reports: React.FC = () => {
 
   // Applied filter states
   const [appliedNode, setAppliedNode] = useState<HierarchyNode | null>(null);
-  const [timeRange, setTimeRange] = useState('last_24h');
-  const initial = getDateRange('last_24h');
+  const [timeRange, setTimeRange] = useState('custom');
+  const initial = getDateRange('custom');
   const [fromDate, setFromDate] = useState(initial.from);
   const [toDate, setToDate] = useState(initial.to);
   const [appliedFromDate, setAppliedFromDate] = useState(initial.from);
   const [appliedToDate, setAppliedToDate] = useState(initial.to);
+
+  const [scope, setScope] = useState('all');
+
+  const scopeOptions = useMemo(
+    () => Array.from(new Set(REPORT_ROWS.map((row) => row.scope))).sort(),
+    [],
+  );
 
   useEffect(() => {
     if (flatNodes.length === 0) return;
@@ -88,7 +113,7 @@ export const Reports: React.FC = () => {
     }
   };
 
-  const handleViewClick = () => {
+  const handleGenerateClick = () => {
     setAppliedFromDate(fromDate);
     setAppliedToDate(toDate);
   };
@@ -163,61 +188,118 @@ export const Reports: React.FC = () => {
   ];
 
   return (
-    <PageContainer>
+    <Box className='reporting-analysis'>
       <PageHeader
         title="Advisory Report"
         url="/reports"
       />
 
-      {/* Filter bar */}
-      <Paper sx={{ px: 2, py: 2.5, mb: 3, border: '1px solid #ccc' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <FormControl size="small" sx={{ minWidth: 160 }}>
-            <InputLabel id="time-range-label" shrink>Time Range</InputLabel>
+       <Box className="reporting-analysis__filters-grid">
+          <FormControl size="small" fullWidth>
+            <InputLabel id="scope-filter-label">Scope</InputLabel>
+            <Select
+              labelId="scope-filter-label"
+              value={scope}
+              label="Scope"
+              onChange={(event) => setScope(event.target.value)}
+            >
+              <MenuItem value="all">All</MenuItem>
+              {scopeOptions.map((item) => (
+                <MenuItem key={item} value={item}>{item}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {/* <FormControl size="small" fullWidth>
+            <InputLabel id="time-range-label">Time Range</InputLabel>
             <Select
               labelId="time-range-label"
               value={timeRange}
               label="Time Range"
               onChange={(e) => handleTimeRangeChange(e.target.value)}
-              displayEmpty
-              renderValue={timeRange === '' ? () => <span style={{ color: '#9e9e9e' }}>Select</span> : undefined}
+              // displayEmpty
+              // renderValue={timeRange === '' ? () => <span style={{ color: '#9e9e9e' }}>Select</span> : undefined}
             >
-              <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
+              <MenuItem value="">Select</MenuItem>
               {TIME_RANGE_OPTIONS.map(o => (
                 <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
               ))}
             </Select>
-          </FormControl>
+          </FormControl> */}
+
           <TextField
-            label="From"
+            label="From Date"
             type="datetime-local"
             size="small"
             value={fromDate}
-            disabled={timeRange !== 'custom'}
+            // disabled={timeRange !== 'custom'}
             onChange={(e) => setFromDate(e.target.value)}
             slotProps={{ inputLabel: { shrink: true } }}
-            sx={{ minWidth: 200 }}
+            fullWidth
           />
+
           <TextField
-            label="To"
+            label="To Date"
             type="datetime-local"
             size="small"
-            value={toDate}
-            disabled={timeRange !== 'custom'}
-            onChange={(e) => setToDate(e.target.value)}
             slotProps={{ inputLabel: { shrink: true } }}
-            sx={{ minWidth: 200 }}
+            value={toDate}
+            // disabled={timeRange !== 'custom'}
+            onChange={(event) => setToDate(event.target.value)}
+            fullWidth
           />
-          <Box sx={{ flex: 1 }} />
-          <Button onClick={handleViewClick} variant="contained" color="secondary" sx={{ minWidth: 90, fontWeight: 600, flexShrink: 0 }}>
-            View
-          </Button>
-          <Button variant="contained" color="secondary" startIcon={<DownloadIcon />} sx={{ fontWeight: 600, flexShrink: 0 }}>
-            Download PDF
+
+          <Button
+            variant="contained"
+            className="reporting-analysis__generate-btn"
+            onClick={handleGenerateClick}
+            sx={{ 
+              backgroundColor: 'var(--color-primary) !important',
+              '&:hover': {
+                backgroundColor: 'var(--color-primary-dark) !important'
+              }
+            }}
+          >
+            Generate Report
           </Button>
         </Box>
-      </Paper>
+      
+      <div className="advisory-counters reporting-analysis__counters">
+            <div className="counter-card counter-card--total">
+              <div className="counter-card__icon"><BellIcon /></div>
+              <div className="counter-card__body">
+                <span className="counter-card__value">{total}</span>
+                <span className="counter-card__label">Total Advisory</span>
+              </div>
+            </div>
 
+            <div className="counter-card counter-card--resolved">
+              <div className="counter-card__icon"><CheckCircleIcon /></div>
+              <div className="counter-card__body">
+                <span className="counter-card__value">{resolvedCount}%</span>
+                <span className="counter-card__label">Resolved</span>
+              </div>
+            </div>
+
+            <div className="counter-card counter-card--unresolved">
+              <div className="counter-card__icon"><WarningIcon /></div>
+              <div className="counter-card__body">
+                <span className="counter-card__value">{openCount}</span>
+                <span className="counter-card__label">Open Count</span>
+              </div>
+            </div>
+          </div>
+
+          <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+            <Button
+              variant="contained"
+              startIcon={<DownloadIcon />}
+              onClick={() => console.log('Download PDF')}
+            >
+              PDF
+            </Button>
+          </Box>
+      
       {!appliedNode ? (
         <Paper sx={{ p: 6, borderRadius: 2, border: '1px dashed #ccc', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', backgroundColor: '#fafafa', height: '40vh' }}>
           <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1 }}>No Node Selected</Typography>
@@ -230,33 +312,9 @@ export const Reports: React.FC = () => {
           <CircularProgress color="secondary" />
         </Box>
       ) : (
-        <Grid container spacing={3}>
-          {/* Metric summary */}
-          <Grid size={{ xs: 12 }}>
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                <MetricCard title="Advisories" value={total} />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                <MetricCard title="Open" value={openCount} subValue={`(${pct(openCount)})`} />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                <MetricCard title="Acknowledged" value={ackCount} subValue={`(${pct(ackCount)})`} />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                <MetricCard title="Resolved" value={resolvedCount} subValue={`(${pct(resolvedCount)})`} />
-              </Grid>
-            </Grid>
-          </Grid>
-
-          {/* Severity chart */}
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Card sx={{ height: '100%' }}>
+       <Card className="reporting-analysis__chart-card">
               <CardContent>
-                <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>Advisory Count by Severity</Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Number of advisories raised per severity level
-                </Typography>
+                <Typography  className="reporting-analysis__chart-title">Early RCA</Typography>
                 <ResponsiveContainer width="100%" height={280}>
                   <BarChart layout="vertical" data={severityChartData} margin={{ top: 8, right: 48, left: 16, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} />
@@ -273,38 +331,8 @@ export const Reports: React.FC = () => {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
-          </Grid>
-
-          {/* Status chart */}
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>Advisory Count by Status</Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Distribution of advisories across workflow statuses
-                </Typography>
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart layout="vertical" data={statusChartData} margin={{ top: 8, right: 48, left: 24, bottom: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 13 }} tickCount={7} />
-                    <YAxis type="category" dataKey="status" width={100} tick={{ fontSize: 13 }} />
-                    <Tooltip formatter={(v) => [`${v}`, 'Count']} />
-                    <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={36}>
-                      <LabelList dataKey="count" position="right" style={{ fontSize: 13, fontWeight: 600 }} />
-                      {statusChartData.map(entry => (
-                        <Cell key={entry.key} fill={getStatusColor(entry.key)} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </Grid>
-
-
-        </Grid>
       )}
-    </PageContainer>
+    </Box>
   );
 };
 

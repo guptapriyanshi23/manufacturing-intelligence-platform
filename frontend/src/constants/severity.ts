@@ -1,12 +1,12 @@
 export const Severity = {
   CRITICAL: 1,
   HIGH: 2,
-  WARNING: 3,
+  MEDIUM: 3,
   LOW: 4,
   INFO: 5,
   1: 'CRITICAL',
   2: 'HIGH',
-  3: 'WARNING',
+  3: 'MEDIUM',
   4: 'LOW',
   5: 'INFO',
 } as const;
@@ -36,7 +36,7 @@ export const SEVERITY_LEVEL_MAP: Record<string | number, string> = {
   5: 'S5',
   critical: 'S1',
   high: 'S2',
-  warning: 'S3',
+  medium: 'S3',
   medium: 'S3',
   low: 'S4',
   info: 'S5',
@@ -51,12 +51,20 @@ export const SEVERITY_LEVEL_FULL_MAP: Record<string | number, string> = {
   5: 'S5 - Informational',
   critical: 'S1 - Critical',
   high: 'S2 - High',
-  warning: 'S3 - Medium',
+  medium: 'S3 - Medium',
   medium: 'S3 - Medium',
   low: 'S4 - Low',
   info: 'S5 - Informational',
   informational: 'S5 - Informational',
 };
+
+// const SEVERITY_META: Array<{ key: Severity; label: string; color: string }> = [
+//   { key: 'S1', label: 'S1 - Critical', color: '#fecaca' },
+//   { key: 'S2', label: 'S2 - High', color: '#ffe4e6' },
+//   { key: 'S3', label: 'S3 - Medium', color: '#fde68a' },
+//   { key: 'S4', label: 'S4 - Low', color: '#fef9c3' },
+//   { key: 'S5', label: 'S5 - Informational', color: '#e2e8f0' },
+// ];
 
 export const getSeverityLevel = (severity: string | number): string => {
   if (severity === undefined || severity === null) return 'S5';
@@ -71,10 +79,10 @@ export const getSeverityName = (severity: string | number): string => {
     return Severity[Number(val) as keyof typeof Severity] as unknown as string;
   }
   const key = String(severity).toUpperCase();
-  if (key === 'CRITICAL' || key === 'HIGH' || key === 'WARNING' || key === 'LOW' || key === 'INFO') {
+  if (key === 'CRITICAL' || key === 'HIGH' || key === 'MEDIUM' || key === 'LOW' || key === 'INFO') {
     return key;
   }
-  if (key === 'MEDIUM') return 'WARNING';
+  if (key === 'MEDIUM') return 'MEDIUM';
   if (key === 'INFORMATIONAL') return 'INFO';
   return 'INFO';
 };
@@ -91,5 +99,5 @@ export const getSeverityColor = (severity: string | number): string =>
 export const getSeverityBgColor = (severity: string | number): string =>
   SEVERITY_BG_COLORS[getSeverityLevel(severity)];
 
-export const severityOptions = ['critical', 'high', 'warning', 'low', 'info'];
+export const severityOptions = ['critical', 'high', 'medium', 'low', 'info'];
 
