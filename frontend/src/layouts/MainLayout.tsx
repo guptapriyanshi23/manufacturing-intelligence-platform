@@ -100,7 +100,8 @@ export const MainLayout: React.FC = () => {
     setSelectedNode(node);
     
     // Sync node selection to pages via state instead of query string to keep URLs clean!
-    navigate(location.pathname, { state: { ...location.state, selectedNodeId: node.id } });
+    const { alertId, originalSensorNodeId, ...restState } = location.state || {};
+    navigate(location.pathname, { state: { ...restState, selectedNodeId: node.id } });
   };
 
   useEffect(() => {

@@ -88,7 +88,7 @@ def seed_alerts_advisories():
                 severity=seed_data["severity"],
                 description=seed_data["advisory_desc"],
                 status=seed_data["status"],
-                first_detected=datetime.utcnow() - timedelta(hours=random.randint(1, 24))
+                detected_at=datetime.utcnow() - timedelta(hours=random.randint(1, 24))
             )
             db.add(db_advisory)
             db.flush() # Populates db_advisory.id
@@ -113,7 +113,7 @@ def seed_alerts_advisories():
                 severity=seed_data["severity"],
                 message=seed_data["desc"],
                 status="active" if seed_data["status"] in ("open", "in_progress") else ("acknowledged" if seed_data["status"] == "acknowledged" else "resolved"),
-                timestamp=db_advisory.first_detected
+                timestamp=db_advisory.detected_at
             )
             db.add(db_alert)
             seed_count += 1

@@ -14,7 +14,7 @@ import { api } from '../../api/client';
 import type { HierarchyNode } from '../../types/hierarchy';
 import { getSeverityBgColor, getSeverityColor, getSeverityLevelFull } from '../../constants/severity';
 import { PageHeader } from '../../components/Cards/PageHeader';
-import { AdvisoryStatus } from '../../types/enums';
+import { AdvisoryStatus, SeverityLevel } from '../../types/enums';
 
 const TIME_RANGE_OPTIONS = [
   { value: 'last_1h', label: 'Last 1 Hour' },
@@ -264,8 +264,12 @@ export const Dashboard: React.FC = () => {
 
 
 
-  const fetchAdvisories = () => {
-    const filters = initialNodeId ? { node_id: initialNodeId } : undefined;
+  const targetNodeForAdvisory = location.state?.alertId
+    ? (location.state?.originalSensorNodeId ? Number(location.state.originalSensorNodeId) : (location.state?.selectedNodeId ? Number(location.state.selectedNodeId) : null))
+    : initialNodeId;
+
+  const fetchAdvisories = (nodeId: number | null) => {
+    const filters = nodeId ? { node_id: nodeId } : undefined;
     api.advisories.list(filters)
       .then((res) => {
         setAdvisories(res);
@@ -278,8 +282,8 @@ export const Dashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchAdvisories();
-  }, [initialNodeId]);
+    fetchAdvisories(targetNodeForAdvisory);
+  }, [targetNodeForAdvisory]);
 
   useEffect(() => {
     api.hierarchy.list(true)
@@ -289,22 +293,6 @@ export const Dashboard: React.FC = () => {
   }, []);
 
   const getAdvisoryTimeWindow = (adv: any) => {
-    const detectedTime = new Date(adv.detected_at).getTime();
-    const now = Date.now();
-    
-    let startTime: number;
-    let endTime: number;
-    
-    const fourHoursMs = 4 * 60 * 60 * 1000;
-    const eightHoursMs = 8 * 60 * 60 * 1000;
-    
-    if (detectedTime + fourHoursMs > now) {
-      endTime = now;
-      startTime = now - eightHoursMs;
-    } else {
-      startTime = detectedTime - fourHoursMs;
-      endTime = detectedTime + fourHoursMs;
-    }
     const formatLocalIST = (ms: number) => {
       const dateObj = new Date(ms);
       const formatter = new Intl.DateTimeFormat('en-US', {
@@ -320,6 +308,27 @@ export const Dashboard: React.FC = () => {
       const partMap = Object.fromEntries(parts.map(p => [p.type, p.value]));
       return `${partMap.year}-${partMap.month}-${partMap.day}T${partMap.hour}:${partMap.minute}`;
     };
+
+    const detectedTime = adv?.detected_at ? new Date(adv.detected_at).getTime() : NaN;
+    const now = Date.now();
+    const fourHoursMs = 4 * 60 * 60 * 1000;
+    const eightHoursMs = 8 * 60 * 60 * 1000;
+
+    let startTime: number;
+    let endTime: number;
+
+    if (!isNaN(detectedTime)) {
+      if (detectedTime + fourHoursMs > now) {
+        endTime = now;
+        startTime = now - eightHoursMs;
+      } else {
+        startTime = detectedTime - fourHoursMs;
+        endTime = detectedTime + fourHoursMs;
+      }
+    } else {
+      endTime = now;
+      startTime = now - eightHoursMs;
+    }
 
     return {
       from: new Date(startTime).toISOString(),
@@ -350,6 +359,8 @@ export const Dashboard: React.FC = () => {
       setAppliedSensors([]);
       return;
     }
+
+    fetchAdvisories(activeNodeId);
 
     const sensors: HierarchyNode[] = [];
     const queue = [activeNodeId];
@@ -572,10 +583,10 @@ export const Dashboard: React.FC = () => {
     if (advMs < startMs || advMs > endMs) {
       return null;
     }
-    
+
     let closestPt = data[0];
     let minDiff = Math.abs((data[0].timestampMs || 0) - advMs);
-    
+
     for (let i = 1; i < data.length; i++) {
       const diff = Math.abs((data[i].timestampMs || 0) - advMs);
       if (diff < minDiff) {
@@ -586,13 +597,12 @@ export const Dashboard: React.FC = () => {
     return closestPt;
   };
 
-  const renderLineChart = (data: any[], sensor: HierarchyNode, height: number) => {
+  const renderLineChart = (data: any[], sensor: HierarchyNode, height: number, sensorAdvisory?: any) => {
     const unit = sensor.sensor_metadata?.unit || '';
-    const isMatchingAdvisory = activeAdvisory && (
-      activeAdvisory.node_id === sensor.id || 
-      activeAdvisory.sensor_id === sensor.sensor_metadata?.sensor_id
-    );
-    const advPoint = isMatchingAdvisory ? getAdvisoryMatchingPoint(data, activeAdvisory) : null;
+    const resolvedAdvisory = sensorAdvisory !== undefined
+      ? sensorAdvisory
+      : advisories.find(a => a.node_id === sensor.id || a.sensor_id === sensor.sensor_metadata?.sensor_id);
+    const advPoint = resolvedAdvisory ? getAdvisoryMatchingPoint(data, resolvedAdvisory) : null;
 
     return (
       <ResponsiveContainer width="100%" height={height}>
@@ -621,10 +631,7 @@ export const Dashboard: React.FC = () => {
     );
   };
 
-  const severityPriority: Record<string, number> = { critical: 1, warning: 2, info: 3 };
-  const openAdvisories = advisories
-    .filter(a => a.status === 'open')
-    .sort((a, b) => (severityPriority[a.severity] || 99) - (severityPriority[b.severity] || 99));
+
 
 
 
@@ -781,8 +788,8 @@ export const Dashboard: React.FC = () => {
         </Box>
       ) : (
         <Grid container spacing={3}>
-          {/* Left Side: Telemetry Charts list */}
-          <Grid size={activeAdvisory ? 8 : 12}>
+          {/* Telemetry Charts list */}
+          <Grid size={12}>
             <Grid container spacing={3}>
               {appliedSensors.length === 0 && telemetryPoints.length === 0 && !telemetryLoading ? (
                 <Grid size={12}>
@@ -814,23 +821,36 @@ export const Dashboard: React.FC = () => {
                   .sort((a, b) => {
                     const aSid = a.sensor_metadata?.sensor_id || '';
                     const bSid = b.sensor_metadata?.sensor_id || '';
-                    const aAdvisory = openAdvisories.find(adv => adv.sensor_id === aSid);
-                    const bAdvisory = openAdvisories.find(adv => adv.sensor_id === bSid);
+                    
+                    const aAdvisory = advisories.find(adv => 
+                      (adv.node_id === a.id || adv.sensor_id === aSid) && 
+                      adv.status !== AdvisoryStatus.RESOLVED
+                    );
+                    const bAdvisory = advisories.find(adv => 
+                      (adv.node_id === b.id || adv.sensor_id === bSid) && 
+                      adv.status !== AdvisoryStatus.RESOLVED
+                    );
 
-                    const aPriority = aAdvisory ? (severityPriority[aAdvisory.severity] || 99) : 99;
-                    const bPriority = bAdvisory ? (severityPriority[bAdvisory.severity] || 99) : 99;
+                    const noAdvisoryPriority = Math.max(...Object.values(SeverityLevel)) + 1;
+                    const aVal = aAdvisory ? aAdvisory.severity : noAdvisoryPriority;
+                    const bVal = bAdvisory ? bAdvisory.severity : noAdvisoryPriority;
 
-                    return aPriority - bPriority;
+                    return aVal - bVal;
                   })
                   .map(sensor => {
                     const data = getSensorDataPoints(sensor);
                     const unit = sensor.sensor_metadata?.unit || '';
+                    const sensorAdvisory = advisories.find(a => 
+                      a.node_id === sensor.id || 
+                      a.sensor_id === sensor.sensor_metadata?.sensor_id
+                    );
+                    const hasActiveAdvisory = sensorAdvisory && sensorAdvisory.status !== AdvisoryStatus.RESOLVED;
 
                     return (
                       <Grid size={12} key={sensor.id}>
                         <Grid container spacing={3} sx={{ alignItems: 'stretch' }}>
                           {/* Chart Area */}
-                          <Grid size={12}>
+                          <Grid size={8}>
                             <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc', height: '100%', display: 'flex', flexDirection: 'column' }}>
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                 <Typography variant="h6" sx={{ fontWeight: 700 }}>{sensor.display_name}</Typography>
@@ -844,8 +864,86 @@ export const Dashboard: React.FC = () => {
                                 </Box>
                               </Box>
                               <Box sx={{ width: '100%', height: 270 }}>
-                                {renderLineChart(data, sensor, 270)}
+                                {renderLineChart(data, sensor, 270, hasActiveAdvisory ? sensorAdvisory : null)}
                               </Box>
+                            </Paper>
+                          </Grid>
+                          {/* Detailed Advisory Panel for this sensor */}
+                          <Grid size={4}>
+                            <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc', display: 'flex', flexDirection: 'column', height: '100%' }}>
+                              {hasActiveAdvisory ? (
+                                <>
+                                  {/* Scrollable Content Area */}
+                                  <Box sx={{ flex: 1, overflowY: 'auto', pr: 0.5, display: 'flex', flexDirection: 'column', gap: 2, mb: 1 }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                      <Box>
+                                        <Typography variant="subtitle2" sx={{ color: 'secondary.main', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
+                                          ADVISORY INFO
+                                        </Typography>
+                                        <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.2, mt: 0.5 }}>{sensorAdvisory.asset || 'Equipment Advisory'}</Typography>
+                                      </Box>
+                                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.5 }}>
+                                        <Chip
+                                          label={getSeverityLevelFull(sensorAdvisory.severity)}
+                                          size="small"
+                                          sx={{ backgroundColor: getSeverityBgColor(sensorAdvisory.severity), color: getSeverityColor(sensorAdvisory.severity), fontWeight: 700, borderRadius: '4px' }}
+                                        />
+                                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, textAlign: 'right' }}>
+                                          {new Date(sensorAdvisory.detected_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                        </Typography>
+                                      </Box>
+                                    </Box>
+
+                                    <Box>
+                                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600 }}>ADVISORY MESSAGE</Typography>
+                                      <Typography variant="body2" sx={{ lineHeight: 1.5, mt: 0.5 }}>{sensorAdvisory.description}</Typography>
+                                    </Box>
+                                  </Box>
+
+                                  {/* Action Buttons Box */}
+                                  <Box sx={{ display: 'flex', gap: 2, pt: 1.5, borderTop: '1px solid #eee' }}>
+                                    <Button
+                                      fullWidth
+                                      variant="outlined"
+                                      color="secondary"
+                                      size="small"
+                                      disabled={sensorAdvisory.status === 'acknowledged'}
+                                      onClick={async () => {
+                                        try {
+                                          await api.advisories.update(sensorAdvisory.id, { status: AdvisoryStatus.ACKNOWLEDGED });
+                                          setAdvisories(prev => prev.map(a => a.id === sensorAdvisory.id ? { ...a, status: AdvisoryStatus.ACKNOWLEDGED } : a));
+                                        } catch (err) {
+                                          console.error("Failed to acknowledge advisory:", err);
+                                        }
+                                      }}
+                                      sx={{ fontWeight: 700, py: 1 }}
+                                    >
+                                      {sensorAdvisory.status === 'acknowledged' ? 'Acknowledged' : 'Acknowledge'}
+                                    </Button>
+                                    <Button
+                                      fullWidth
+                                      variant="contained"
+                                      color="secondary"
+                                      size="small"
+                                      onClick={() => {
+                                        navigate('/root-cause', { state: { advisoryId: sensorAdvisory.id, selectedNodeName: sensorAdvisory.asset || '' } });
+                                      }}
+                                      sx={{ fontWeight: 700, py: 1 }}
+                                    >
+                                      Initiate RCA
+                                    </Button>
+                                  </Box>
+                                </>
+                              ) : (
+                                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', py: 4 }}>
+                                  <Typography variant="subtitle1" sx={{ color: 'text.secondary', fontWeight: 700 }}>
+                                    No Advisory for this Sensor/Tag
+                                  </Typography>
+                                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, px: 2 }}>
+                                    This parameter is currently operating within normal limits.
+                                  </Typography>
+                                </Box>
+                              )}
                             </Paper>
                           </Grid>
                         </Grid>
@@ -855,74 +953,6 @@ export const Dashboard: React.FC = () => {
               )}
             </Grid>
           </Grid>
-
-          {/* Right Side: Sticky Detailed Advisory Panel */}
-          {activeAdvisory && (
-            <Grid size={4}>
-              <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc', position: 'sticky', top: 90, display: 'flex', flexDirection: 'column', height: 364 }}>
-                {/* Scrollable Content Area */}
-                <Box sx={{ flex: 1, overflowY: 'auto', pr: 0.5, display: 'flex', flexDirection: 'column', gap: 2, mb: 1 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <Box>
-                      <Typography variant="subtitle2" sx={{ color: 'secondary.main', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
-                        ADVISORY INFO
-                      </Typography>
-                      <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.2, mt: 0.5 }}>{activeAdvisory.asset || 'Equipment Advisory'}</Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.5 }}>
-                      <Chip
-                        label={getSeverityLevelFull(activeAdvisory.severity)}
-                        size="small"
-                        sx={{ backgroundColor: getSeverityBgColor(activeAdvisory.severity), color: getSeverityColor(activeAdvisory.severity), fontWeight: 700, borderRadius: '4px' }}
-                      />
-                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, textAlign: 'right' }}>
-                        {new Date(activeAdvisory.first_detected).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                      </Typography>
-                    </Box>
-                  </Box>
-
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600 }}>ADVISORY MESSAGE</Typography>
-                    <Typography variant="body2" sx={{ lineHeight: 1.5, mt: 0.5 }}>{activeAdvisory.description}</Typography>
-                  </Box>
-                </Box>
-
-                {/* Sticked Action Buttons Box */}
-                <Box sx={{ display: 'flex', gap: 2, pt: 1.5, borderTop: '1px solid #eee' }}>
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    color="secondary"
-                    size="small"
-                    disabled={activeAdvisory.status === 'acknowledged'}
-                    onClick={async () => {
-                      try {
-                        await api.advisories.update(activeAdvisory.id, { status: AdvisoryStatus.ACKNOWLEDGED });
-                        setAdvisories(prev => prev.map(a => a.id === activeAdvisory.id ? { ...a, status: AdvisoryStatus.ACKNOWLEDGED } : a));
-                      } catch (err) {
-                        console.error("Failed to acknowledge advisory:", err);
-                      }
-                    }}
-                    sx={{ fontWeight: 700, py: 1 }}
-                  >
-                    {activeAdvisory.status === 'acknowledged' ? 'Acknowledged' : 'Acknowledge'}
-                  </Button>
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    color="secondary"
-                    size="small"
-                    onClick={() => {
-                      navigate('/root-cause', { state: { advisoryId: activeAdvisory.id, selectedNodeName: activeAdvisory.asset || '' } });
-                    }}
-                    sx={{ fontWeight: 700, py: 1 }}
-                  >
-                    Initiate RCA
-                  </Button>
-                </Box>
-              </Paper>
-            </Grid>
-          )}
         </Grid>
       )}
 

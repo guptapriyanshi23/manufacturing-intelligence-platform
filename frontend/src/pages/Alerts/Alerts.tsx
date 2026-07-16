@@ -564,7 +564,15 @@ export const Alerts: React.FC = () => {
                       </TableCell>
                       <TableCell sx={{ borderBottom: '1px solid #ccc' }}>{row.description}</TableCell>
                       <TableCell sx={{ borderBottom: '1px solid #ccc' }}>
-                        {new Date(row.timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
+                        {new Date(row.timestamp).toLocaleString('en-IN', {
+                          timeZone: 'Asia/Kolkata',
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          hour12: true
+                        })}
                       </TableCell>
                     </TableRow>
                   );
