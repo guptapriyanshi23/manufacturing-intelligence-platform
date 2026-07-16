@@ -35,7 +35,7 @@ Ensure you have **Python 3.10+** installed.
 ### 2. Configure Environment Variables
 Create a `.env` file in the `backend/` directory:
 ```bash
-DATABASE_URL=postgresql+asyncpg://postgres:postgrespass@20.86.82.226:5432/mip
+DATABASE_URL=URL_HERE
 SECRET_KEY=your_secret_key_here
 ENABLE_JWT_LOGIN=true
 ENABLE_SSO_LOGIN=true
