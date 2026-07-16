@@ -3,44 +3,16 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Drawer,
-  AppBar,
   Toolbar,
   Typography,
-  List,
-  ListItemButton,
-  ListItemIcon,
   CircularProgress,
-  Tooltip,
-  IconButton,
-  Menu,
-  MenuItem,
-  Divider
 } from '@mui/material';
 import { api } from '../api/client';
-import {
-  Dashboard as DashboardIcon,
-  Warning as AlertsIcon,
-  Troubleshoot as RootCauseIcon,
-  Lightbulb as AdvisoriesIcon,
-  Assessment as ReportsIcon,
-  Settings as AdminIcon,
-  AccountCircle as AccountCircleIcon,
-  Logout as LogoutIcon
-} from '@mui/icons-material';
 import { TreeView } from '../components/Tree/TreeView';
 import type { HierarchyNode } from '../types/hierarchy';
 import Header from '../components/Header';
 
 const drawerWidth = 280;
-
-const navItems = [
-  { path: '/', label: 'Alerts', icon: <AlertsIcon />, permission: 'alerts:view' },
-  { path: '/dashboard', label: 'Dashboard', icon: <DashboardIcon />, permission: 'dashboard:view' },
-  { path: '/root-cause', label: 'Root Cause', icon: <RootCauseIcon />, permission: 'advisories:rca' },
-  { path: '/advisories', label: 'Advisories', icon: <AdvisoriesIcon />, permission: 'advisories:view' },
-  { path: '/reports', label: 'Reports', icon: <ReportsIcon />, permission: 'reports:view' },
-  { path: '/admin', label: 'Admin', icon: <AdminIcon />, permission: 'admin:view' },
-];
 
 export const MainLayout: React.FC = () => {
   const navigate = useNavigate();
@@ -49,16 +21,6 @@ export const MainLayout: React.FC = () => {
   const [nodes, setNodes] = useState<HierarchyNode[]>([]);
   const [loadingNodes, setLoadingNodes] = useState(true);
   const [profile, setProfile] = useState<{ email: string; permissions: string[] } | null>(null);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const openMenu = Boolean(anchorEl);
-
-  const handleProfileClick = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleProfileClose = () => {
-    setAnchorEl(null);
-  };
 
   useEffect(() => {
     const cached = localStorage.getItem('user_profile');
@@ -151,16 +113,6 @@ export const MainLayout: React.FC = () => {
     }
   }, [nodes, location.search, location.state, selectedNode, navigate, location.pathname]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user_profile');
-    navigate('/login');
-  };
-
-  const allowedNavItems = navItems.filter((item) =>
-    profile ? profile.permissions.includes(item.permission) : false
-  );
-
   const showHierarchy = profile && (
     profile.permissions.includes('dashboard:view') ||
     profile.permissions.includes('alerts:view') ||
@@ -172,129 +124,8 @@ export const MainLayout: React.FC = () => {
   return (
     <>
     <Header />
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
-      {/* Top Header
-      <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, border: '1px solid #ccc' }}>
-        <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box component="img" src="/deloitte_logo_black.svg" alt="Deloitte Logo" 
-              sx={{ height: 20, width: 'auto',}} />
-            <Box sx={{ borderLeft: '1px solid #e0e0e0', pl: 2 }}>
-              <Typography variant="h4" color="text.primary" sx={{ fontWeight: 500, letterSpacing: '0.5px' }}>
-              AssetWize
-            </Typography>
-            </Box>
-          </Box>
-          
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            Tabs switcher
-            <List sx={{ px: 1, display: 'flex' }}>
-              {allowedNavItems.map((item) => {
-                const isActive = location.pathname === item.path;
-                const handleNavClick = () => {
-                  navigate(item.path, { state: { selectedNodeId: selectedNode?.id } });
-                };
-                return (
-                  <ListItemButton
-                    key={item.path}
-                    onClick={handleNavClick}
-                    selected={isActive}
-                    sx={{
-                      borderRadius: 1,
-                      color: isActive ? 'primary.main' : 'secondary.light',
-                      justifyContent: 'center',
-                      '&.Mui-selected': {
-                        color: 'primary.main',
-                        fontWeight: 600,
-                      },
-                    }}
-                  >
-                    <Tooltip title={item.label} placement="bottom" arrow>
-                      <ListItemIcon sx={{ color: 'inherit', minWidth: 0 }}>{item.icon}</ListItemIcon>
-                    </Tooltip>
-                  </ListItemButton>
-                );
-              })}
-            </List>
-
-            Profile Info and Logout
-            {profile && (
-              <Box sx={{ display: 'flex', alignItems: 'center', borderLeft: '1px solid #e0e0e0', pl: 2 }}>
-                <IconButton
-                  onClick={handleProfileClick}
-                  size="small"
-                  sx={{ color: 'text.secondary' }}
-                  aria-controls={openMenu ? 'profile-menu' : undefined}
-                  aria-haspopup="true"
-                  aria-expanded={openMenu ? 'true' : undefined}
-                >
-                  <AccountCircleIcon fontSize="large" />
-                </IconButton>
-                <Menu
-                  id="profile-menu"
-                  anchorEl={anchorEl}
-                  open={openMenu}
-                  onClose={handleProfileClose}
-                  onClick={handleProfileClose}
-                  transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                  anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-                  slotProps={{
-                    paper: {
-                      elevation: 3,
-                      sx: {
-                        overflow: 'visible',
-                        filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.15))',
-                        mt: 1.5,
-                        minWidth: 220,
-                        border: '1px solid #ccc',
-                      },
-                    }
-                  }}
-                >
-                  <Box sx={{ px: 2, py: 1.5 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, display: 'block' }}>
-                      Logged in as
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.primary', wordBreak: 'break-all', mt: 0.5 }}>
-                      {profile.email}
-                    </Typography>
-                  </Box>
-                  <Divider />
-                  
-                  {profile.permissions.includes('admin:view') && (
-                    <MenuItem
-                      onClick={() => {
-                        handleProfileClose();
-                        navigate('/admin?tab=permissions');
-                      }}
-                      sx={{ py: 1 }}
-                    >
-                      <ListItemIcon>
-                        <AdminIcon fontSize="small" />
-                      </ListItemIcon>
-                      <Typography variant="body2">Permissions</Typography>
-                    </MenuItem>
-                  )}
-                  
-                  <MenuItem
-                    onClick={() => {
-                      handleProfileClose();
-                      handleLogout();
-                    }}
-                    sx={{ color: 'error.main', py: 1 }}
-                  >
-                    <ListItemIcon sx={{ color: 'error.main' }}>
-                      <LogoutIcon fontSize="small" />
-                    </ListItemIcon>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>Logout</Typography>
-                  </MenuItem>
-                </Menu>
-              </Box>
-            )}
-          </Box>
-        </Toolbar>
-      </AppBar> */}
-
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+    
       {/* Sidebar Navigation */}
       <Drawer
         variant="permanent"
@@ -302,6 +133,7 @@ export const MainLayout: React.FC = () => {
           width: drawerWidth,
           flexShrink: 0,
           [`& .MuiDrawer-paper`]: { width: drawerWidth, boxSizing: 'border-box' },
+          zIndex: 1
         }}
       >
         <Toolbar />
