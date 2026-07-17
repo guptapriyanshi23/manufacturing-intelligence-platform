@@ -42,7 +42,7 @@ const theme = createTheme({
     divider: '#000000', // Pure Black Divider
   },
   typography: {
-    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+    fontFamily: "'Open Sans', sans-serif",
     h1: {
       fontSize: '2.25rem',
       fontWeight: 700,

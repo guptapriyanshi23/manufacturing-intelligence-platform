@@ -1,38 +1,52 @@
 import React from 'react';
-import { Box, Typography, Divider } from '@mui/material';
+import { Box } from '@mui/material';
+import { BarChart } from '@mui/icons-material';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 
 interface PageHeaderProps {
   title: string;
+  url?: string;
   subtitle?: string;
-  actions?: React.ReactNode;
+  // actions?: React.ReactNode;
 }
 
-export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, actions }) => {
+const BellIcon = () => (
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="#0076A8"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" /></svg>
+);
+
+const ReportIcon = () => (
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="#0076A8"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H7v-2h5v2zm5-4H7v-2h10v2zm0-4H7V7h10v2z" /></svg>
+);
+
+
+export const PageHeader: React.FC<PageHeaderProps> = ({ title, url = '', subtitle }) => {
+  const getIcon = () => {
+    if (url.includes('/admin')) {
+      return <AdminPanelSettingsIcon sx={{ color: '#0076A8', fontSize: 22 }} />;
+    }
+
+    if (url.includes('/reports') || url.includes('/dashboard') || url.includes('/root-cause')) {
+      return <BarChart sx={{ color: '#0076A8' }} />;
+    }
+
+    if (url === '/') {
+      return <BellIcon />;
+    }
+    
+    if (url.includes('/advisories')) {
+      return <ReportIcon />;
+    }
+
+    return <BarChart sx={{ color: '#0076A8' }} />;
+  };
+
   return (
-    <Box sx={{ mb: 4 }}>
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: { xs: 'column', sm: 'row' },
-          justifyContent: 'space-between',
-          alignItems: { xs: 'flex-start', sm: 'center' },
-          gap: 2,
-          mb: 2,
-        }}
-      >
-        <Box>
-          <Typography variant="h2" color="text.primary" sx={{ fontWeight: 500 }}>
-            {title}
-          </Typography>
-          {subtitle && (
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              {subtitle}
-            </Typography>
-          )}
-        </Box>
-        {actions && <Box sx={{ flexShrink: 0 }}>{actions}</Box>}
-      </Box>
-      <Divider sx={{ borderColor: 'secondary.light' }} />
+    <Box sx={{pb: 2}}>
+    <Box className="page-title">
+      {getIcon()}
+      <h1>{title}</h1>
+    </Box>
+      {subtitle && <Box className="chart-subtitle" sx={{pl: 2}}>{subtitle}</Box>}
     </Box>
   );
 };

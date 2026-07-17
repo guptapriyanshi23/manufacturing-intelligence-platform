@@ -1,0 +1,322 @@
+
+ :root {
+	 --color-primary: #26890D;
+	 --color-primary-dark: #1f700a;
+	 --color-secondary: #00A3E0;
+	 --color-ternary: #595d5e;
+ }
+
+html,
+body {
+	min-height: 100%;
+
+}
+
+body {
+	margin: 0;
+    font-size: 13px;
+      font-family: 'Open Sans', sans-serif !important;
+}
+
+#root,
+* {
+	font-family: 'Open Sans', sans-serif;
+}
+
+input{
+    font-family: 'Open Sans', sans-serif !important;
+    font-size: 13px !important;
+}
+  label {
+        font: 600 12px/16px Open Sans,sans-serif !important;
+        margin-bottom: .5rem;
+       /* color: #000 !important; */
+    }
+    /* ── Dashboard Two-Panel Layout ──────────────────────────────────────── */
+.dashboard-layout {
+	display: flex;
+	gap: 1rem;
+	align-items: flex-start;
+	min-height: calc(100vh - 56px - 3rem);
+}
+
+/* ── Left Panel ────────────────────────────────────────────────────────── */
+.left-panel {
+	width: 250px;
+	flex-shrink: 0;
+	background: #ffffff;
+	border-radius: 10px;
+	border: 1px solid #e2e8f0;
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+	position: sticky;
+	top: 0;
+	max-height: calc(100vh - 56px - 3rem);
+	overflow-y: auto;
+}
+
+/* ── Right Panel ───────────────────────────────────────────────────────── */
+.right-panel {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	min-width: 0;
+}
+
+/* ── Page Title ────────────────────────────────────────────────────────── */
+.page-title {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+
+	h1 {
+		font-size: 1.2rem;
+		font-weight: 700;
+		color: #1e293b;
+		margin: 0;
+	}
+
+	.pi {
+		font-size: 1.1rem;
+		color: #0076A8;
+	}
+}
+
+.chart-subtitle {
+	color: #94a3b8;
+	font-size: 0.75rem;
+	font-weight: 400;
+}
+
+.css-15ttl16-MuiTypography-root{
+  line-height: inherit !important;
+}
+
+/* Force MUI components to use Open Sans instead of default Roboto */
+.MuiTypography-root,
+.MuiButton-root,
+.MuiInputBase-root,
+.MuiInputBase-input,
+.MuiFormLabel-root,
+.MuiSelect-select,
+.MuiMenuItem-root,
+.MuiAutocomplete-root,
+.MuiChip-root,
+.MuiTab-root,
+.MuiTableCell-root,
+.MuiTooltip-tooltip,
+.MuiDialogTitle-root,
+.MuiDialogContent-root,
+.MuiDialogActions-root {
+	font-family: 'Open Sans', sans-serif !important;
+}
+
+/* Global font size for MUI input components */
+.MuiInputBase-input,
+.MuiOutlinedInput-input,
+.MuiSelect-select,
+.MuiAutocomplete-input,
+.MuiAutocomplete-option,
+.MuiAutocomplete-listbox,
+.MuiMenuItem-root,
+.MuiInputLabel-root,
+.MuiFormLabel-root {
+	font-size: 13px !important;
+}
+
+/* Reduce padding for dropdown and autocomplete options */
+.MuiMenuItem-root,
+.MuiAutocomplete-option {
+	padding: 4px 12px !important;
+	min-height: unset !important;
+	line-height: 1.4 !important;
+}
+
+/* Global button styling - smaller size like RCA modal */
+.MuiButton-root {
+	min-height: 30px !important;
+	padding: 0.2rem 0.7rem !important;
+	font-size: 0.75rem !important;
+	line-height: 1.2 !important;
+	text-transform: none !important;
+}
+
+/* Autocomplete checkbox color - use primary green */
+.MuiAutocomplete-option .MuiCheckbox-root.Mui-checked {
+	color: var(--color-primary) !important;
+  border-radius: 0 !important;
+}
+
+.MuiAutocomplete-option .MuiCheckbox-root:hover {
+	background-color: rgba(38, 137, 13, 0.04) !important;
+}
+
+/* Global shape: remove border radius from buttons, cards, badges */
+button,
+.MuiButton-root,
+.MuiButtonBase-root,
+.MuiCard-root,
+.MuiPaper-root,
+.MuiChip-root,
+.MuiBadge-badge,
+.MuiCheckbox-root,
+.MuiCheckbox-root .MuiSvgIcon-root,
+.MuiOutlinedInput-root,
+.MuiOutlinedInput-notchedOutline,
+.MuiInputBase-root,
+.MuiAutocomplete-root .MuiOutlinedInput-root,
+.MuiAutocomplete-popper,
+.MuiMenu-paper,
+.MuiPopover-paper,
+.MuiModal-root .MuiBox-root,
+.MuiDialog-paper,
+.MuiTable-root,
+.MuiTableCell-root,
+.counter-card,
+.counter-card__icon,
+.severity-badge,
+.advisory-chip,
+.deviation-chip,
+.header-nav__badge,
+.left-panel,
+.breadcrumb-bar,
+.alert-card,
+.tree-panel,
+.tree-row,
+.tree-row__action,
+.tree-icon,
+.process-analysis__rca-image-preview-wrap,
+.process-analysis__rca-image-preview,
+.reporting-analysis__severity-track,
+.reporting-analysis__severity-fill,
+.reporting-analysis__rca-table-track,
+.reporting-analysis__rca-table-fill,.process-analysis__chart-header {
+	border-radius: 0 !important;
+}
+
+/* Ternary color usage for gray-themed cards */
+.counter-card--total {
+	background: linear-gradient(135deg, #dcddde 0%, #bdc0c1 100%) !important;
+	border-color: #4e6166 !important;
+}
+
+.counter-card--total .counter-card__icon {
+	background: #bebebe !important;
+	color: var(--color-ternary) !important;
+}
+
+.counter-card--total .counter-card__value {
+	color: var(--color-ternary) !important;
+}
+
+/* Secondary color usage for blue-themed cards */
+.counter-card--acknowledged {
+	background: linear-gradient(135deg, #e6f7fd 0%, #cfeffc 100%) !important;
+	border-color: #7dd9f5 !important;
+}
+
+.counter-card--acknowledged .counter-card__icon {
+	background: #d7f2fd !important;
+	color: var(--color-secondary) !important;
+}
+
+.counter-card--acknowledged .counter-card__value {
+	color: var(--color-secondary) !important;
+}
+
+/* Primary color usage for green-themed cards */
+.counter-card--resolved {
+	background: linear-gradient(135deg, #edf9ea 0%, #ddf0d8 100%) !important;
+	border-color: #9fd194 !important;
+}
+
+.counter-card--resolved .counter-card__icon {
+	background: #ddf0d8 !important;
+	color: var(--color-primary) !important;
+}
+
+.counter-card--resolved .counter-card__value {
+	color: var(--color-primary) !important;
+}
+
+/* Initiate RCA button should use primary green */
+.process-analysis__advisory-actions .MuiButton-contained {
+	background-color: var(--color-primary) !important;
+	border-color: var(--color-primary) !important;
+	color: #ffffff !important;
+}
+
+.process-analysis__advisory-actions .MuiButton-contained:hover {
+	background-color: var(--color-primary-dark) !important;
+	border-color: var(--color-primary-dark) !important;
+}
+
+/* Modal RCA actions: smaller buttons and primary save */
+.process-analysis__rca-actions .MuiButton-root {
+	min-height: 28px !important;
+	padding: 0.15rem 0.6rem !important;
+	font-size: 0.72rem !important;
+	line-height: 1.1 !important;
+	text-transform: none !important;
+}
+
+.process-analysis__rca-save-btn {
+	background-color: var(--color-primary) !important;
+	border-color: var(--color-primary) !important;
+	color: #ffffff !important;
+}
+
+.process-analysis__rca-save-btn:hover {
+	background-color: var(--color-primary-dark) !important;
+	border-color: var(--color-primary-dark) !important;
+}
+
+/* Admin page buttons: smaller size and primary submit */
+.admin-page .MuiButton-root {
+	min-height: 30px !important;
+	padding: 0.2rem 0.65rem !important;
+	font-size: 0.74rem !important;
+	line-height: 1.1 !important;
+	text-transform: none !important;
+}
+
+.admin-form__submit.MuiButton-root {
+	background-color: var(--color-primary) !important;
+	border-color: var(--color-primary) !important;
+	color: #ffffff !important;
+}
+
+.admin-form__submit.MuiButton-root:hover {
+	background-color: var(--color-primary-dark) !important;
+	border-color: var(--color-primary-dark) !important;
+}
+
+/* Override MUI focus border color to black */
+.MuiOutlinedInput-root:focus-within .MuiOutlinedInput-notchedOutline,
+.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+	border-color: #000 !important;
+	border-width: 0.5px !important;
+}
+
+.MuiOutlinedInput-root:focus-within {
+	outline: none;
+}
+
+.MuiAutocomplete-root .MuiOutlinedInput-root:focus-within .MuiOutlinedInput-notchedOutline,
+.MuiAutocomplete-root .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+	border-color: #000 !important;
+	border-width: 0.5px !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+	outline: none;
+	border-color: #000 !important;
+	outline-width: 0.5px !important;
+}
+
+.MuiButton-root:focus-visible {
+	outline-color: #000 !important;
+	outline-width: 0.5px !important;
+}

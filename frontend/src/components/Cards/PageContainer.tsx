@@ -9,7 +9,6 @@ export const PageContainer: React.FC<PageContainerProps> = ({ children }) => {
   return (
     <Box
       sx={{
-        p: { xs: 2, md: 3 },
         width: '100%',
         maxWidth: 1600,
         margin: '0 auto',

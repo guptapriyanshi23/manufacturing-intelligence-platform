@@ -350,28 +350,9 @@ export const Alerts: React.FC = () => {
 
   return (
     <PageContainer>
-      <PageHeader
-        title="Alerts"
-        subtitle="Critical warnings, system diagnostics, and failure states needing immediate attention."
-        actions={
-          <FormControl size="small" sx={{ minWidth: 350, bgcolor: 'white', }}>
-            <InputLabel id="site-select-label" shrink>Site</InputLabel>
-            <Select
-              labelId="site-select-label"
-              value={selectedSiteId}
-              label="Site"
-              onChange={(e) => setSelectedSiteId(e.target.value as number)}
-              disabled={hierarchyLoading}
-              displayEmpty
-              renderValue={selectedSiteId === '' ? () => <span style={{ color: '#9e9e9e' }}>Select</span> : undefined}
-            >
-              <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
-              {sites.map(s => (
-                <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        }
+     <PageHeader
+        title="Alerts Dashboard"
+        url="/"
       />
 
       {breadcrumbs.length > 0 && (
