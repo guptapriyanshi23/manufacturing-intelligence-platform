@@ -157,8 +157,9 @@ export const Reports: React.FC = () => {
     const start = new Date(appliedFromDate).getTime();
     const end = new Date(appliedToDate).getTime();
     result = result.filter(a => {
-      const t = new Date(a.first_detected).getTime();
-      return t >= start && t <= end;
+      const detectedTime = a.detected_at ? new Date(a.detected_at).getTime() : NaN;
+      if (isNaN(detectedTime)) return false;
+      return detectedTime >= start && detectedTime <= end;
     });
 
     return result;

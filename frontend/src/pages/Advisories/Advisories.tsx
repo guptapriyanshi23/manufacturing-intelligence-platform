@@ -454,7 +454,11 @@ export const Advisories: React.FC = () => {
                 </Box>
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>First Detected</Typography>
-                  <Typography variant="body1">{new Date(selectedAdvisory.first_detected).toLocaleString()}</Typography>
+                  <Typography variant="body1">
+                    {selectedAdvisory.detected_at && !isNaN(new Date(selectedAdvisory.detected_at).getTime())
+                      ? new Date(selectedAdvisory.detected_at).toLocaleString()
+                      : '—'}
+                  </Typography>
                 </Box>
                 {selectedAdvisory.root_cause_description && (
                   <Box>
