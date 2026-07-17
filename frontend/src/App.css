@@ -196,8 +196,8 @@ button,
 
 /* Ternary color usage for gray-themed cards */
 .counter-card--total {
-	background: linear-gradient(135deg, #dcddde 0%, #bdc0c1 100%) !important;
-	border-color: #4e6166 !important;
+	background: linear-gradient(135deg, #dcddde 0%, #d1d2d3 100%) !important;
+	border-color: #919798 !important;
 }
 
 .counter-card--total .counter-card__icon {

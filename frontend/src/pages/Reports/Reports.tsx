@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useOutletContext } from 'react-router-dom';
 import {
   Box, Card, CardContent, Grid, Button, Typography, CircularProgress,
@@ -196,7 +196,7 @@ export const Reports: React.FC = () => {
   return (
     <Box className='reporting-analysis'>
       <PageHeader
-        title="Advisory Report"
+        title="Analytics"
         url="/reports"
       />
 

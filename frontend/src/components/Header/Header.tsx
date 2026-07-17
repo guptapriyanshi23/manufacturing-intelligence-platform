@@ -79,7 +79,7 @@ const Header: React.FC<HeaderProps> = () => {
         <Box className="header-left">
           <img src="/deloitteLogoWhite.png" alt="Deloitte" className="header-logo" />
           <span className="header-left__divider" aria-hidden="true" />
-          <span className="header-left__project">Asset Digital Twin</span>
+          <span className="header-left__project">AssetWize</span>
         </Box>
 
         {/* Right — navigation, user info + logout */}
