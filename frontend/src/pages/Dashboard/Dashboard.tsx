@@ -339,7 +339,7 @@ export const Dashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    if (activeAdvisory) {
+    if (activeAdvisory && activeAdvisory.status !== AdvisoryStatus.RESOLVED) {
       const window = getAdvisoryTimeWindow(activeAdvisory);
       setTimeRange('custom');
       setFromDate(window.fromLocal);
@@ -394,7 +394,7 @@ export const Dashboard: React.FC = () => {
     let customStart = timeRange === 'custom' ? new Date(fromDate).toISOString() : undefined;
     let customEnd = timeRange === 'custom' ? new Date(toDate).toISOString() : undefined;
 
-    if (activeAdvisory && !isTimeOverridden) {
+    if (activeAdvisory && activeAdvisory.status !== AdvisoryStatus.RESOLVED && !isTimeOverridden) {
       const win = getAdvisoryTimeWindow(activeAdvisory);
       customStart = win.from;
       customEnd = win.to;
