@@ -27,7 +27,7 @@ export const MainLayout: React.FC = () => {
     if (cached) {
       try {
         setProfile(JSON.parse(cached));
-      } catch (e) {}
+      } catch (e) { }
     } else {
       api.auth.getMe()
         .then((res) => {
@@ -61,7 +61,7 @@ export const MainLayout: React.FC = () => {
 
   const handleSelectNode = (node: HierarchyNode) => {
     setSelectedNode(node);
-    
+
     // Sync node selection to pages via state instead of query string to keep URLs clean!
     const { alertId, originalSensorNodeId, ...restState } = location.state || {};
     navigate(location.pathname, { state: { ...restState, selectedNodeId: node.id } });

@@ -134,6 +134,8 @@ def get_advisories(
     node_id: Optional[int] = None,
     status: Optional[str] = None,
     severity: Optional[str] = None,
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None,
     current_user = Depends(check_permissions(["advisories:view"])),
     db: Session = Depends(get_db)
 ):
@@ -143,7 +145,14 @@ def get_advisories(
     from backend.app.core.security import get_allowed_node_ids
     allowed_ids = get_allowed_node_ids(current_user, db)
     
-    advisories = service.get_advisories(db, node_id=node_id, status=status, severity=severity)
+    advisories = service.get_advisories(
+        db,
+        node_id=node_id,
+        status=status,
+        severity=severity,
+        start_time=start_time,
+        end_time=end_time
+    )
     if allowed_ids is not None:
         if not allowed_ids:
             return []

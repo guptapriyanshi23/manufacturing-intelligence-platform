@@ -23,6 +23,7 @@ import {
   DialogActions,
   Typography,
   Breadcrumbs,
+  TextField,
 } from '@mui/material';
 import { NavigateNext as NavigateNextIcon } from '@mui/icons-material';
 import type { SelectChangeEvent } from '@mui/material/Select';
@@ -33,7 +34,21 @@ import { api } from '../../api/client';
 import { getSeverityColor, getSeverityBgColor, severityOptions, getSeverityLevelFull } from '../../constants/severity';
 import { statusOptions } from '../../constants/status';
 import type { HierarchyNode } from '../../types/hierarchy';
-import { AdvisoryStatus } from '../../types/enums';
+import { AdvisoryStatus, NodeType, TimeRange, TIME_RANGE_OPTIONS } from '../../types/enums';
+
+const getDateRange = (rangeValue: string) => {
+  const now = new Date();
+  const map: Record<string, number> = {
+    [TimeRange.LAST_1H]: 1,
+    [TimeRange.LAST_8H]: 8,
+    [TimeRange.LAST_24H]: 24,
+    [TimeRange.LAST_7D]: 168,
+    [TimeRange.LAST_30D]: 720,
+  };
+  const hours = map[rangeValue] ?? 24;
+  const from = new Date(now.getTime() - hours * 60 * 60 * 1000);
+  return { from: from.toISOString().slice(0, 16), to: now.toISOString().slice(0, 16) };
+};
 
 const getBreadcrumbsPath = (nodeId: number, flatNodes: HierarchyNode[]): string[] => {
   const path: string[] = [];
@@ -71,11 +86,18 @@ export const Advisories: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [severityFilter, setSeverityFilter] = useState<string>('');
   const [selectedSensorId, setSelectedSensorId] = useState<number | ''>('');
+  const [timeRange, setTimeRange] = useState<string>(TimeRange.LAST_24H);
+  const initial = getDateRange(TimeRange.LAST_24H);
+  const [fromDate, setFromDate] = useState(initial.from);
+  const [toDate, setToDate] = useState(initial.to);
 
   // Applied states (updates only when 'View' button is clicked)
   const [appliedStatus, setAppliedStatus] = useState<string>('');
   const [appliedSeverity, setAppliedSeverity] = useState<string>('');
   const [appliedSensorId, setAppliedSensorId] = useState<number | ''>('');
+  const [appliedTimeRange, setAppliedTimeRange] = useState<string>(TimeRange.LAST_24H);
+  const [appliedFromDate, setAppliedFromDate] = useState(initial.from);
+  const [appliedToDate, setAppliedToDate] = useState(initial.to);
   const [appliedNode, setAppliedNode] = useState<HierarchyNode | null>(null);
 
   const descendantsOfSidePanel = useMemo(() => {
@@ -100,11 +122,11 @@ export const Advisories: React.FC = () => {
   }, [treeNodeId, flatNodes]);
 
   const availableSensors = useMemo(() => {
-    return descendantsOfSidePanel.filter(n => n.node_type === 'sensor');
+    return descendantsOfSidePanel.filter(n => n.node_type === NodeType.SENSOR);
   }, [descendantsOfSidePanel]);
 
   const isAssetSelected = useMemo(() => {
-    return flatNodes.find(n => n.id === treeNodeId)?.node_type === 'asset';
+    return flatNodes.find(n => n.id === treeNodeId)?.node_type === NodeType.ASSET;
   }, [treeNodeId, flatNodes]);
 
   const [breadcrumbs, setBreadcrumbs] = useState<string[]>([]);
@@ -144,6 +166,18 @@ export const Advisories: React.FC = () => {
         if (filters.severity) {
           setSeverityFilter(filters.severity);
           setAppliedSeverity(filters.severity);
+        }
+        if (filters.timeRange) {
+          setTimeRange(filters.timeRange);
+          setAppliedTimeRange(filters.timeRange);
+        }
+        if (filters.fromDate) {
+          setFromDate(filters.fromDate);
+          setAppliedFromDate(filters.fromDate);
+        }
+        if (filters.toDate) {
+          setToDate(filters.toDate);
+          setAppliedToDate(filters.toDate);
         }
       } catch (e) { }
     }
@@ -193,27 +227,55 @@ export const Advisories: React.FC = () => {
 
     setLoading(true);
     const targetNodeId = appliedSensorId ? Number(appliedSensorId) : appliedNode.id;
+
+    let startIso: string | undefined = undefined;
+    let endIso: string | undefined = undefined;
+
+    if (appliedTimeRange === TimeRange.CUSTOM) {
+      if (appliedFromDate) startIso = new Date(appliedFromDate).toISOString();
+      if (appliedToDate) endIso = new Date(appliedToDate).toISOString();
+    } else {
+      const range = getDateRange(appliedTimeRange);
+      startIso = new Date(range.from).toISOString();
+      endIso = new Date(range.to).toISOString();
+    }
+
     api.advisories.list({
       node_id: targetNodeId,
       status: appliedStatus,
       severity: appliedSeverity,
+      start_time: startIso,
+      end_time: endIso,
     })
       .then((res) => { setAdvisories(res); setLoading(false); })
       .catch((err) => { console.error('Failed to fetch advisories:', err); setLoading(false); });
-  }, [appliedNode, appliedStatus, appliedSeverity, appliedSensorId]);
+  }, [appliedNode, appliedStatus, appliedSeverity, appliedSensorId, appliedTimeRange, appliedFromDate, appliedToDate]);
 
   const filteredRows = advisories;
 
-
+  const handleTimeRangeChange = (val: string) => {
+    setTimeRange(val);
+    if (val !== TimeRange.CUSTOM) {
+      const { from, to } = getDateRange(val);
+      setFromDate(from);
+      setToDate(to);
+    }
+  };
 
   const handleApplyFilters = () => {
     setAppliedStatus(statusFilter);
     setAppliedSeverity(severityFilter);
     setAppliedSensorId(selectedSensorId);
+    setAppliedTimeRange(timeRange);
+    setAppliedFromDate(fromDate);
+    setAppliedToDate(toDate);
 
     localStorage.setItem('advisories_applied_filters', JSON.stringify({
       status: statusFilter,
       severity: severityFilter,
+      timeRange: timeRange,
+      fromDate: fromDate,
+      toDate: toDate,
     }));
   };
 
@@ -278,13 +340,13 @@ export const Advisories: React.FC = () => {
               onChange={(e: SelectChangeEvent) => setStatusFilter(e.target.value)}
               displayEmpty
               renderValue={(selected) =>
-                selected ? (String(selected) === 'in_progress' ? 'In Progress' : String(selected).charAt(0).toUpperCase() + String(selected).slice(1)) : <span style={{ color: '#9e9e9e' }}>Select</span>
+                selected ? (String(selected) === AdvisoryStatus.IN_PROGRESS ? 'In Progress' : String(selected).charAt(0).toUpperCase() + String(selected).slice(1)) : <span style={{ color: '#9e9e9e' }}>Select</span>
               }
             >
               <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
               {statusOptions.map((option) => (
                 <MenuItem key={option} value={option}>
-                  {option === 'in_progress' ? 'In Progress' : option.charAt(0).toUpperCase() + option.slice(1)}
+                  {option === AdvisoryStatus.IN_PROGRESS ? 'In Progress' : option.charAt(0).toUpperCase() + option.slice(1)}
                 </MenuItem>
               ))}
             </Select>
@@ -327,17 +389,52 @@ export const Advisories: React.FC = () => {
             </Select>
           </FormControl>
 
-          <Box sx={{ flexGrow: 1 }} />
+          <FormControl size="small" sx={{ flex: 1.2, minWidth: 160 }}>
+            <InputLabel shrink>Time Range</InputLabel>
+            <Select
+              value={timeRange}
+              label="Time Range"
+              onChange={(e) => handleTimeRangeChange(e.target.value)}
+              displayEmpty
+              renderValue={timeRange === '' ? () => <span style={{ color: '#9e9e9e' }}>Select</span> : undefined}
+            >
+              <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
+              {TIME_RANGE_OPTIONS.map(o => (
+                <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <TextField
+            label="From"
+            type="datetime-local"
+            size="small"
+            value={fromDate}
+            disabled={timeRange !== TimeRange.CUSTOM}
+            onChange={(e) => setFromDate(e.target.value)}
+            slotProps={{ inputLabel: { shrink: true } }}
+            sx={{ flex: 1.5, minWidth: 180 }}
+          />
+
+          <TextField
+            label="To"
+            type="datetime-local"
+            size="small"
+            value={toDate}
+            disabled={timeRange !== TimeRange.CUSTOM}
+            onChange={(e) => setToDate(e.target.value)}
+            slotProps={{ inputLabel: { shrink: true } }}
+            sx={{ flex: 1.5, minWidth: 180 }}
+          />
 
           <Button
             variant="contained"
             color="secondary"
             onClick={handleApplyFilters}
-            sx={{ minWidth: 100, fontWeight: 700 }}
+            sx={{ minWidth: 100, fontWeight: 700, ml: 1 }}
           >
             View
           </Button>
-
         </Box>
       </Paper>
 
@@ -353,7 +450,7 @@ export const Advisories: React.FC = () => {
           <Table sx={{ minWidth: 720 }}>
             <TableHead>
               <TableRow>
-                {['Sensor Name', 'Asset', 'Severity', 'Status', 'Action taken'].map(col => (
+                {['Sensor Name', 'Asset', 'Severity', 'Status', 'Action taken', 'Detected At'].map(col => (
                   <TableCell key={col} sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid #ccc' }}>
                     {col}
                   </TableCell>
@@ -363,13 +460,13 @@ export const Advisories: React.FC = () => {
             <TableBody>
               {appliedNode === null ? (
                 <TableRow>
-                  <TableCell colSpan={5} sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
+                  <TableCell colSpan={6} sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
                     Please select a hierarchy node from the left tree panel to display advisories.
                   </TableCell>
                 </TableRow>
               ) : filteredRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
+                  <TableCell colSpan={6} sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
                     No advisories match the current filter.
                   </TableCell>
                 </TableRow>
@@ -406,6 +503,18 @@ export const Advisories: React.FC = () => {
                     </TableCell>
                     <TableCell sx={{ color: 'text.secondary', borderBottom: '1px solid #ccc' }}>
                       {row.action_taken || '—'}
+                    </TableCell>
+                    <TableCell sx={{ color: 'text.secondary', borderBottom: '1px solid #ccc' }}>
+                      {row.detected_at
+                        ? new Date(row.detected_at).toLocaleString('en-IN', {
+                            timeZone: 'Asia/Kolkata',
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                        : '—'}
                     </TableCell>
                   </TableRow>
                 ))
@@ -495,7 +604,7 @@ export const Advisories: React.FC = () => {
             </DialogContent>
 
             <DialogActions sx={{ borderTop: '1px solid #e2e8f0', px: 3, py: 2 }}>
-              {selectedAdvisory.status === 'open' && (
+              {selectedAdvisory.status === AdvisoryStatus.OPEN && (
                 <Button
                   variant="contained"
                   color="primary"
@@ -513,7 +622,7 @@ export const Advisories: React.FC = () => {
                   Acknowledge
                 </Button>
               )}
-              {selectedAdvisory.status !== 'resolved' && (
+              {selectedAdvisory.status !== AdvisoryStatus.RESOLVED && (
                 <Button
                   variant="contained"
                   color="secondary"

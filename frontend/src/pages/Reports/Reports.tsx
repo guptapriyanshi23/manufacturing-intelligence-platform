@@ -15,20 +15,16 @@ import type { HierarchyNode } from '../../types/hierarchy';
 import { getStatusColor } from '../../constants/status';
 import '../alerts/Alerts.scss';
 import './Reports.scss';
-
-const TIME_RANGE_OPTIONS = [
-  { value: 'last_1h', label: 'Last 1 Hour' },
-  { value: 'last_8h', label: 'Last 8 Hours' },
-  { value: 'last_24h', label: 'Last 24 Hours' },
-  { value: 'last_7d', label: 'Last Week' },
-  { value: 'last_30d', label: 'Last 30 Days' },
-  { value: 'custom', label: 'Custom' },
-];
+import { TimeRange, TIME_RANGE_OPTIONS, AdvisoryStatus } from '../../types/enums';
 
 const getDateRange = (rangeValue: string) => {
   const now = new Date();
   const map: Record<string, number> = {
-    last_1h: 1, last_8h: 8, last_24h: 24, last_7d: 168, last_30d: 720,
+    [TimeRange.LAST_1H]: 1,
+    [TimeRange.LAST_8H]: 8,
+    [TimeRange.LAST_24H]: 24,
+    [TimeRange.LAST_7D]: 168,
+    [TimeRange.LAST_30D]: 720,
   };
   const hours = map[rangeValue] ?? 24;
   const from = new Date(now.getTime() - hours * 60 * 60 * 1000);
@@ -79,8 +75,8 @@ export const Reports: React.FC = () => {
 
   const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
   const [appliedNode, setAppliedNode] = useState<HierarchyNode | null>(null);
-  const [timeRange, setTimeRange] = useState('last_24h');
-  const initial = getDateRange('last_24h');
+  const [timeRange, setTimeRange] = useState<string>(TimeRange.LAST_24H);
+  const initial = getDateRange(TimeRange.LAST_24H);
   const [fromDate, setFromDate] = useState(initial.from);
   const [toDate, setToDate] = useState(initial.to);
   const [breadcrumbs, setBreadcrumbs] = useState<string[]>([]);
@@ -103,7 +99,7 @@ export const Reports: React.FC = () => {
     let startIso: string | undefined = undefined;
     let endIso: string | undefined = undefined;
 
-    if (rangeVal === 'custom') {
+    if (rangeVal === TimeRange.CUSTOM) {
       if (from) startIso = new Date(from).toISOString();
       if (to) endIso = new Date(to).toISOString();
     } else {
@@ -157,7 +153,7 @@ export const Reports: React.FC = () => {
 
   const handleTimeRangeChange = (val: string) => {
     setTimeRange(val);
-    if (val !== 'custom') {
+    if (val !== TimeRange.CUSTOM) {
       const { from, to } = getDateRange(val);
       setFromDate(from);
       setToDate(to);
@@ -187,10 +183,10 @@ export const Reports: React.FC = () => {
   });
 
   const statusChartData = [
-    { status: 'Open', key: 'open', count: openCount },
-    { status: 'Acknowledged', key: 'acknowledged', count: ackCount },
-    { status: 'In Progress', key: 'in_progress', count: inProgressCount },
-    { status: 'Resolved', key: 'resolved', count: resolvedCount },
+    { status: 'Open', key: AdvisoryStatus.OPEN, count: openCount },
+    { status: 'Acknowledged', key: AdvisoryStatus.ACKNOWLEDGED, count: ackCount },
+    { status: 'In Progress', key: AdvisoryStatus.IN_PROGRESS, count: inProgressCount },
+    { status: 'Resolved', key: AdvisoryStatus.RESOLVED, count: resolvedCount },
   ];
 
   return (
@@ -252,7 +248,7 @@ export const Reports: React.FC = () => {
             type="datetime-local"
             size="small"
             value={fromDate}
-            disabled={timeRange !== 'custom'}
+            disabled={timeRange !== TimeRange.CUSTOM}
             onChange={(e) => setFromDate(e.target.value)}
             slotProps={{ inputLabel: { shrink: true } }}
             fullWidth
@@ -264,9 +260,9 @@ export const Reports: React.FC = () => {
             size="small"
             slotProps={{ inputLabel: { shrink: true } }}
             value={toDate}
-            disabled={timeRange !== 'custom'}
-            onChange={(event) => setToDate(event.target.value)}
-            fullWidth
+            disabled={timeRange !== TimeRange.CUSTOM}
+            onChange={(e) => setToDate(e.target.value)}
+            sx={{ minWidth: 200 }}
           />
         
           <Button

@@ -310,8 +310,8 @@ export const RootCause: React.FC = () => {
                   <FormControlLabel
                     control={
                       <Checkbox
-                        checked={rcaStatus === 'resolved'}
-                        onChange={(e) => setRcaStatus(e.target.checked ? 'resolved' : 'in_progress')}
+                        checked={rcaStatus === AdvisoryStatus.RESOLVED}
+                        onChange={(e) => setRcaStatus(e.target.checked ? AdvisoryStatus.RESOLVED : AdvisoryStatus.IN_PROGRESS)}
                         color="primary"
                         disabled={!activeAdvisory}
                       />

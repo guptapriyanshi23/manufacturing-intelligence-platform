@@ -8,7 +8,9 @@ def get_advisories(
     db: Session,
     node_id: Optional[int] = None,
     status: Optional[str] = None,
-    severity: Optional[str] = None
+    severity: Optional[str] = None,
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None
 ) -> List[Advisory]:
     query = db.query(Advisory)
     
@@ -19,6 +21,10 @@ def get_advisories(
         severity_int = severity_map.get(severity.lower()) or (int(severity) if severity.isdigit() else None)
         if severity_int:
             query = query.filter(Advisory.severity == severity_int)
+    if start_time:
+        query = query.filter(Advisory.detected_at >= start_time)
+    if end_time:
+        query = query.filter(Advisory.detected_at <= end_time)
         
     if node_id:
         from backend.app.models.hierarchy import HierarchyNode

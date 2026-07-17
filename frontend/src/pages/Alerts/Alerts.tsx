@@ -26,7 +26,7 @@ import { PageHeader } from '../../components/Cards/PageHeader';
 import { getSeverityColor, getSeverityBgColor, getSeverityLevel } from '../../constants/severity';
 import { api } from '../../api/client';
 import type { HierarchyNode } from '../../types/hierarchy';
-import { AlertStatus } from '../../types/enums';
+import { AlertStatus, NodeType } from '../../types/enums';
 
 
 
@@ -80,12 +80,12 @@ export const Alerts: React.FC = () => {
   const [selectedSiteId, setSelectedSiteId] = useState<number | ''>('');
 
   const sites = useMemo(() => {
-    return flatNodes.filter(n => n.node_type === 'site');
+    return flatNodes.filter(n => n.node_type === NodeType.SITE);
   }, [flatNodes]);
 
   useEffect(() => {
     if (flatNodes.length > 0 && !selectedSiteId) {
-      const sitesList = flatNodes.filter(n => n.node_type === 'site');
+      const sitesList = flatNodes.filter(n => n.node_type === NodeType.SITE);
       setSelectedSiteId(sitesList[0]?.id || '');
     }
   }, [flatNodes, selectedSiteId]);
@@ -127,7 +127,7 @@ export const Alerts: React.FC = () => {
       return;
     }
     const node = flatNodes.find(n => n.id === selectedNodeId);
-    if (!node || node.node_type === 'site') {
+    if (!node || node.node_type === NodeType.SITE) {
       setAlerts([]);
       return;
     }
@@ -177,11 +177,11 @@ export const Alerts: React.FC = () => {
 
   // Sensor/Tag dropdown options
   const availableSensors = useMemo(() => {
-    return descendantsOfSidePanel.filter(n => n.node_type === 'sensor');
+    return descendantsOfSidePanel.filter(n => n.node_type === NodeType.SENSOR);
   }, [descendantsOfSidePanel]);
 
   const isAssetSelected = useMemo(() => {
-    return flatNodes.find(n => n.id === selectedNodeId)?.node_type === 'asset';
+    return flatNodes.find(n => n.id === selectedNodeId)?.node_type === NodeType.ASSET;
   }, [selectedNodeId, flatNodes]);
 
   // Autopopulate and sync dropdown selections based on the side panel hierarchy node selection
@@ -197,7 +197,7 @@ export const Alerts: React.FC = () => {
     const node = flatNodes.find(n => n.id === selectedNodeId);
     if (!node) return;
 
-    if (node.node_type === 'sensor') {
+    if (node.node_type === NodeType.SENSOR) {
       setSelectedSensorId(node.id);
       setAppliedSensorId(node.id);
     } else {
@@ -223,7 +223,7 @@ export const Alerts: React.FC = () => {
     }
 
     const node = flatNodes.find(n => n.id === activeNodeId);
-    if (!node || node.node_type === 'site') {
+    if (!node || node.node_type === NodeType.SITE) {
       setAlerts([]);
       setAppliedSensorId(selectedSensorId);
       setAppliedSeverities(selectedSeverities);
@@ -332,7 +332,7 @@ export const Alerts: React.FC = () => {
     let currentId: number | undefined = row.node_id;
     while (currentId) {
       const node = flatNodes.find(n => n.id === currentId);
-      if (node?.node_type === 'asset') return node.display_name;
+      if (node?.node_type === NodeType.ASSET) return node.display_name;
       currentId = node?.parent_id;
     }
     return 'N/A';
@@ -342,7 +342,7 @@ export const Alerts: React.FC = () => {
     let currentId: number | undefined = row.node_id;
     while (currentId) {
       const node = flatNodes.find(n => n.id === currentId);
-      if (node?.node_type === 'component') return node.display_name;
+      if (node?.node_type === NodeType.COMPONENT) return node.display_name;
       currentId = node?.parent_id;
     }
     return row.sensor_name || 'N/A';
@@ -483,7 +483,7 @@ export const Alerts: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {!selectedNodeId || flatNodes.find(n => n.id === selectedNodeId)?.node_type === 'site' ? (
+              {!selectedNodeId || flatNodes.find(n => n.id === selectedNodeId)?.node_type === NodeType.SITE ? (
                 <TableRow>
                   <TableCell colSpan={7} sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
                     Please select an Area or deeper node from the Plant Hierarchy sidebar to load alerts.

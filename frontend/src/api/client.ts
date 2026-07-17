@@ -142,11 +142,13 @@ export const api = {
         severity_counts: Record<number, number>;
       }>(queryString ? `/advisories/stats?${queryString}` : '/advisories/stats');
     },
-    list: (filters?: { node_id?: number | null; status?: string; severity?: string }) => {
+    list: (filters?: { node_id?: number | null; status?: string; severity?: string; start_time?: string; end_time?: string }) => {
       const params = new URLSearchParams();
       if (filters?.node_id) params.append('node_id', filters.node_id.toString());
       if (filters?.status) params.append('status', filters.status);
       if (filters?.severity) params.append('severity', filters.severity);
+      if (filters?.start_time) params.append('start_time', filters.start_time);
+      if (filters?.end_time) params.append('end_time', filters.end_time);
       const queryString = params.toString();
       return request<Advisory[]>(queryString ? `/advisories?${queryString}` : '/advisories');
     },
