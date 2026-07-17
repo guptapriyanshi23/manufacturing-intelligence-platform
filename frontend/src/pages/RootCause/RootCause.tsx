@@ -153,7 +153,7 @@ export const RootCause: React.FC = () => {
     <PageContainer>
       <PageHeader
         title="Root Cause Analysis (RCA)"
-        subtitle="Attach evidence, describe root cause, and record the action taken to resolve system advisories."
+        url='/root-cause'
       />
 
       {breadcrumbs.length > 0 && (

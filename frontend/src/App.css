@@ -3,6 +3,7 @@
 	 --color-primary: #26890D;
 	 --color-primary-dark: #1f700a;
 	 --color-secondary: #00A3E0;
+	 --color-ternary: #595d5e;
  }
 
 html,
@@ -193,18 +194,33 @@ button,
 	border-radius: 0 !important;
 }
 
-/* Secondary color usage for blue-themed cards */
+/* Ternary color usage for gray-themed cards */
 .counter-card--total {
+	background: linear-gradient(135deg, #dcddde 0%, #bdc0c1 100%) !important;
+	border-color: #4e6166 !important;
+}
+
+.counter-card--total .counter-card__icon {
+	background: #bebebe !important;
+	color: var(--color-ternary) !important;
+}
+
+.counter-card--total .counter-card__value {
+	color: var(--color-ternary) !important;
+}
+
+/* Secondary color usage for blue-themed cards */
+.counter-card--acknowledged {
 	background: linear-gradient(135deg, #e6f7fd 0%, #cfeffc 100%) !important;
 	border-color: #7dd9f5 !important;
 }
 
-.counter-card--total .counter-card__icon {
+.counter-card--acknowledged .counter-card__icon {
 	background: #d7f2fd !important;
 	color: var(--color-secondary) !important;
 }
 
-.counter-card--total .counter-card__value {
+.counter-card--acknowledged .counter-card__value {
 	color: var(--color-secondary) !important;
 }
 

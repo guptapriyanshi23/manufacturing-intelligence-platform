@@ -700,8 +700,7 @@ export const Dashboard: React.FC = () => {
       {/* Header */}
       <PageHeader
         title="Dashboard"
-        subtitle="Anomalous tags are shown by default, stacked one below the other. Use the dropdown to browse any other parameter on this asset — anomaly or not."
-      />
+        />
 
       {breadcrumbs.length > 0 && (
         <Breadcrumbs separator={<NavigateNextIcon fontSize="small" sx={{ color: 'text.secondary' }} />} sx={{ mb: 2 }}>
