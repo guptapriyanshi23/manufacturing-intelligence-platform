@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useOutletContext } from 'react-router-dom';
 import {
   Grid, Typography, Paper, Box, useTheme, Chip, CircularProgress,
   FormControl, InputLabel, Select, MenuItem, Button,
-  IconButton, Dialog, DialogContent, TextField,
+  IconButton, Dialog, DialogContent, TextField, Card
 } from '@mui/material';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceDot,
@@ -16,6 +16,8 @@ import { getSeverityBgColor, getSeverityColor, getSeverityLevelFull } from '../.
 import { PageHeader } from '../../components/Cards/PageHeader';
 import { AdvisoryStatus, SeverityLevel } from '../../types/enums';
 import BreadCrumsBar from '../../components/BreadCrumsBar/BreadCrumsBar';
+import '../alerts/Alerts.scss';
+import './Dashboard.scss';
 
 const TIME_RANGE_OPTIONS = [
   { value: 'last_1h', label: 'Last 1 Hour' },
@@ -701,74 +703,70 @@ export const Dashboard: React.FC = () => {
       {/* Header */}
       <PageHeader
         title="Dashboard"
+        url='/dashboard'
+      />
+
+      <BreadCrumsBar breadcrumbsData={breadcrumbs} />
+
+      {/* Chart Selection Dropdown + Date Filters */}
+      <Box sx={{ mb: 2, display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel shrink>Time Range</InputLabel>
+          <Select
+            value={timeRange}
+            label="Time Range"
+            onChange={(e) => handleTimeRangeChange(e.target.value)}
+            displayEmpty
+            renderValue={timeRange === '' ? () => <span style={{ color: '#9e9e9e' }}>Select</span> : undefined}
+          >
+            <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
+            {TIME_RANGE_OPTIONS.map(o => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
+          </Select>
+        </FormControl>
+
+        <TextField
+          label="Start Date"
+          type="datetime-local" size="small" value={fromDate}
+          disabled={timeRange !== 'custom'}
+          onChange={(e) => { setFromDate(e.target.value); setIsTimeOverridden(true); }}
+          slotProps={{ inputLabel: { shrink: true } }}
+          sx={{ minWidth: 160 }}
+        />
+        <TextField
+          label="End Date"
+          type="datetime-local" size="small" value={toDate}
+          disabled={timeRange !== 'custom'}
+          onChange={(e) => { setToDate(e.target.value); setIsTimeOverridden(true); }}
+          slotProps={{ inputLabel: { shrink: true } }}
+          sx={{ minWidth: 160 }}
         />
 
-      <BreadCrumsBar breadcrumbsData={breadcrumbs}/>
+        <Box></Box>
 
-      <Box sx={{ mb: 4 }}>
-        <Paper sx={{ px: 2, py: 2.5, borderRadius: 2, border: '1px solid #ccc' }}>
-          <Grid container spacing={3} sx={{ alignItems: 'center' }}>
-            <Grid size={12}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-                <FormControl size="small" sx={{ minWidth: 160 }}>
-                  <InputLabel shrink>Time Range</InputLabel>
-                  <Select
-                    value={timeRange}
-                    label="Time Range"
-                    onChange={(e) => handleTimeRangeChange(e.target.value)}
-                    displayEmpty
-                    renderValue={timeRange === '' ? () => <span style={{ color: '#9e9e9e' }}>Select</span> : undefined}
-                  >
-                    <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
-                    {TIME_RANGE_OPTIONS.map(o => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
-                  </Select>
-                </FormControl>
-                <TextField
-                  label="From" type="datetime-local" size="small" value={fromDate}
-                  disabled={timeRange !== 'custom'}
-                  onChange={(e) => { setFromDate(e.target.value); setIsTimeOverridden(true); }}
-                  slotProps={{ inputLabel: { shrink: true } }}
-                  sx={{ minWidth: 200 }}
-                />
-                <TextField
-                  label="To" type="datetime-local" size="small" value={toDate}
-                  disabled={timeRange !== 'custom'}
-                  onChange={(e) => { setToDate(e.target.value); setIsTimeOverridden(true); }}
-                  slotProps={{ inputLabel: { shrink: true } }}
-                  sx={{ minWidth: 200 }}
-                />
+        <FormControl size="small" sx={{ minWidth: 200 }} disabled={!isAssetSelected}>
+          <InputLabel shrink>Sensor/Tag</InputLabel>
+          <Select
+            value={selectedSensorId}
+            onChange={(e) => setSelectedSensorId(e.target.value as number | '')}
+            label="Sensor/Tag"
+            displayEmpty
+          >
+            <MenuItem value="">All Sensors/Tags</MenuItem>
+            {availableSensors.map(s => (
+              <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
-                <FormControl size="small" sx={{ minWidth: 200 }} disabled={!isAssetSelected}>
-                  <InputLabel shrink>Sensor/Tag</InputLabel>
-                  <Select
-                    value={selectedSensorId}
-                    onChange={(e) => setSelectedSensorId(e.target.value as number | '')}
-                    label="Sensor/Tag"
-                    displayEmpty
-                  >
-                    <MenuItem value="">All Sensors/Tags</MenuItem>
-                    {availableSensors.map(s => (
-                      <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-
-
-                <Box sx={{ flex: 1 }} />
-                <Button
-                  variant="contained"
-                  color="secondary"
-                  onClick={handleViewClick}
-                  sx={{ fontWeight: 700, px: 3, py: 1, ml: 1 }}
-                >
-                  View
-                </Button>
-              </Box>
-            </Grid>
-          </Grid>
-        </Paper>
+        <Button
+          variant="contained"
+          onClick={handleViewClick}
+          sx={{ minWidth: 90, fontWeight: 600, height: 35, backgroundColor: '#1a1a1a', }}
+        >
+          View
+        </Button>
       </Box>
+
 
       {hierarchyLoading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
@@ -781,6 +779,7 @@ export const Dashboard: React.FC = () => {
             <Grid container spacing={3}>
               {appliedSensors.length === 0 && telemetryPoints.length === 0 && !telemetryLoading ? (
                 <Grid size={12}>
+                  
                   <Paper sx={{ p: 6, textAlign: 'center', border: '1px solid #ccc', borderRadius: 2 }}>
                     <Typography variant="h6" color="text.secondary" gutterBottom sx={{ fontWeight: 600 }}>
                       No Telemetry Data Loaded
@@ -809,13 +808,13 @@ export const Dashboard: React.FC = () => {
                   .sort((a, b) => {
                     const aSid = a.sensor_metadata?.sensor_id || '';
                     const bSid = b.sensor_metadata?.sensor_id || '';
-                    
-                    const aAdvisory = advisories.find(adv => 
-                      (adv.node_id === a.id || adv.sensor_id === aSid) && 
+
+                    const aAdvisory = advisories.find(adv =>
+                      (adv.node_id === a.id || adv.sensor_id === aSid) &&
                       adv.status !== AdvisoryStatus.RESOLVED
                     );
-                    const bAdvisory = advisories.find(adv => 
-                      (adv.node_id === b.id || adv.sensor_id === bSid) && 
+                    const bAdvisory = advisories.find(adv =>
+                      (adv.node_id === b.id || adv.sensor_id === bSid) &&
                       adv.status !== AdvisoryStatus.RESOLVED
                     );
 
@@ -828,8 +827,8 @@ export const Dashboard: React.FC = () => {
                   .map(sensor => {
                     const data = getSensorDataPoints(sensor);
                     const unit = sensor.sensor_metadata?.unit || '';
-                    const sensorAdvisory = advisories.find(a => 
-                      a.node_id === sensor.id || 
+                    const sensorAdvisory = advisories.find(a =>
+                      a.node_id === sensor.id ||
                       a.sensor_id === sensor.sensor_metadata?.sensor_id
                     );
                     const hasActiveAdvisory = sensorAdvisory && sensorAdvisory.status !== AdvisoryStatus.RESOLVED;
@@ -857,83 +856,72 @@ export const Dashboard: React.FC = () => {
                             </Paper>
                           </Grid>
                           {/* Detailed Advisory Panel for this sensor */}
-                          <Grid size={4}>
-                            <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc', display: 'flex', flexDirection: 'column', height: '100%' }}>
-                              {hasActiveAdvisory ? (
-                                <>
-                                  {/* Scrollable Content Area */}
-                                  <Box sx={{ flex: 1, overflowY: 'auto', pr: 0.5, display: 'flex', flexDirection: 'column', gap: 2, mb: 1 }}>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                      <Box>
-                                        <Typography variant="subtitle2" sx={{ color: 'secondary.main', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
-                                          ADVISORY INFO
-                                        </Typography>
-                                        <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.2, mt: 0.5 }}>{sensorAdvisory.asset || 'Equipment Advisory'}</Typography>
-                                      </Box>
-                                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.5 }}>
-                                        <Chip
-                                          label={getSeverityLevelFull(sensorAdvisory.severity)}
-                                          size="small"
-                                          sx={{ backgroundColor: getSeverityBgColor(sensorAdvisory.severity), color: getSeverityColor(sensorAdvisory.severity), fontWeight: 700, borderRadius: '4px' }}
-                                        />
-                                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, textAlign: 'right' }}>
-                                          {new Date(sensorAdvisory.detected_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                        </Typography>
-                                      </Box>
-                                    </Box>
+                          {hasActiveAdvisory ? (<Card className="process-analysis__chart-card process-analysis__advisory-card" sx={{ flex: '0 0 30%', }}>
+                            <Box className="process-analysis__chart-header" sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography className="process-analysis__chart-title">Advisory</Typography>
+                              <Chip
+                                label={getSeverityLevelFull(sensorAdvisory.severity)}
+                                size="small"
+                                sx={{ backgroundColor: getSeverityBgColor(sensorAdvisory.severity), color: getSeverityColor(sensorAdvisory.severity), fontWeight: 600 }}
+                              />
+                            </Box>
 
-                                    <Box>
-                                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 600 }}>ADVISORY MESSAGE</Typography>
-                                      <Typography variant="body2" sx={{ lineHeight: 1.5, mt: 0.5 }}>{sensorAdvisory.description}</Typography>
-                                    </Box>
-                                  </Box>
+                            <Box className="process-analysis__advisory-content">
+                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <Typography className="process-analysis__advisory-alert-title">{sensorAdvisory.asset || 'Equipment Advisory'}</Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, textAlign: 'right' }}>
+                                  {new Date(sensorAdvisory.detected_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                </Typography>
+                              </Box>
+                              <Typography className="process-analysis__advisory-description">
+                                {sensorAdvisory.description}
+                              </Typography>
 
-                                  {/* Action Buttons Box */}
-                                  <Box sx={{ display: 'flex', gap: 2, pt: 1.5, borderTop: '1px solid #eee' }}>
-                                    <Button
-                                      fullWidth
-                                      variant="outlined"
-                                      color="secondary"
-                                      size="small"
-                                      disabled={sensorAdvisory.status === 'acknowledged'}
-                                      onClick={async () => {
-                                        try {
-                                          await api.advisories.update(sensorAdvisory.id, { status: AdvisoryStatus.ACKNOWLEDGED });
-                                          setAdvisories(prev => prev.map(a => a.id === sensorAdvisory.id ? { ...a, status: AdvisoryStatus.ACKNOWLEDGED } : a));
-                                        } catch (err) {
-                                          console.error("Failed to acknowledge advisory:", err);
-                                        }
-                                      }}
-                                      sx={{ fontWeight: 700, py: 1 }}
-                                    >
-                                      {sensorAdvisory.status === 'acknowledged' ? 'Acknowledged' : 'Acknowledge'}
-                                    </Button>
-                                    <Button
-                                      fullWidth
-                                      variant="contained"
-                                      color="secondary"
-                                      size="small"
-                                      onClick={() => {
-                                        navigate('/root-cause', { state: { advisoryId: sensorAdvisory.id, selectedNodeName: sensorAdvisory.asset || '' } });
-                                      }}
-                                      sx={{ fontWeight: 700, py: 1 }}
-                                    >
-                                      Initiate RCA
-                                    </Button>
-                                  </Box>
-                                </>
-                              ) : (
-                                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', py: 4 }}>
-                                  <Typography variant="subtitle1" sx={{ color: 'text.secondary', fontWeight: 700 }}>
-                                    No Advisory for this Sensor/Tag
-                                  </Typography>
-                                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, px: 2 }}>
-                                    This parameter is currently operating within normal limits.
-                                  </Typography>
-                                </Box>
-                              )}
-                            </Paper>
-                          </Grid>
+                              <Box className="process-analysis__advisory-actions">
+                                <Button variant="outlined" size="small"
+                                  disabled={sensorAdvisory.status === 'acknowledged'}
+                                  sx={{
+                                    borderColor: '#00A3E0',
+                                    color: '#00A3E0',
+                                    // fontWeight: 500,
+                                    '&:hover': {
+                                      backgroundColor: '#00a4e056',
+                                      // fontWeight: 600,
+                                    },
+                                  }}
+                                  onClick={async () => {
+                                    try {
+                                      await api.advisories.update(sensorAdvisory.id, { status: AdvisoryStatus.ACKNOWLEDGED });
+                                      setAdvisories(prev => prev.map(a => a.id === sensorAdvisory.id ? { ...a, status: AdvisoryStatus.ACKNOWLEDGED } : a));
+                                    } catch (err) {
+                                      console.error("Failed to acknowledge advisory:", err);
+                                    }
+                                  }}
+                                >{sensorAdvisory.status === 'acknowledged' ? 'Acknowledged' : 'Acknowledge'}
+                                </Button>
+
+                                <Button variant="contained" size="small"
+                                  onClick={() => {
+                                    navigate('/root-cause', { state: { advisoryId: sensorAdvisory.id, selectedNodeName: sensorAdvisory.asset || '' } });
+                                  }}>
+                                  Initiate RCA
+                                </Button>
+                              </Box>
+                            </Box>
+                          </Card>
+                          ) : (
+                            <Card className="process-analysis__chart-card process-analysis__advisory-card" sx={{ flex: '0 0 30%', }}>
+
+                              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', py: 4 }}>
+                                <Typography variant="subtitle1" sx={{ color: 'text.secondary', fontWeight: 700 }}>
+                                  No Advisory for this Sensor/Tag
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, px: 2 }}>
+                                  This parameter is currently operating within normal limits.
+                                </Typography>
+                              </Box>
+                            </Card>
+                          )}
                         </Grid>
                       </Grid>
                     );
