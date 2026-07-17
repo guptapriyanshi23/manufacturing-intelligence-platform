@@ -21,11 +21,9 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Typography,
-  Breadcrumbs,
   TextField,
+  Typography,
 } from '@mui/material';
-import { NavigateNext as NavigateNextIcon } from '@mui/icons-material';
 import type { SelectChangeEvent } from '@mui/material/Select';
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
@@ -35,6 +33,7 @@ import { getSeverityColor, getSeverityBgColor, severityOptions, getSeverityLevel
 import { statusOptions } from '../../constants/status';
 import type { HierarchyNode } from '../../types/hierarchy';
 import { AdvisoryStatus, NodeType, TimeRange, TIME_RANGE_OPTIONS } from '../../types/enums';
+import BreadCrumsBar from '../../components/BreadCrumsBar/BreadCrumsBar';
 
 const getDateRange = (rangeValue: string) => {
   const now = new Date();
@@ -314,19 +313,7 @@ export const Advisories: React.FC = () => {
         url="/advisories"
       />
 
-      {breadcrumbs.length > 0 && (
-        <Breadcrumbs separator={<NavigateNextIcon fontSize="small" sx={{ color: 'text.secondary' }} />} sx={{ mb: 2 }}>
-          {breadcrumbs.map((name, index, arr) => (
-            <Typography
-              key={name}
-              color={index === arr.length - 1 ? 'text.primary' : 'text.secondary'}
-              sx={{ fontWeight: index === arr.length - 1 ? 700 : 500, fontSize: '0.85rem' }}
-            >
-              {name}
-            </Typography>
-          ))}
-        </Breadcrumbs>
-      )}
+      <BreadCrumsBar breadcrumbsData={breadcrumbs}/>
 
       <Paper sx={{ px: 2, py: 2.5, mb: 3, border: '1px solid #ccc' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>

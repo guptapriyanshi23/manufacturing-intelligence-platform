@@ -8,35 +8,26 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Paper,
   Typography,
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
   Checkbox,
-  Chip,
-  Breadcrumbs,
 } from '@mui/material';
-import { NavigateNext as NavigateNextIcon } from '@mui/icons-material';
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
-import { getSeverityColor, getSeverityBgColor, getSeverityLevel } from '../../constants/severity';
+import { getSeverityLevel, severityClassMap, getSeverityLevelFull } from '../../constants/severity';
 import { api } from '../../api/client';
 import type { HierarchyNode } from '../../types/hierarchy';
 import { AlertStatus, NodeType } from '../../types/enums';
+import BreadCrumsBar from '../../components/BreadCrumsBar/BreadCrumsBar';
+import { fmtDate, fmtTime } from '../../constants/datetimefmt';
 
-
-
-const SEVERITY_DISPLAY_MAP: Record<string, string> = {
-  S1: 'S1 - Critical',
-  S2: 'S2 - High',
-  S3: 'S3 - Warning',
-  S4: 'S4 - Low',
-  S5: 'S5 - Informational',
-};
+const InboxIcon = () => (
+  <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5v-3h3.56c.69 1.19 1.97 2 3.45 2s2.75-.81 3.45-2H19v3zm0-5h-4.99c0 1.1-.9 1.99-2 1.99S10 15.1 10 14H5V5h14v9z" /></svg>
+);
 
 const getStatusFromSeverity = (severity: string): string => {
   const level = getSeverityLevel(severity);
@@ -44,17 +35,10 @@ const getStatusFromSeverity = (severity: string): string => {
   if (level === 'S3' || level === 'S4') return 'Monitor';
   return 'Watch';
 };
-
-const getStatusStyles = (status: string) => {
-  switch (status) {
-    case 'Act Now':
-      return { color: '#B91C1C', bgColor: 'rgba(185, 28, 28, 0.12)' };
-    case 'Monitor':
-      return { color: '#D97706', bgColor: 'rgba(217, 119, 6, 0.12)' };
-    case 'Watch':
-    default:
-      return { color: '#2563EB', bgColor: 'rgba(37, 99, 235, 0.12)' };
-  }
+const tableStatusClass = (status: string): string => {
+  if (status === 'Act now') return 'alerts-table__status alerts-table__status--act';
+  if (status === 'Monitor') return 'alerts-table__status alerts-table__status--monitor';
+  return 'alerts-table__status alerts-table__status--watch';
 };
 
 const getBreadcrumbsPath = (nodeId: number, flatNodes: HierarchyNode[]): string[] => {
@@ -350,218 +334,218 @@ export const Alerts: React.FC = () => {
 
   return (
     <PageContainer>
-     <PageHeader
+      <PageHeader
         title="Alerts Dashboard"
         url="/"
       />
 
-      {breadcrumbs.length > 0 && (
-        <Breadcrumbs separator={<NavigateNextIcon fontSize="small" sx={{ color: 'text.secondary' }} />} sx={{ mb: 2 }}>
-          {breadcrumbs.map((name, index, arr) => (
-            <Typography
-              key={name}
-              color={index === arr.length - 1 ? 'text.primary' : 'text.secondary'}
-              sx={{ fontWeight: index === arr.length - 1 ? 700 : 500, fontSize: '0.85rem' }}
-            >
-              {name}
-            </Typography>
-          ))}
-        </Breadcrumbs>
-      )}
+      <BreadCrumsBar breadcrumbsData={breadcrumbs} />
 
-      {/* Filters Section */}
-      <Paper sx={{ px: 3, py: 2.5, mb: 3, border: '1px solid #ccc' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
-          {/* Left Side: Severity Chips */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            {['All', 'S1', 'S2', 'S3', 'S4', 'S5'].map((sev) => {
-              const isSelected = selectedSeverities.includes(sev);
-              const handleSeverityClick = () => {
-                if (sev === 'All') {
-                  setSelectedSeverities(['All']);
-                } else {
-                  setSelectedSeverities((prev) => {
-                    const next = prev.filter(s => s !== 'All');
-                    if (next.includes(sev)) {
-                      const filtered = next.filter(s => s !== sev);
-                      return filtered.length === 0 ? ['All'] : filtered;
-                    } else {
-                      return [...next, sev];
-                    }
-                  });
-                }
-              };
+      {/* Stats Row */}
+      <div className="stats-row alerts-severity-filters-row">
+        <div className="deviation-filters alerts-severity-filters">
+          {['All', 'S1', 'S2', 'S3', 'S4', 'S5'].map((sev) => {
+            const isSelected = selectedSeverities.includes(sev);
+            const handleSeverityClick = () => {
+              if (sev === 'All') {
+                setSelectedSeverities(['All']);
+              } else {
+                setSelectedSeverities((prev) => {
+                  const next = prev.filter(s => s !== 'All');
+                  if (next.includes(sev)) {
+                    const filtered = next.filter(s => s !== sev);
+                    return filtered.length === 0 ? ['All'] : filtered;
+                  } else {
+                    return [...next, sev];
+                  }
+                });
+              }
+            };
+            const clsName = `deviation-chip deviation-chip--${severityClassMap[sev]}${isSelected ? ' deviation-chip--active' : ''}`;
 
-              return (
-                <Chip
-                  key={sev}
-                  label={sev}
-                  clickable
-                  onClick={handleSeverityClick}
-                  color={isSelected ? 'secondary' : 'default'}
-                  variant={isSelected ? 'filled' : 'outlined'}
-                  sx={{
-                    fontWeight: 600,
-                    borderRadius: '16px',
-                    ...(isSelected ? {} : {
-                      borderColor: '#ccc',
-                      color: 'text.primary',
-                      '&:hover': {
-                        backgroundColor: '#f5f5f5',
-                      }
-                    })
-                  }}
-                />
-              );
-            })}
-          </Box>
-
-          {/* Right Side: Asset, Component Dropdowns and View Button */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <FormControl size="small" sx={{ minWidth: 180 }} disabled={!isAssetSelected}>
-              <InputLabel id="sensor-select-label">Sensor/Tag</InputLabel>
-              <Select
-                labelId="sensor-select-label"
-                value={selectedSensorId}
-                label="Sensor/Tag"
-                onChange={(e) => setSelectedSensorId(e.target.value as number | '')}
+            return (
+              <button key={sev}
+                className={clsName}
+                onClick={handleSeverityClick}
               >
-                <MenuItem value="">All Sensors/Tags</MenuItem>
-                {availableSensors.map(s => (
-                  <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+                <span className="deviation-chip__label">{sev}</span>
+                <span className="deviation-chip__count">25</span>
+              </button>
+            );
+          })}
+        </div>
 
-
-
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={handleViewClick}
-              sx={{ minWidth: 90, fontWeight: 600, height: 40 }}
+        <div className="alerts-table-filters">
+          <FormControl size="small" className="alerts-table-filters__field" disabled={true}>
+            <InputLabel id="alerts-asset-filter-label">Asset</InputLabel>
+            <Select
+              labelId="alerts-asset-filter-label"
+              label="Asset"
+              value={selectedSensorId}
+              onChange={(e) => setSelectedSensorId(e.target.value as number | '')}
             >
-              View
-            </Button>
-          </Box>
-        </Box>
-      </Paper>
+              <MenuItem value="all">All</MenuItem>
+              {availableSensors.map(s => (
+                <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl size="small" className="alerts-table-filters__field" disabled={!isAssetSelected}>
+            <InputLabel id="alerts-tag-filter-label">Tag</InputLabel>
+            <Select
+              labelId="alerts-tag-filter-label"
+              label="Tag"
+              value={selectedSensorId}
+              onChange={(e) => setSelectedSensorId(e.target.value as number | '')}
+            >
+              <MenuItem value="all">All</MenuItem>
+              {availableSensors.map(s => (
+                <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={handleViewClick}
+            sx={{ minWidth: 90, fontWeight: 600, height: 40 }}
+          >
+            View
+          </Button>
+        </div>
+
+      </div>
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
           <CircularProgress color="secondary" />
         </Box>
-      ) : (
-        <TableContainer component={Paper} sx={{ border: '1px solid #ccc', boxShadow: 'none' }}>
-          <Box sx={{ px: 2, py: 1.2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #ccc' }}>
-            <Typography variant="body1" sx={{ fontWeight: 400 }}>
-              Total Alerts :&nbsp;
-              <Typography component="span" variant="subtitle1" color="text.secondary" sx={{ fontWeight: 400 }}>
-                {filteredAlerts.length}
-              </Typography>
-            </Typography>
-            <Button
-              variant="outlined"
-              size="small"
-              disabled={selectedIds.length === 0}
-              onClick={handleAcknowledge}
-              sx={{ fontWeight: 600, textTransform: 'none' }}
-            >
-              Acknowledge
-            </Button>
-          </Box>
+      ) : (<>
+        {/* Alert List */}
+        <div className="alert-list" style={{ paddingTop: '1rem' }}>
 
-          <Table sx={{ minWidth: 720 }}>
-            <TableHead>
-              <TableRow>
-                <TableCell padding="checkbox" sx={{ borderBottom: '1px solid #ccc' }}>
-                  <Checkbox indeterminate={someSelected} checked={allSelected} onChange={handleSelectAll} color="primary" />
-                </TableCell>
-                {['Severity', 'Asset', 'Tag', 'Status', 'Advisory message', 'Detected At'].map(col => (
-                  <TableCell key={col} sx={{ fontWeight: 700, borderBottom: '1px solid #ccc' }}>{col}</TableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {!selectedNodeId || flatNodes.find(n => n.id === selectedNodeId)?.node_type === NodeType.SITE ? (
-                <TableRow>
-                  <TableCell colSpan={7} sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
-                    Please select an Area or deeper node from the Plant Hierarchy sidebar to load alerts.
-                  </TableCell>
-                </TableRow>
-              ) : filteredAlerts.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
-                    No alerts found for this selection. Click the <strong>View</strong> button to search other filters.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredAlerts.map((row) => {
-                  const sevLevel = getSeverityLevel(row.severity);
-                  const sevText = SEVERITY_DISPLAY_MAP[sevLevel] || sevLevel;
-                  const statusText = getStatusFromSeverity(row.severity);
-                  const statusStyles = getStatusStyles(statusText);
+          {filteredAlerts?.length === 0 ? (
+            <div className="empty-state">
+              <InboxIcon />
+              <p>No alerts found for the selected item.</p>
+            </div>
+          ) : (
+            <div className="alerts-table-wrap">
+              <Table size="small" className="alerts-table">
+                <TableHead>
+                  {/* Total + Acknowledge button */}
+                  <TableRow>
+                    <TableCell colSpan={7}>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Typography>
+                          Total Alerts : {filteredAlerts.length}
+                        </Typography>
 
-                  return (
-                    <TableRow
-                      key={row.id}
-                      hover
-                      selected={selectedIds.includes(row.id)}
-                      sx={{ cursor: 'pointer', '&:last-child td': { borderBottom: 0 } }}
-                      onClick={() => {
-                        navigate('/dashboard', { state: { selectedNodeId: row.node_id, alertId: row.id } });
-                      }}
-                    >
-                      <TableCell padding="checkbox" sx={{ borderBottom: '1px solid #ccc' }}>
-                        <Checkbox checked={selectedIds.includes(row.id)} color="primary" onClick={(e) => e.stopPropagation()} onChange={() => handleSelectRow(row.id)} />
-                      </TableCell>
-                      <TableCell sx={{ borderBottom: '1px solid #ccc' }}>
-                        <Chip
-                          label={sevText}
+                        <Button
+                          variant="outlined"
                           size="small"
+                          disabled={selectedIds.length === 0}
+                          onClick={handleAcknowledge}
                           sx={{
-                            backgroundColor: getSeverityBgColor(row.severity),
-                            color: getSeverityColor(row.severity),
-                            fontWeight: 700,
-                            borderRadius: '4px',
+                            my: 0.5,
+                            borderColor: '#00A3E0',
+                            color: '#00A3E0',
+                            fontWeight: 500,
+                            '&:hover': {
+                              backgroundColor: '#00a4e056',
+                              fontWeight: 600,
+                            },
                           }}
-                        />
-                      </TableCell>
-                      <TableCell sx={{ borderBottom: '1px solid #ccc', fontWeight: 600 }}>{getAssetName(row)}</TableCell>
-                      <TableCell sx={{ borderBottom: '1px solid #ccc' }}>{getComponentName(row)}</TableCell>
-                      <TableCell sx={{ borderBottom: '1px solid #ccc' }}>
-                        <Chip
-                          label={statusText.toUpperCase()}
-                          size="small"
-                          sx={{
-                            backgroundColor: statusStyles.bgColor,
-                            color: statusStyles.color,
-                            border: `1px solid ${statusStyles.color}33`,
-                            fontWeight: 600,
-                            fontSize: '0.75rem',
-                            borderRadius: '4px',
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell sx={{ borderBottom: '1px solid #ccc' }}>{row.description}</TableCell>
-                      <TableCell sx={{ borderBottom: '1px solid #ccc' }}>
-                        {new Date(row.timestamp).toLocaleString('en-IN', {
-                          timeZone: 'Asia/Kolkata',
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                          hour: 'numeric',
-                          minute: '2-digit',
-                          hour12: true
-                        })}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                        >
+                          Acknowledge
+                        </Button>
+                      </Box>
+                    </TableCell>
+
+                  </TableRow>
+                  <TableRow>
+                    <TableCell padding="checkbox" >
+                      <Checkbox indeterminate={someSelected} checked={allSelected} onChange={handleSelectAll}
+                        sx={{
+                          '&.Mui-checked': {
+                            color: '#00A3E0',
+                          },
+                          '&.MuiCheckbox-indeterminate': {
+                            color: '#00A3E0',
+                          },
+                          '& .MuiSvgIcon-root': {
+                            fontSize: 18,
+                          },
+                        }}
+                      />
+                    </TableCell>
+                    {['Severity', 'Asset', 'Tag', 'Status', 'Advisory message', 'Timestamp'].map(col => (
+                      <TableCell key={col}>{col}</TableCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
+
+                <TableBody>
+                  {filteredAlerts?.map((row) => {
+                    const statusText = getStatusFromSeverity(row?.severity);
+                    const badgeClsName = `severity-badge severity-s${row?.severity}`;
+                    const statusClsName = tableStatusClass(statusText);
+                    return (
+                      <TableRow
+                        key={row.id}
+                        onClick={() => {
+                          navigate('/dashboard', { state: { selectedNodeId: row.node_id, alertId: row.id } });
+                        }}
+                        sx={{
+                          cursor: 'pointer',
+                          '&:hover': {
+                            backgroundColor: '#f8fafc',
+                          },
+                        }}
+                      >
+                        <TableCell padding="checkbox" >
+                          <Checkbox checked={selectedIds.includes(row.id)} onClick={(e) => e.stopPropagation()}
+                            onChange={() => handleSelectRow(row.id)}
+                            sx={{
+                              '&.Mui-checked': {
+                                color: '#00A3E0',
+                              },
+                              '& .MuiSvgIcon-root': {
+                                fontSize: 18,
+                              },
+                            }} />
+                        </TableCell>
+                        <TableCell>
+                          <span className={badgeClsName}>{getSeverityLevelFull(row.severity)}</span>
+                        </TableCell>
+                        <TableCell>{getAssetName(row)}</TableCell>
+                        <TableCell>{getComponentName(row)}</TableCell>
+                        <TableCell>
+                          <span className={statusClsName}>{statusText}</span>
+                        </TableCell>
+                        <TableCell>{row.description}</TableCell>
+                        <TableCell>
+                          {`${fmtDate(new Date(row?.timestamp))} ${fmtTime(new Date(row?.timestamp))}`}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
+
+      </>
       )}
     </PageContainer>
   );

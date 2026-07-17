@@ -3,7 +3,6 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Drawer,
-  Toolbar,
   Typography,
   CircularProgress,
 } from '@mui/material';
