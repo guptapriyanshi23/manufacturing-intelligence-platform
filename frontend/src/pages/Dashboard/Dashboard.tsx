@@ -14,20 +14,17 @@ import { api } from '../../api/client';
 import type { HierarchyNode } from '../../types/hierarchy';
 import { getSeverityBgColor, getSeverityColor, getSeverityLevelFull } from '../../constants/severity';
 import { PageHeader } from '../../components/Cards/PageHeader';
-import { AdvisoryStatus, SeverityLevel } from '../../types/enums';
-
-const TIME_RANGE_OPTIONS = [
-  { value: 'last_1h', label: 'Last 1 Hour' },
-  { value: 'last_8h', label: 'Last 8 Hours' },
-  { value: 'last_24h', label: 'Last 24 Hours' },
-  { value: 'last_7d', label: 'Last Week' },
-  { value: 'last_30d', label: 'Last 30 Days' },
-  { value: 'custom', label: 'Custom' },
-];
+import { AdvisoryStatus, SeverityLevel, TimeRange, TIME_RANGE_OPTIONS, NodeType } from '../../types/enums';
 
 const getDateRange = (rangeValue: string) => {
   const now = new Date();
-  const map: Record<string, number> = { last_1h: 1, last_8h: 8, last_24h: 24, last_7d: 168, last_30d: 720 };
+  const map: Record<string, number> = {
+    [TimeRange.LAST_1H]: 1,
+    [TimeRange.LAST_8H]: 8,
+    [TimeRange.LAST_24H]: 24,
+    [TimeRange.LAST_7D]: 168,
+    [TimeRange.LAST_30D]: 720,
+  };
   const hours = map[rangeValue] ?? 24;
   const from = new Date(now.getTime() - hours * 60 * 60 * 1000);
   return { from: from.toISOString().slice(0, 16), to: now.toISOString().slice(0, 16) };
@@ -74,12 +71,12 @@ export const Dashboard: React.FC = () => {
 
   React.useEffect(() => {
     if (flatNodes.length > 0) {
-      const sitesList = flatNodes.filter(n => n.node_type === 'site');
+      const sitesList = flatNodes.filter(n => n.node_type === NodeType.SITE);
       if (initialNodeId) {
         let current: HierarchyNode | undefined = flatNodes.find(n => n.id === initialNodeId);
         let siteId: number | '' = '';
         while (current) {
-          if (current.node_type === 'site') {
+          if (current.node_type === NodeType.SITE) {
             siteId = current.id;
             break;
           }
@@ -128,11 +125,11 @@ export const Dashboard: React.FC = () => {
 
   // Sensor/Tag dropdown options
   const availableSensors = React.useMemo(() => {
-    return descendantsOfSidePanel.filter(n => n.node_type === 'sensor');
+    return descendantsOfSidePanel.filter(n => n.node_type === NodeType.SENSOR);
   }, [descendantsOfSidePanel]);
 
   const isAssetSelected = React.useMemo(() => {
-    return flatNodes.find(n => n.id === initialNodeId)?.node_type === 'asset';
+    return flatNodes.find(n => n.id === initialNodeId)?.node_type === NodeType.ASSET;
   }, [initialNodeId, flatNodes]);
 
   // Autopopulate and sync dropdown selections based on the side panel hierarchy node selection in Dashboard
@@ -147,7 +144,7 @@ export const Dashboard: React.FC = () => {
     const incomingSensorId = location.state?.originalSensorNodeId;
     if (incomingSensorId) {
       const sensorNode = flatNodes.find(n => n.id === incomingSensorId);
-      if (sensorNode && sensorNode.node_type === 'sensor') {
+      if (sensorNode && sensorNode.node_type === NodeType.SENSOR) {
         setSelectedSensorId(sensorNode.id);
         return;
       }
@@ -156,7 +153,7 @@ export const Dashboard: React.FC = () => {
     const node = flatNodes.find(n => n.id === initialNodeId);
     if (!node) return;
 
-    if (node.node_type === 'sensor') {
+    if (node.node_type === NodeType.SENSOR) {
       setSelectedSensorId(node.id);
     } else {
       if (selectedSensorId && !availableSensors.some(s => s.id === selectedSensorId)) {
@@ -183,11 +180,11 @@ export const Dashboard: React.FC = () => {
     return advisories.find(a => a.node_id === initialNodeId || descendantIds.includes(a.node_id)) || null;
   }, [initialNodeId, advisories, getDescendantNodes]);
 
-  const initRange = getDateRange('last_24h');
-  const [timeRange, setTimeRange] = useState('last_24h');
+  const initRange = getDateRange(TimeRange.LAST_24H);
+  const [timeRange, setTimeRange] = useState<string>(TimeRange.LAST_24H);
   const [fromDate, setFromDate] = useState(initRange.from);
   const [toDate, setToDate] = useState(initRange.to);
-  const [appliedTimeRange, setAppliedTimeRange] = useState('last_24h');
+  const [appliedTimeRange, setAppliedTimeRange] = useState<string>(TimeRange.LAST_24H);
   const [appliedFromDate, setAppliedFromDate] = useState(initRange.from);
   const [appliedToDate, setAppliedToDate] = useState(initRange.to);
   const [isTimeOverridden, setIsTimeOverridden] = useState(false);
@@ -197,7 +194,7 @@ export const Dashboard: React.FC = () => {
     setIsTimeOverridden(true);
 
     // Don't auto-update dates for custom range
-    if (val !== 'custom') {
+    if (val !== TimeRange.CUSTOM) {
       const { from, to } = getDateRange(val);
       setFromDate(from);
       setToDate(to);
@@ -205,14 +202,20 @@ export const Dashboard: React.FC = () => {
   };
 
   const getHoursFromRange = () => {
-    const map: Record<string, number> = { last_1h: 1, last_8h: 8, last_24h: 24, last_7d: 168, last_30d: 720 };
+    const map: Record<string, number> = {
+      [TimeRange.LAST_1H]: 1,
+      [TimeRange.LAST_8H]: 8,
+      [TimeRange.LAST_24H]: 24,
+      [TimeRange.LAST_7D]: 168,
+      [TimeRange.LAST_30D]: 720,
+    };
     return map[timeRange] ?? 24;
   };
 
   // Telemetry line chart expand state
   const [expandedSensor, setExpandedSensor] = useState<HierarchyNode | null>(null);
-  const sensorExpInit = getDateRange('last_24h');
-  const [sensorExpTimeRange, setSensorExpTimeRange] = useState('last_24h');
+  const sensorExpInit = getDateRange(TimeRange.LAST_24H);
+  const [sensorExpTimeRange, setSensorExpTimeRange] = useState<string>(TimeRange.LAST_24H);
   const [sensorExpFrom, setSensorExpFrom] = useState(sensorExpInit.from);
   const [sensorExpTo, setSensorExpTo] = useState(sensorExpInit.to);
   const [expandedTelemetry, setExpandedTelemetry] = useState<TelemetryPoint[]>([]);
@@ -242,12 +245,18 @@ export const Dashboard: React.FC = () => {
 
     setExpandedTelemetryLoading(true);
     const getExpHours = () => {
-      const map: Record<string, number> = { last_1h: 1, last_8h: 8, last_24h: 24, last_7d: 168, last_30d: 720 };
+      const map: Record<string, number> = {
+        [TimeRange.LAST_1H]: 1,
+        [TimeRange.LAST_8H]: 8,
+        [TimeRange.LAST_24H]: 24,
+        [TimeRange.LAST_7D]: 168,
+        [TimeRange.LAST_30D]: 720,
+      };
       return map[sensorExpTimeRange] ?? 24;
     };
 
-    const customStart = sensorExpTimeRange === 'custom' ? new Date(sensorExpFrom).toISOString() : undefined;
-    const customEnd = sensorExpTimeRange === 'custom' ? new Date(sensorExpTo).toISOString() : undefined;
+    const customStart = sensorExpTimeRange === TimeRange.CUSTOM ? new Date(sensorExpFrom).toISOString() : undefined;
+    const customEnd = sensorExpTimeRange === TimeRange.CUSTOM ? new Date(sensorExpTo).toISOString() : undefined;
 
     api.dashboard.getTelemetry(
       [sid],
@@ -341,7 +350,7 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     if (activeAdvisory && activeAdvisory.status !== AdvisoryStatus.RESOLVED) {
       const window = getAdvisoryTimeWindow(activeAdvisory);
-      setTimeRange('custom');
+      setTimeRange(TimeRange.CUSTOM);
       setFromDate(window.fromLocal);
       setToDate(window.toLocal);
       setIsTimeOverridden(false);
@@ -373,7 +382,7 @@ export const Dashboard: React.FC = () => {
 
       const node = flatNodes.find(n => n.id === currentId);
       if (node) {
-        if (node.node_type === 'sensor') {
+        if (node.node_type === NodeType.SENSOR) {
           sensors.push(node);
         }
         flatNodes
@@ -391,8 +400,8 @@ export const Dashboard: React.FC = () => {
     }
 
     setTelemetryLoading(true);
-    let customStart = timeRange === 'custom' ? new Date(fromDate).toISOString() : undefined;
-    let customEnd = timeRange === 'custom' ? new Date(toDate).toISOString() : undefined;
+    let customStart = timeRange === TimeRange.CUSTOM ? new Date(fromDate).toISOString() : undefined;
+    let customEnd = timeRange === TimeRange.CUSTOM ? new Date(toDate).toISOString() : undefined;
 
     if (activeAdvisory && activeAdvisory.status !== AdvisoryStatus.RESOLVED && !isTimeOverridden) {
       const win = getAdvisoryTimeWindow(activeAdvisory);
@@ -434,7 +443,7 @@ export const Dashboard: React.FC = () => {
 
         const node = flatNodes.find(n => n.id === currentId);
         if (node) {
-          if (node.node_type === 'sensor') {
+          if (node.node_type === NodeType.SENSOR) {
             sensors.push(node);
           }
           flatNodes
@@ -446,10 +455,10 @@ export const Dashboard: React.FC = () => {
       const sensorIds = sensors.map(s => s.sensor_metadata?.sensor_id).filter(Boolean) as string[];
       if (sensorIds.length > 0) {
         setTelemetryLoading(true);
-        let customStart = timeRange === 'custom' ? new Date(fromDate).toISOString() : undefined;
-        let customEnd = timeRange === 'custom' ? new Date(toDate).toISOString() : undefined;
+        let customStart = timeRange === TimeRange.CUSTOM ? new Date(fromDate).toISOString() : undefined;
+        let customEnd = timeRange === TimeRange.CUSTOM ? new Date(toDate).toISOString() : undefined;
 
-        if (activeAdvisory && !isTimeOverridden) {
+        if (activeAdvisory && activeAdvisory.status !== AdvisoryStatus.RESOLVED && !isTimeOverridden) {
           const win = getAdvisoryTimeWindow(activeAdvisory);
           customStart = win.from;
           customEnd = win.to;
@@ -459,9 +468,9 @@ export const Dashboard: React.FC = () => {
           .then((res) => {
             setTelemetryPoints(res);
             setAppliedSensors(sensors);
-            if (activeAdvisory && !isTimeOverridden) {
+            if (activeAdvisory && activeAdvisory.status !== AdvisoryStatus.RESOLVED && !isTimeOverridden) {
               const win = getAdvisoryTimeWindow(activeAdvisory);
-              setAppliedTimeRange('custom');
+              setAppliedTimeRange(TimeRange.CUSTOM);
               setAppliedFromDate(win.fromLocal);
               setAppliedToDate(win.toLocal);
             } else {
@@ -563,12 +572,18 @@ export const Dashboard: React.FC = () => {
   const getSensorDataPoints = (sensor: HierarchyNode) => {
     const now = new Date();
     const getAppliedHoursFromRange = () => {
-      const map: Record<string, number> = { last_1h: 1, last_8h: 8, last_24h: 24, last_7d: 168, last_30d: 720 };
+      const map: Record<string, number> = {
+        [TimeRange.LAST_1H]: 1,
+        [TimeRange.LAST_8H]: 8,
+        [TimeRange.LAST_24H]: 24,
+        [TimeRange.LAST_7D]: 168,
+        [TimeRange.LAST_30D]: 720,
+      };
       return map[appliedTimeRange] ?? 24;
     };
     let start = new Date(now.getTime() - getAppliedHoursFromRange() * 60 * 60 * 1000);
     let end = now;
-    if (appliedTimeRange === 'custom') {
+    if (appliedTimeRange === TimeRange.CUSTOM) {
       start = new Date(appliedFromDate);
       end = new Date(appliedToDate);
     }
@@ -682,10 +697,10 @@ export const Dashboard: React.FC = () => {
         </FormControl>
 
         <TextField label="From" type="datetime-local" size="small" value={from}
-          onChange={(e) => onFromChange(e.target.value)} disabled={sensorExpTimeRange !== 'custom'}
+          onChange={(e) => onFromChange(e.target.value)} disabled={sensorExpTimeRange !== TimeRange.CUSTOM}
           slotProps={{ inputLabel: { shrink: true } }} sx={{ minWidth: 200 }} />
         <TextField label="To" type="datetime-local" size="small" value={to}
-          onChange={(e) => onToChange(e.target.value)} disabled={sensorExpTimeRange !== 'custom'}
+          onChange={(e) => onToChange(e.target.value)} disabled={sensorExpTimeRange !== TimeRange.CUSTOM}
           slotProps={{ inputLabel: { shrink: true } }} sx={{ minWidth: 200 }} />
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -737,14 +752,14 @@ export const Dashboard: React.FC = () => {
                 </FormControl>
                 <TextField
                   label="From" type="datetime-local" size="small" value={fromDate}
-                  disabled={timeRange !== 'custom'}
+                  disabled={timeRange !== TimeRange.CUSTOM}
                   onChange={(e) => { setFromDate(e.target.value); setIsTimeOverridden(true); }}
                   slotProps={{ inputLabel: { shrink: true } }}
                   sx={{ minWidth: 200 }}
                 />
                 <TextField
                   label="To" type="datetime-local" size="small" value={toDate}
-                  disabled={timeRange !== 'custom'}
+                  disabled={timeRange !== TimeRange.CUSTOM}
                   onChange={(e) => { setToDate(e.target.value); setIsTimeOverridden(true); }}
                   slotProps={{ inputLabel: { shrink: true } }}
                   sx={{ minWidth: 200 }}
@@ -907,7 +922,7 @@ export const Dashboard: React.FC = () => {
                                       variant="outlined"
                                       color="secondary"
                                       size="small"
-                                      disabled={sensorAdvisory.status === 'acknowledged'}
+                                      disabled={sensorAdvisory.status === AdvisoryStatus.ACKNOWLEDGED}
                                       onClick={async () => {
                                         try {
                                           await api.advisories.update(sensorAdvisory.id, { status: AdvisoryStatus.ACKNOWLEDGED });
@@ -918,7 +933,7 @@ export const Dashboard: React.FC = () => {
                                       }}
                                       sx={{ fontWeight: 700, py: 1 }}
                                     >
-                                      {sensorAdvisory.status === 'acknowledged' ? 'Acknowledged' : 'Acknowledge'}
+                                      {sensorAdvisory.status === AdvisoryStatus.ACKNOWLEDGED ? 'Acknowledged' : 'Acknowledge'}
                                     </Button>
                                     <Button
                                       fullWidth
@@ -968,11 +983,17 @@ export const Dashboard: React.FC = () => {
           {expandedSensor && (() => {
             const getExpStartEnd = () => {
               const now = new Date();
-              const map: Record<string, number> = { last_1h: 1, last_8h: 8, last_24h: 24, last_7d: 168, last_30d: 720 };
+              const map: Record<string, number> = {
+                [TimeRange.LAST_1H]: 1,
+                [TimeRange.LAST_8H]: 8,
+                [TimeRange.LAST_24H]: 24,
+                [TimeRange.LAST_7D]: 168,
+                [TimeRange.LAST_30D]: 720,
+              };
               const hours = map[sensorExpTimeRange] ?? 24;
               let sTime = new Date(now.getTime() - hours * 60 * 60 * 1000);
               let eTime = now;
-              if (sensorExpTimeRange === 'custom') {
+              if (sensorExpTimeRange === TimeRange.CUSTOM) {
                 sTime = new Date(sensorExpFrom);
                 eTime = new Date(sensorExpTo);
               }

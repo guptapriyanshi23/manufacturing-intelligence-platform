@@ -33,7 +33,7 @@ import { api } from '../../api/client';
 import { getSeverityColor, getSeverityBgColor, severityOptions, getSeverityLevelFull } from '../../constants/severity';
 import { statusOptions } from '../../constants/status';
 import type { HierarchyNode } from '../../types/hierarchy';
-import { AdvisoryStatus } from '../../types/enums';
+import { AdvisoryStatus, NodeType } from '../../types/enums';
 
 const getBreadcrumbsPath = (nodeId: number, flatNodes: HierarchyNode[]): string[] => {
   const path: string[] = [];
@@ -100,11 +100,11 @@ export const Advisories: React.FC = () => {
   }, [treeNodeId, flatNodes]);
 
   const availableSensors = useMemo(() => {
-    return descendantsOfSidePanel.filter(n => n.node_type === 'sensor');
+    return descendantsOfSidePanel.filter(n => n.node_type === NodeType.SENSOR);
   }, [descendantsOfSidePanel]);
 
   const isAssetSelected = useMemo(() => {
-    return flatNodes.find(n => n.id === treeNodeId)?.node_type === 'asset';
+    return flatNodes.find(n => n.id === treeNodeId)?.node_type === NodeType.ASSET;
   }, [treeNodeId, flatNodes]);
 
   const [breadcrumbs, setBreadcrumbs] = useState<string[]>([]);
@@ -278,13 +278,13 @@ export const Advisories: React.FC = () => {
               onChange={(e: SelectChangeEvent) => setStatusFilter(e.target.value)}
               displayEmpty
               renderValue={(selected) =>
-                selected ? (String(selected) === 'in_progress' ? 'In Progress' : String(selected).charAt(0).toUpperCase() + String(selected).slice(1)) : <span style={{ color: '#9e9e9e' }}>Select</span>
+                selected ? (String(selected) === AdvisoryStatus.IN_PROGRESS ? 'In Progress' : String(selected).charAt(0).toUpperCase() + String(selected).slice(1)) : <span style={{ color: '#9e9e9e' }}>Select</span>
               }
             >
               <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
               {statusOptions.map((option) => (
                 <MenuItem key={option} value={option}>
-                  {option === 'in_progress' ? 'In Progress' : option.charAt(0).toUpperCase() + option.slice(1)}
+                  {option === AdvisoryStatus.IN_PROGRESS ? 'In Progress' : option.charAt(0).toUpperCase() + option.slice(1)}
                 </MenuItem>
               ))}
             </Select>
@@ -495,7 +495,7 @@ export const Advisories: React.FC = () => {
             </DialogContent>
 
             <DialogActions sx={{ borderTop: '1px solid #e2e8f0', px: 3, py: 2 }}>
-              {selectedAdvisory.status === 'open' && (
+              {selectedAdvisory.status === AdvisoryStatus.OPEN && (
                 <Button
                   variant="contained"
                   color="primary"
@@ -513,7 +513,7 @@ export const Advisories: React.FC = () => {
                   Acknowledge
                 </Button>
               )}
-              {selectedAdvisory.status !== 'resolved' && (
+              {selectedAdvisory.status !== AdvisoryStatus.RESOLVED && (
                 <Button
                   variant="contained"
                   color="secondary"

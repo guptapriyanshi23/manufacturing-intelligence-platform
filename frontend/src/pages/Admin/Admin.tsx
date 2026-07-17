@@ -43,19 +43,30 @@ import { PageHeader } from '../../components/Cards/PageHeader';
 import { api } from '../../api/client';
 import type { HierarchyNode, NodeType } from '../../types/hierarchy';
 import { getSeverityColor, getSeverityBgColor, getSeverityLevelFull } from '../../constants/severity';
-import { SeverityLevel, AlertStatus } from '../../types/enums';
+import { SeverityLevel, AlertStatus, NodeType as NodeTypeEnum } from '../../types/enums';
 
 // ─── Hierarchy constants ────────────────────────────────────────────────────
-const LEVELS: NodeType[] = ['enterprise','site','area','line','station','asset','component','sensor'];
+const LEVELS: NodeType[] = [
+  NodeTypeEnum.SITE,
+  NodeTypeEnum.AREA,
+  NodeTypeEnum.LINE,
+  NodeTypeEnum.ASSET,
+  NodeTypeEnum.SENSOR,
+];
 const LEVEL_LABELS: Record<NodeType, string> = {
-  enterprise: 'Enterprise', site: 'Site / Plant', area: 'Area / Shop / Department',
-  line: 'Line / Unit / Cell', station: 'Station / Subsystem', asset: 'Asset / Equipment',
-  component: 'Component', sensor: 'Sensor / Tag',
+  [NodeTypeEnum.ENTERPRISE]: 'Enterprise',
+  [NodeTypeEnum.SITE]: 'Site',
+  [NodeTypeEnum.AREA]: 'Area',
+  [NodeTypeEnum.LINE]: 'Line',
+  [NodeTypeEnum.STATION]: 'Station',
+  [NodeTypeEnum.ASSET]: 'Asset',
+  [NodeTypeEnum.COMPONENT]: 'Component',
+  [NodeTypeEnum.SENSOR]: 'Sensor',
 };
 
 const schema = z.object({
   parent_id: z.number().nullable().optional(),
-  node_type: z.enum(['enterprise','site','area','line','station','asset','component','sensor']),
+  node_type: z.enum([NodeTypeEnum.SITE, NodeTypeEnum.AREA, NodeTypeEnum.LINE, NodeTypeEnum.ASSET, NodeTypeEnum.SENSOR]),
   name: z.string().min(2).regex(/^[a-z0-9_]+$/),
   display_name: z.string().min(2),
   description: z.string().optional(),
@@ -126,7 +137,7 @@ const buildTreeFromFlat = (nodes: any[]) => {
   nodes.forEach(n => {
     nodeMap[n.id] = { ...n, children: [] };
   });
-  
+
   const roots: any[] = [];
   nodes.forEach(n => {
     const mapped = nodeMap[n.id];
@@ -140,12 +151,12 @@ const buildTreeFromFlat = (nodes: any[]) => {
       }
     }
   });
-  
+
   roots.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   Object.values(nodeMap).forEach((mapped: any) => {
     mapped.children.sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0));
   });
-  
+
   return roots;
 };
 
@@ -157,7 +168,7 @@ const HierarchyCheckItem: React.FC<{
 }> = ({ node, depth, selected, onChange }) => {
   const isChecked = selected.includes(node.id);
   const hasChildren = node.children && node.children.length > 0;
-  
+
   return (
     <Box sx={{ pl: 3 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', py: 0.25 }}>
@@ -168,8 +179,10 @@ const HierarchyCheckItem: React.FC<{
           color="success"
           sx={{ p: 0.5 }}
         />
-        <Typography variant="body2" sx={{ fontWeight: depth === 0 ? 600 : 400, whiteSpace: 'nowrap',
-          overflow: 'visible', textOverflow: 'clip' }}>
+        <Typography variant="body2" sx={{
+          fontWeight: depth === 0 ? 600 : 400, whiteSpace: 'nowrap',
+          overflow: 'visible', textOverflow: 'clip'
+        }}>
           {node.display_name} <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>({node.node_type})</span>
         </Typography>
       </Box>
@@ -242,7 +255,7 @@ export const Admin: React.FC = () => {
   const { control, handleSubmit, watch, reset, setValue, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema) as any,
     defaultValues: {
-      parent_id: null, node_type: 'site', name: '', display_name: '', description: '', sort_order: 0,
+      parent_id: null, node_type: NodeTypeEnum.SITE, name: '', display_name: '', description: '', sort_order: 0,
       plant_metadata: { use_case: '', location: '', description: '' },
       asset_metadata: { asset_id: '', manufacturer: '', model: '' },
       sensor_metadata: { sensor_id: '', unit: '', sampling_rate: 1 },
@@ -349,7 +362,8 @@ export const Admin: React.FC = () => {
 
   const handleCreateNew = () => {
     setSearchParams({});
-    reset({ parent_id: null, node_type: 'site', name: '', display_name: '', description: '', sort_order: 0,
+    reset({
+      parent_id: null, node_type: NodeTypeEnum.SITE, name: '', display_name: '', description: '', sort_order: 0,
       plant_metadata: { use_case: '', location: '', description: '' },
       asset_metadata: { asset_id: '', manufacturer: '', model: '' },
       sensor_metadata: { sensor_id: '', unit: '', sampling_rate: 1 },
@@ -393,7 +407,7 @@ export const Admin: React.FC = () => {
     while (queue.length > 0) {
       const currentId = queue.shift()!;
       flatNodes.filter(n => n.parent_id === currentId).forEach(child => {
-        if (child.node_type === 'sensor') {
+        if (child.node_type === NodeTypeEnum.SENSOR) {
           sensors.push(child);
         } else {
           queue.push(child.id);
@@ -405,22 +419,22 @@ export const Admin: React.FC = () => {
 
   const getTreeOrderedNodes = (nodes: HierarchyNode[]): { node: HierarchyNode; depth: number }[] => {
     const result: { node: HierarchyNode; depth: number }[] = [];
-    
+
     // Roots are nodes of type 'site'
-    let roots = nodes.filter(n => n.node_type === 'site');
+    let roots = nodes.filter(n => n.node_type === NodeTypeEnum.SITE);
     if (roots.length === 0) {
-      roots = nodes.filter(n => !n.parent_id && n.node_type !== 'sensor');
+      roots = nodes.filter(n => !n.parent_id && n.node_type !== NodeTypeEnum.SENSOR);
     }
-    
+
     const traverse = (node: HierarchyNode, depth: number) => {
       result.push({ node, depth });
       if (expandedNodeIds[node.id]) {
-        const children = nodes.filter(n => n.parent_id === node.id && n.node_type !== 'sensor');
+        const children = nodes.filter(n => n.parent_id === node.id && n.node_type !== NodeTypeEnum.SENSOR);
         children.sort((a, b) => a.sort_order - b.sort_order);
         children.forEach(child => traverse(child, depth + 1));
       }
     };
-    
+
     roots.sort((a, b) => a.sort_order - b.sort_order);
     roots.forEach(r => traverse(r, 0));
     return result;
@@ -479,7 +493,7 @@ export const Admin: React.FC = () => {
       status: AlertStatus.ACTIVE,
     };
 
-    const action = editingRuleId 
+    const action = editingRuleId
       ? api.alerts.updateRule(editingRuleId, payload)
       : api.alerts.createRule(payload);
 
@@ -560,15 +574,19 @@ export const Admin: React.FC = () => {
 
             <TextField select label="Asset" size="small" fullWidth value={alertForm.assetId}
               onChange={(e) => handleAssetSelect(e.target.value)}
-              slotProps={{ select: { renderValue: (val: any) => {
-                if (!val) return <em>Select Asset</em>;
-                const found = flatNodes.find(n => String(n.id) === val);
-                return found ? found.display_name : String(val);
-              }} }}
+              slotProps={{
+                select: {
+                  renderValue: (val: any) => {
+                    if (!val) return <em>Select Asset</em>;
+                    const found = flatNodes.find(n => String(n.id) === val);
+                    return found ? found.display_name : String(val);
+                  }
+                }
+              }}
             >
               {treeOrderedNodes.map(({ node, depth }) => {
-                const isAsset = node.node_type === 'asset';
-                const hasChildren = flatNodes.some(n => n.parent_id === node.id && n.node_type !== 'sensor');
+                const isAsset = node.node_type === NodeTypeEnum.ASSET;
+                const hasChildren = flatNodes.some(n => n.parent_id === node.id && n.node_type !== NodeTypeEnum.SENSOR);
                 const isExpanded = !!expandedNodeIds[node.id];
 
                 if (!isAsset) {
@@ -610,8 +628,8 @@ export const Admin: React.FC = () => {
                 }
 
                 return (
-                  <MenuItem 
-                    key={node.id} 
+                  <MenuItem
+                    key={node.id}
                     value={String(node.id)}
                     sx={{
                       pl: depth * 2.5 + 2,
@@ -699,7 +717,8 @@ export const Admin: React.FC = () => {
                 size="small"
               >
                 {PENDING_PERIODS.map(p => (
-                  <ToggleButton key={p} value={p} sx={{ fontWeight: 600, px: 2, textTransform: 'none',
+                  <ToggleButton key={p} value={p} sx={{
+                    fontWeight: 600, px: 2, textTransform: 'none',
                     '&.Mui-selected': { backgroundColor: 'primary.main', color: 'white', '&:hover': { backgroundColor: 'primary.dark' } }
                   }}>{p}</ToggleButton>
                 ))}
@@ -721,7 +740,8 @@ export const Admin: React.FC = () => {
                 size="small"
               >
                 {KEEP_FIRING.map(p => (
-                  <ToggleButton key={p} value={p} sx={{ fontWeight: 600, px: 2, textTransform: 'none',
+                  <ToggleButton key={p} value={p} sx={{
+                    fontWeight: 600, px: 2, textTransform: 'none',
                     '&.Mui-selected': { backgroundColor: 'primary.main', color: 'white', '&:hover': { backgroundColor: 'primary.dark' } }
                   }}>{p}</ToggleButton>
                 ))}
@@ -774,7 +794,7 @@ export const Admin: React.FC = () => {
                   <Grid size={{ xs: 12, sm: 6 }}>
                     <Controller name="node_type" control={control} render={({ field }) => (
                       <TextField {...field} select fullWidth label="Level" size="small" error={!!errors.node_type} helperText={errors.node_type?.message}>
-                        {LEVELS.filter(l => l !== 'enterprise').map(l => <MenuItem key={l} value={l}>{LEVEL_LABELS[l]}</MenuItem>)}
+                        {LEVELS.map(l => <MenuItem key={l} value={l}>{LEVEL_LABELS[l]}</MenuItem>)}
                       </TextField>
                     )} />
                   </Grid>
@@ -859,9 +879,9 @@ export const Admin: React.FC = () => {
                     const pendingText = rule.pending_period || rule.pendingPeriod || 'None';
 
                     return (
-                      <TableRow 
-                        key={rule.id} 
-                        hover 
+                      <TableRow
+                        key={rule.id}
+                        hover
                         onClick={() => setSelectedRuleDetails(rule)}
                         sx={{ cursor: 'pointer' }}
                       >
@@ -904,12 +924,12 @@ export const Admin: React.FC = () => {
             {ALERT_STEPS.map((label, index) => (
               <Step key={label} completed={index < alertStep}>
                 <StepLabel
-                  // StepIconProps={{
-                  //   sx: {
-                  //     '&.Mui-completed': { color: 'secondary.main' },
-                  //     '&.Mui-active': { color: 'secondary.main' },
-                  //   }
-                  // } as StepIconProps}
+                // StepIconProps={{
+                //   sx: {
+                //     '&.Mui-completed': { color: 'secondary.main' },
+                //     '&.Mui-active': { color: 'secondary.main' },
+                //   }
+                // } as StepIconProps}
                 >{label}</StepLabel>
               </Step>
             ))}
@@ -943,7 +963,7 @@ export const Admin: React.FC = () => {
               Select a user to review and update their access permissions.
             </Typography>
             <Divider sx={{ mb: 2 }} />
-            
+
             <TableContainer>
               <Table size="small">
                 <TableHead>
@@ -1130,14 +1150,14 @@ export const Admin: React.FC = () => {
             const sensorNode = flatNodes.find(n => String(n.id) === selectedRuleDetails.sensor_id);
             const assetName = assetNode ? assetNode.display_name : (selectedRuleDetails.asset || `Asset #${selectedRuleDetails.node_id}`);
             const triggerName = sensorNode ? sensorNode.display_name : (selectedRuleDetails.trigger || selectedRuleDetails.sensor_id || 'None');
-            
+
             return (
               <Stack spacing={2} sx={{ mt: 1 }}>
                 <Box>
                   <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>Rule Name</Typography>
                   <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedRuleDetails.name}</Typography>
                 </Box>
-                
+
                 <Box>
                   <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>Description</Typography>
                   <Typography variant="body2">{selectedRuleDetails.description || 'No description provided'}</Typography>
@@ -1152,7 +1172,7 @@ export const Admin: React.FC = () => {
                     <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>Trigger Sensor</Typography>
                     <Typography variant="body2" sx={{ fontWeight: 500 }}>{triggerName}</Typography>
                   </Grid>
-                  
+
                   <Grid size={{ xs: 6 }}>
                     <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>Condition Type</Typography>
                     <Typography variant="body2" sx={{ fontWeight: 500 }}>{selectedRuleDetails.condition_type || 'Threshold'}</Typography>
