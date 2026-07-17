@@ -157,7 +157,7 @@ export const Reports: React.FC = () => {
   return (
     <PageContainer>
       <PageHeader
-        title="Generate Reports"
+        title="Analytics"
         subtitle="Generate Advisory summaries - for a single asset, a set of equipment or an entire process line."
       />
 

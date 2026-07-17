@@ -37,7 +37,7 @@ const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: <DashboardIcon />, permission: 'dashboard:view' },
   { path: '/root-cause', label: 'Root Cause', icon: <RootCauseIcon />, permission: 'advisories:rca' },
   { path: '/advisories', label: 'Advisories', icon: <AdvisoriesIcon />, permission: 'advisories:view' },
-  { path: '/reports', label: 'Reports', icon: <ReportsIcon />, permission: 'reports:view' },
+  { path: '/reports', label: 'Analytics', icon: <ReportsIcon />, permission: 'reports:view' },
   { path: '/admin', label: 'Admin', icon: <AdminIcon />, permission: 'admin:view' },
 ];
 
@@ -64,7 +64,7 @@ export const MainLayout: React.FC = () => {
     if (cached) {
       try {
         setProfile(JSON.parse(cached));
-      } catch (e) {}
+      } catch (e) { }
     } else {
       api.auth.getMe()
         .then((res) => {
@@ -98,7 +98,7 @@ export const MainLayout: React.FC = () => {
 
   const handleSelectNode = (node: HierarchyNode) => {
     setSelectedNode(node);
-    
+
     // Sync node selection to pages via state instead of query string to keep URLs clean!
     const { alertId, originalSensorNodeId, ...restState } = location.state || {};
     navigate(location.pathname, { state: { ...restState, selectedNodeId: node.id } });
@@ -175,15 +175,15 @@ export const MainLayout: React.FC = () => {
       <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, border: '1px solid #ccc' }}>
         <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box component="img" src="/deloitte_logo_black.svg" alt="Deloitte Logo" 
-              sx={{ height: 20, width: 'auto',}} />
+            <Box component="img" src="/deloitte_logo_black.svg" alt="Deloitte Logo"
+              sx={{ height: 20, width: 'auto', }} />
             <Box sx={{ borderLeft: '1px solid #e0e0e0', pl: 2 }}>
               <Typography variant="h4" color="text.primary" sx={{ fontWeight: 500, letterSpacing: '0.5px' }}>
-              AssetWize
-            </Typography>
+                AssetWize
+              </Typography>
             </Box>
           </Box>
-          
+
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             {/* Tabs switcher */}
             <List sx={{ px: 1, display: 'flex' }}>
@@ -258,7 +258,7 @@ export const MainLayout: React.FC = () => {
                     </Typography>
                   </Box>
                   <Divider />
-                  
+
                   {profile.permissions.includes('admin:view') && (
                     <MenuItem
                       onClick={() => {
@@ -273,7 +273,7 @@ export const MainLayout: React.FC = () => {
                       <Typography variant="body2">Permissions</Typography>
                     </MenuItem>
                   )}
-                  
+
                   <MenuItem
                     onClick={() => {
                       handleProfileClose();
