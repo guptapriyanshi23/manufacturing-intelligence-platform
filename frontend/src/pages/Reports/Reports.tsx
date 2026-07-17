@@ -1,19 +1,18 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useOutletContext } from 'react-router-dom';
 import {
   Box, Card, CardContent, Grid, Button, Typography, CircularProgress,
-  MenuItem, Select, FormControl, InputLabel, TextField, Paper,
+  MenuItem, Select, FormControl, InputLabel, TextField, Paper, Breadcrumbs,
 } from '@mui/material';
-import { Download as DownloadIcon } from '@mui/icons-material';
+import { Download as DownloadIcon, NavigateNext as NavigateNextIcon } from '@mui/icons-material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
 import { MetricCard } from '../../components/Cards/MetricCard';
 import { api } from '../../api/client';
-import { getSeverityColor, getSeverityLevel, SEVERITY_LEVEL_MAP } from '../../constants/severity';
+import { getSeverityColor, getSeverityLevel } from '../../constants/severity';
 import type { HierarchyNode } from '../../types/hierarchy';
 import { getStatusColor } from '../../constants/status';
-
 
 const TIME_RANGE_OPTIONS = [
   { value: 'last_1h', label: 'Last 1 Hour' },
@@ -34,42 +33,95 @@ const getDateRange = (rangeValue: string) => {
   return { from: from.toISOString().slice(0, 16), to: now.toISOString().slice(0, 16) };
 };
 
+const getBreadcrumbsPath = (nodeId: number, flatNodes: HierarchyNode[]): string[] => {
+  const path: string[] = [];
+  let current = flatNodes.find(n => n.id === nodeId);
+  while (current) {
+    path.unshift(current.display_name);
+    const pid = current.parent_id;
+    current = pid ? flatNodes.find(n => n.id === pid) : undefined;
+  }
+  return path;
+};
+
 export const Reports: React.FC = () => {
   const location = useLocation();
-  const treeNodeId = location.state?.selectedNodeId ? Number(location.state.selectedNodeId) : null;
-  const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
+  const context = useOutletContext<{ selectedNodeId?: number | null }>();
+  const selectedNodeId = context?.selectedNodeId ?? (location.state?.selectedNodeId ? Number(location.state.selectedNodeId) : null);
 
-  // Applied filter states
+  const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
   const [appliedNode, setAppliedNode] = useState<HierarchyNode | null>(null);
   const [timeRange, setTimeRange] = useState('last_24h');
   const initial = getDateRange('last_24h');
   const [fromDate, setFromDate] = useState(initial.from);
   const [toDate, setToDate] = useState(initial.to);
-  const [appliedFromDate, setAppliedFromDate] = useState(initial.from);
-  const [appliedToDate, setAppliedToDate] = useState(initial.to);
+  const [breadcrumbs, setBreadcrumbs] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const [stats, setStats] = useState<{
+    total: number;
+    status_counts: Record<string, number>;
+    severity_counts: Record<number, number>;
+  } | null>(null);
+
+  const fetchStats = (nodeId: number | null, rangeVal: string, from?: string, to?: string) => {
+    if (!nodeId) {
+      setStats(null);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+
+    let startIso: string | undefined = undefined;
+    let endIso: string | undefined = undefined;
+
+    if (rangeVal === 'custom') {
+      if (from) startIso = new Date(from).toISOString();
+      if (to) endIso = new Date(to).toISOString();
+    } else {
+      const range = getDateRange(rangeVal);
+      startIso = new Date(range.from).toISOString();
+      endIso = new Date(range.to).toISOString();
+    }
+
+    api.advisories.stats({
+      node_id: nodeId,
+      start_time: startIso,
+      end_time: endIso
+    })
+      .then((res) => {
+        setStats(res);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch stats:", err);
+        setStats(null);
+        setLoading(false);
+      });
+  };
 
   useEffect(() => {
-    if (flatNodes.length === 0) return;
-    const matchingNode = treeNodeId ? flatNodes.find(n => n.id === treeNodeId) : null;
-    setAppliedNode(matchingNode || null);
-  }, [treeNodeId, flatNodes]);
-
-  const [advisories, setAdvisories] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    api.advisories.list()
-      .then((res) => { setAdvisories(res); setLoading(false); })
-      .catch(() => setLoading(false));
     api.hierarchy.list(true)
       .then(setFlatNodes)
       .catch(() => setFlatNodes([]));
   }, []);
 
+  useEffect(() => {
+    if (flatNodes.length === 0) return;
+    const matchingNode = selectedNodeId ? flatNodes.find(n => n.id === selectedNodeId) : null;
+    setAppliedNode(matchingNode || null);
+
+    if (selectedNodeId) {
+      setBreadcrumbs(getBreadcrumbsPath(selectedNodeId, flatNodes));
+      fetchStats(selectedNodeId, timeRange, fromDate, toDate);
+    } else {
+      setBreadcrumbs([]);
+      setStats(null);
+    }
+  }, [selectedNodeId, flatNodes]);
+
   const handleTimeRangeChange = (val: string) => {
     setTimeRange(val);
-
-    // Don't auto-update dates for custom range
     if (val !== 'custom') {
       const { from, to } = getDateRange(val);
       setFromDate(from);
@@ -78,72 +130,26 @@ export const Reports: React.FC = () => {
   };
 
   const handleViewClick = () => {
-    setAppliedFromDate(fromDate);
-    setAppliedToDate(toDate);
+    if (appliedNode) {
+      fetchStats(appliedNode.id, timeRange, fromDate, toDate);
+    }
   };
 
-  const filteredAdvisories = useMemo(() => {
-    let result = [...advisories];
-
-    // Helper to get descendant node IDs and sensor IDs
-    const getDescendants = (nodeId: number) => {
-      const nodeIds = new Set<number>();
-      const sensorIds = new Set<string>();
-      const queue = [nodeId];
-      
-      while (queue.length > 0) {
-        const id = queue.shift()!;
-        nodeIds.add(id);
-        
-        const node = flatNodes.find(n => n.id === id);
-        if (node?.sensor_metadata?.sensor_id) {
-          sensorIds.add(node.sensor_metadata.sensor_id);
-        }
-        
-        flatNodes
-          .filter(n => n.parent_id === id)
-          .forEach(n => queue.push(n.id));
-      }
-      
-      return { nodeIds, sensorIds };
-    };
-
-    // Filter by Selected Hierarchy Node
-    if (appliedNode) {
-      const { nodeIds, sensorIds } = getDescendants(appliedNode.id);
-      result = result.filter(a => 
-        nodeIds.has(a.node_id) || 
-        (a.sensor_id && sensorIds.has(a.sensor_id))
-      );
-    }
-
-    // 3. Filter by Time Range / Dates
-    const start = new Date(appliedFromDate).getTime();
-    const end = new Date(appliedToDate).getTime();
-    result = result.filter(a => {
-      const detectedTime = a.detected_at ? new Date(a.detected_at).getTime() : NaN;
-      if (isNaN(detectedTime)) return false;
-      return detectedTime >= start && detectedTime <= end;
-    });
-
-    return result;
-  }, [advisories, appliedNode, appliedFromDate, appliedToDate, flatNodes]);
-
-  const total = filteredAdvisories.length;
-  const openCount = filteredAdvisories.filter(a => a.status === 'open').length;
-  const ackCount = filteredAdvisories.filter(a => a.status === 'acknowledged').length;
-  const resolvedCount = filteredAdvisories.filter(a => a.status === 'resolved').length;
-  const inProgressCount = filteredAdvisories.filter(a => a.status === 'in_progress').length;
+  const total = stats?.total || 0;
+  const openCount = stats?.status_counts.open || 0;
+  const ackCount = stats?.status_counts.acknowledged || 0;
+  const resolvedCount = stats?.status_counts.resolved || 0;
+  const inProgressCount = stats?.status_counts.in_progress || 0;
   const pct = (n: number) => total > 0 ? `${Math.round((n / total) * 100)}%` : '0%';
 
-  const severityChartData = Object.keys(SEVERITY_LEVEL_MAP)
-    .map(sev => ({
-      severity: getSeverityLevel(sev),
-      count: filteredAdvisories.filter(a => a.severity === sev).length,
-      originalSeverity: sev,
-    }))
-    .filter((d, i, arr) => arr.findIndex(x => x.severity === d.severity) === i)
-    .sort((a, b) => a.severity.localeCompare(b.severity));
+  const severityChartData = [1, 2, 3, 4, 5].map(level => {
+    const count = stats?.severity_counts[level] || stats?.severity_counts[String(level)] || 0;
+    return {
+      severity: getSeverityLevel(level),
+      count: count,
+      originalSeverity: level,
+    };
+  });
 
   const statusChartData = [
     { status: 'Open', key: 'open', count: openCount },
@@ -158,6 +164,20 @@ export const Reports: React.FC = () => {
         title="Generate Reports"
         subtitle="Generate Advisory summaries - for a single asset, a set of equipment or an entire process line."
       />
+
+      {breadcrumbs.length > 0 && (
+        <Breadcrumbs separator={<NavigateNextIcon fontSize="small" sx={{ color: 'text.secondary' }} />} sx={{ mb: 2 }}>
+          {breadcrumbs.map((name, index, arr) => (
+            <Typography
+              key={name}
+              color={index === arr.length - 1 ? 'text.primary' : 'text.secondary'}
+              sx={{ fontWeight: index === arr.length - 1 ? 700 : 500, fontSize: '0.85rem' }}
+            >
+              {name}
+            </Typography>
+          ))}
+        </Breadcrumbs>
+      )}
 
       {/* Filter bar */}
       <Paper sx={{ px: 2, py: 2.5, mb: 3, border: '1px solid #ccc' }}>

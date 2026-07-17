@@ -1,4 +1,5 @@
 from typing import List, Optional
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from backend.app.core.database import get_db
@@ -148,6 +149,26 @@ def get_advisories(
             return []
         advisories = [a for a in advisories if a.node_id in allowed_ids]
     return resolve_all_advisories(db, advisories)
+
+
+@router.get("/stats")
+def get_advisory_stats(
+    node_id: Optional[int] = None,
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None,
+    current_user = Depends(check_permissions(["advisories:view"])),
+    db: Session = Depends(get_db)
+):
+    from backend.app.core.security import get_allowed_node_ids
+    allowed_ids = get_allowed_node_ids(current_user, db)
+    return service.get_advisory_stats(
+        db,
+        node_id=node_id,
+        start_time=start_time,
+        end_time=end_time,
+        allowed_node_ids=allowed_ids
+    )
+
 
 @router.get("/{advisory_id}", response_model=AdvisoryResponse)
 def get_advisory(

@@ -1,5 +1,6 @@
 from typing import List, Optional
-from sqlalchemy.orm import Session
+from datetime import datetime
+from sqlalchemy.orm import Session, aliased
 from backend.app.models.advisories import Advisory, RCA
 from backend.app.modules.advisories.schemas import AdvisoryUpdate
 
@@ -20,18 +21,14 @@ def get_advisories(
             query = query.filter(Advisory.severity == severity_int)
         
     if node_id:
-        from sqlalchemy import text
-        descendants_query = text("""
-            WITH RECURSIVE descendants AS (
-                SELECT id FROM hierarchy_nodes WHERE id = :node_id
-                UNION ALL
-                SELECT h.id FROM hierarchy_nodes h
-                JOIN descendants d ON h.parent_id = d.id
-            )
-            SELECT id FROM descendants;
-        """)
-        rows = db.execute(descendants_query, {"node_id": node_id}).fetchall()
-        descendant_ids = [row[0] for row in rows]
+        from backend.app.models.hierarchy import HierarchyNode
+        anchor = db.query(HierarchyNode.id).filter(HierarchyNode.id == node_id)
+        descendants_cte = anchor.cte(name="descendants", recursive=True)
+        node_alias = aliased(HierarchyNode, name="h")
+        cte_alias = aliased(descendants_cte, name="d")
+        recursive_part = db.query(node_alias.id).join(cte_alias, node_alias.parent_id == cte_alias.c.id)
+        descendants_cte = descendants_cte.union_all(recursive_part)
+        descendant_ids = [row[0] for row in db.query(descendants_cte.c.id).all()]
         query = query.filter(Advisory.node_id.in_(descendant_ids))
 
     return query.order_by(Advisory.id.desc()).all()
@@ -83,4 +80,51 @@ def update_advisory(db: Session, advisory_id: int, advisory_in: AdvisoryUpdate) 
     except SQLAlchemyError as e:
         db.rollback()
         raise e
+
+
+def get_advisory_stats(
+    db: Session,
+    node_id: Optional[int] = None,
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None,
+    allowed_node_ids: Optional[List[int]] = None
+) -> dict:
+    query = db.query(Advisory)
+    if node_id is not None:
+        from backend.app.models.hierarchy import HierarchyNode
+        anchor = db.query(HierarchyNode.id).filter(HierarchyNode.id == node_id)
+        descendants_cte = anchor.cte(name="descendants", recursive=True)
+        node_alias = aliased(HierarchyNode, name="h")
+        cte_alias = aliased(descendants_cte, name="d")
+        recursive_part = db.query(node_alias.id).join(cte_alias, node_alias.parent_id == cte_alias.c.id)
+        descendants_cte = descendants_cte.union_all(recursive_part)
+        descendant_ids = [row[0] for row in db.query(descendants_cte.c.id).all()]
+        query = query.filter(Advisory.node_id.in_(descendant_ids))
+    if start_time is not None:
+        query = query.filter(Advisory.detected_at >= start_time)
+    if end_time is not None:
+        query = query.filter(Advisory.detected_at <= end_time)
+        
+    advisories = query.all()
+    if allowed_node_ids is not None:
+        advisories = [a for a in advisories if a.node_id in allowed_node_ids]
+        
+    from backend.app.core.enums import AdvisoryStatus, SeverityLevel
+    status_counts = {status.value: 0 for status in AdvisoryStatus}
+    severity_counts = {sev.value: 0 for sev in SeverityLevel}
+    
+    for adv in advisories:
+        status_str = adv.status.value if hasattr(adv.status, 'value') else str(adv.status)
+        if status_str in status_counts:
+            status_counts[status_str] += 1
+            
+        adv_sev = adv.severity.value if hasattr(adv.severity, 'value') else adv.severity
+        if adv_sev in severity_counts:
+            severity_counts[adv_sev] += 1
+            
+    return {
+        "total": len(advisories),
+        "status_counts": status_counts,
+        "severity_counts": severity_counts
+    }
 

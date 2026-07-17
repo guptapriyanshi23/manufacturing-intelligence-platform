@@ -130,6 +130,18 @@ export const api = {
     get: (eventId: string) => request<RootCauseAnalysisResponse>(`/root-cause/${eventId}`),
   },
   advisories: {
+    stats: (filters?: { node_id?: number | null; start_time?: string; end_time?: string }) => {
+      const params = new URLSearchParams();
+      if (filters?.node_id) params.append('node_id', filters.node_id.toString());
+      if (filters?.start_time) params.append('start_time', filters.start_time);
+      if (filters?.end_time) params.append('end_time', filters.end_time);
+      const queryString = params.toString();
+      return request<{
+        total: number;
+        status_counts: Record<string, number>;
+        severity_counts: Record<number, number>;
+      }>(queryString ? `/advisories/stats?${queryString}` : '/advisories/stats');
+    },
     list: (filters?: { node_id?: number | null; status?: string; severity?: string }) => {
       const params = new URLSearchParams();
       if (filters?.node_id) params.append('node_id', filters.node_id.toString());
