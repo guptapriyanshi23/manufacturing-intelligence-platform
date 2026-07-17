@@ -32,7 +32,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, url = '', subtitl
     if (url === '/') {
       return <BellIcon />;
     }
-    
+
     if (url.includes('/advisories')) {
       return <ReportIcon />;
     }
@@ -41,12 +41,12 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, url = '', subtitl
   };
 
   return (
-    <Box sx={{pb: 2}}>
-    <Box className="page-title">
-      {getIcon()}
-      <h1>{title}</h1>
-    </Box>
-      {subtitle && <Box className="chart-subtitle" sx={{pl: 2}}>{subtitle}</Box>}
+    <Box>
+      <Box className="page-title">
+        {getIcon()}
+        <h1>{title}</h1>
+      </Box>
+      {subtitle && <Box className="chart-subtitle" sx={{ pl: 2 }}>{subtitle}</Box>}
     </Box>
   );
 };

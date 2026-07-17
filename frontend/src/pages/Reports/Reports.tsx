@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useOutletContext } from 'react-router-dom';
 import {
   Box, Card, CardContent, Grid, Button, Typography, CircularProgress,
-  MenuItem, Select, FormControl, InputLabel, TextField, Paper, Breadcrumbs,
+  MenuItem, Select, FormControl, InputLabel, TextField, Paper,
 } from '@mui/material';
-import { Download as DownloadIcon, NavigateNext as NavigateNextIcon } from '@mui/icons-material';
+import { Download as DownloadIcon, } from '@mui/icons-material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
-// import { PageContainer } from '../../components/Cards/PageContainer';
+import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
 // import { MetricCard } from '../../components/Cards/MetricCard';
 import { api } from '../../api/client';
@@ -15,6 +15,7 @@ import type { HierarchyNode } from '../../types/hierarchy';
 import { getStatusColor } from '../../constants/status';
 import '../alerts/Alerts.scss';
 import './Reports.scss';
+import BreadCrumsBar from '../../components/BreadCrumsBar/BreadCrumsBar';
 
 const TIME_RANGE_OPTIONS = [
   { value: 'last_1h', label: 'Last 1 Hour' },
@@ -57,20 +58,6 @@ const CheckCircleIcon = () => (
 const WarningIcon = () => (
   <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" /></svg>
 );
-
-const REPORT_ROWS: any[] = [
-  { id: 'r1', scope: 'Plant Machining', timestamp: new Date('2026-07-01T10:30:00'), severity: 'S1', status: 'Open' },
-  { id: 'r2', scope: 'Plant Machining', timestamp: new Date('2026-07-01T16:00:00'), severity: 'S2', status: 'Resolved' },
-  { id: 'r3', scope: 'Plant Machining', timestamp: new Date('2026-07-02T08:40:00'), severity: 'S3', status: 'Open' },
-  { id: 'r4', scope: 'Plant Utilities', timestamp: new Date('2026-07-02T11:20:00'), severity: 'S1', status: 'Open' },
-  { id: 'r5', scope: 'Plant Utilities', timestamp: new Date('2026-07-03T09:35:00'), severity: 'S4', status: 'Resolved' },
-  { id: 'r6', scope: 'Plant Utilities', timestamp: new Date('2026-07-03T15:10:00'), severity: 'S2', status: 'Acknowledged' },
-  { id: 'r7', scope: 'Plant Machining', timestamp: new Date('2026-07-04T12:10:00'), severity: 'S5', status: 'Resolved' },
-  { id: 'r8', scope: 'Plant Utilities', timestamp: new Date('2026-07-04T18:00:00'), severity: 'S3', status: 'Open' },
-  { id: 'r9', scope: 'Plant Machining', timestamp: new Date('2026-07-05T10:05:00'), severity: 'S2', status: 'Resolved' },
-  { id: 'r10', scope: 'Plant Utilities', timestamp: new Date('2026-07-05T13:45:00'), severity: 'S4', status: 'Open' },
-];
-
 
 export const Reports: React.FC = () => {
   const location = useLocation();
@@ -128,12 +115,6 @@ export const Reports: React.FC = () => {
       });
   };
 
-  // const [scope, setScope] = useState('all');
-
-  const scopeOptions = useMemo(
-    () => Array.from(new Set(REPORT_ROWS.map((row) => row.scope))).sort(),
-    [],
-  );
 
   useEffect(() => {
     api.hierarchy.list(true)
@@ -194,41 +175,17 @@ export const Reports: React.FC = () => {
   ];
 
   return (
-    <Box className='reporting-analysis'>
+    <PageContainer>
       <PageHeader
         title="Analytics"
         url="/reports"
       />
 
-      {breadcrumbs.length > 0 && (
-        <Breadcrumbs separator={<NavigateNextIcon fontSize="small" sx={{ color: 'text.secondary' }} />} sx={{ mb: 2 }}>
-          {breadcrumbs.map((name, index, arr) => (
-            <Typography
-              key={name}
-              color={index === arr.length - 1 ? 'text.primary' : 'text.secondary'}
-              sx={{ fontWeight: index === arr.length - 1 ? 700 : 500, fontSize: '0.85rem' }}
-            >
-              {name}
-            </Typography>
-          ))}
-        </Breadcrumbs>
-      )}
+      <BreadCrumsBar breadcrumbsData={breadcrumbs} />
 
-       <Box className="reporting-analysis__filters-grid">
-          {/* <FormControl size="small" fullWidth>
-            <InputLabel id="scope-filter-label">Scope</InputLabel>
-            <Select
-              labelId="scope-filter-label"
-              value={scope}
-              label="Scope"
-              onChange={(event) => setScope(event.target.value)}
-            >
-              <MenuItem value="all">All</MenuItem>
-              {scopeOptions.map((item) => (
-                <MenuItem key={item} value={item}>{item}</MenuItem>
-              ))}
-            </Select>
-          </FormControl> */}
+      <div className='reporting-analysis'>
+
+        <Box className="reporting-analysis__filters-grid">
 
           <FormControl size="small">
             <InputLabel id="time-range-label">Time Range</InputLabel>
@@ -237,8 +194,8 @@ export const Reports: React.FC = () => {
               value={timeRange}
               label="Time Range"
               onChange={(e) => handleTimeRangeChange(e.target.value)}
-              // displayEmpty
-              // renderValue={timeRange === '' ? () => <span style={{ color: '#9e9e9e' }}>Select</span> : undefined}
+            // displayEmpty
+            // renderValue={timeRange === '' ? () => <span style={{ color: '#9e9e9e' }}>Select</span> : undefined}
             >
               <MenuItem value="">Select</MenuItem>
               {TIME_RANGE_OPTIONS.map(o => (
@@ -268,17 +225,17 @@ export const Reports: React.FC = () => {
             onChange={(event) => setToDate(event.target.value)}
             fullWidth
           />
-        
+
           <Button
             variant="contained"
             className="reporting-analysis__generate-btn"
             onClick={handleGenerateClick}
-            sx={{ 
+            sx={{
               backgroundColor: 'var(--color-primary) !important',
               '&:hover': {
                 backgroundColor: 'var(--color-primary-dark) !important'
               },
-              '&.Mui-disabled': { 
+              '&.Mui-disabled': {
                 backgroundColor: '#e0e0e0 !important',
                 color: 'rgba(141, 138, 138, 0.83)'
 
@@ -288,135 +245,137 @@ export const Reports: React.FC = () => {
             Generate Report
           </Button>
           <Button
-              variant="contained"
-              startIcon={<DownloadIcon />}
-              disabled={!appliedNode}
-              onClick={() => console.log('Download PDF')}
-              sx={{ 
+            variant="contained"
+            startIcon={<DownloadIcon />}
+            disabled={!appliedNode}
+            onClick={() => console.log('Download PDF')}
+            sx={{
               backgroundColor: 'var(--color-primary) !important',
               '&:hover': {
                 backgroundColor: 'var(--color-primary-dark) !important'
               },
-              '&.Mui-disabled': { 
+              '&.Mui-disabled': {
                 backgroundColor: '#e0e0e0 !important',
                 color: 'rgba(141, 138, 138, 0.83)'
 
               }
             }}
-            >
-              PDF
-            </Button>
+          >
+            PDF
+          </Button>
         </Box>
-      
-      {!appliedNode ? (
-        <Paper sx={{ p: 6, borderRadius: 2, border: '1px dashed #ccc', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', backgroundColor: '#fafafa', height: '40vh' }}>
-          <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1 }}>No Node Selected</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Please select a hierarchy node from the left tree panel to generate reports.
-          </Typography>
-        </Paper>
-      ) : loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-          <CircularProgress color="secondary" />
-        </Box>
-      ) : (
-      <><div className="advisory-counters reporting-analysis__counters">
 
-            <div className="counter-card counter-card--total">
-              <div className="counter-card__icon"><ReportIcon /></div>
-              <div className="counter-card__body">
-                <span className="counter-card__value">{total}</span>
-                <span className="counter-card__label">Total Advisory</span>
+        {!appliedNode ? (
+          <Paper sx={{ p: 6, borderRadius: 2, border: '1px dashed #ccc', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', backgroundColor: '#fafafa', height: '40vh' }}>
+            <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1 }}>No Node Selected</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Please select a hierarchy node from the left tree panel to generate reports.
+            </Typography>
+          </Paper>
+        ) : loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+            <CircularProgress color="secondary" />
+          </Box>
+        ) : (
+          <>
+            <div className="advisory-counters reporting-analysis__counters">
+
+              <div className="counter-card counter-card--total">
+                <div className="counter-card__icon"><ReportIcon /></div>
+                <div className="counter-card__body">
+                  <span className="counter-card__value">{total}</span>
+                  <span className="counter-card__label">Total Advisory</span>
+                </div>
+              </div>
+
+              <div className="counter-card counter-card--unresolved">
+                <div className="counter-card__icon"><WarningIcon /></div>
+                <div className="counter-card__body">
+                  <span className="counter-card__value">{openCount}
+                    <span style={{ fontSize: '0.8rem', paddingLeft: '0.2rem' }}>{`(${pct(openCount)})`}</span>
+                  </span>
+                  <span className="counter-card__label">Open</span>
+                </div>
+              </div>
+
+              <div className="counter-card counter-card--acknowledged">
+                <div className="counter-card__icon"><BellIcon /></div>
+                <div className="counter-card__body">
+                  <span className="counter-card__value">{ackCount}
+                    <span style={{ fontSize: '0.8rem', paddingLeft: '0.2rem' }}>{`(${pct(ackCount)})`}</span>
+                  </span>
+                  <span className="counter-card__label">Acknowledged</span>
+                </div>
+              </div>
+
+              <div className="counter-card counter-card--resolved">
+                <div className="counter-card__icon"><CheckCircleIcon /></div>
+                <div className="counter-card__body">
+                  <span className="counter-card__value">{resolvedCount}
+                    <span style={{ fontSize: '0.8rem', paddingLeft: '0.2rem' }}>{`(${pct(resolvedCount)})`}</span>
+                  </span>
+                  <span className="counter-card__label">Resolved</span>
+                </div>
               </div>
             </div>
 
-            <div className="counter-card counter-card--unresolved">
-              <div className="counter-card__icon"><WarningIcon /></div>
-              <div className="counter-card__body">
-                <span className="counter-card__value">{openCount}
-                  <span style={{fontSize: '0.8rem', paddingLeft: '0.2rem'}}>{`(${pct(openCount)})`}</span>
-                </span>
-                <span className="counter-card__label">Open</span>
-              </div>
-            </div>
-            
-            <div className="counter-card counter-card--acknowledged">
-              <div className="counter-card__icon"><BellIcon /></div>
-              <div className="counter-card__body">
-                <span className="counter-card__value">{ackCount}
-                  <span style={{fontSize: '0.8rem', paddingLeft: '0.2rem'}}>{`(${pct(ackCount)})`}</span>
-                </span>
-                <span className="counter-card__label">Acknowledged</span>
-              </div>
-            </div>
+            <Grid container spacing={3}>
+              {/* Severity chart */}
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Card sx={{ height: '100%' }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>Advisory Count by Severity</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Number of advisories raised per severity level
+                    </Typography>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <BarChart layout="vertical" data={severityChartData} margin={{ top: 8, right: 48, left: 16, bottom: 8 }}>
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                        <XAxis type="number" allowDecimals={false} tick={{ fontSize: 13 }} tickCount={7} />
+                        <YAxis type="category" dataKey="severity" width={50} tick={{ fontSize: 13 }} />
+                        <Tooltip formatter={(v) => [`${v}`, 'Count']} />
+                        <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={36}>
+                          <LabelList dataKey="count" position="right" style={{ fontSize: 13, fontWeight: 600 }} />
+                          {severityChartData.map(entry => (
+                            <Cell key={entry.severity} fill={getSeverityColor(entry.originalSeverity)} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </Grid>
 
-            <div className="counter-card counter-card--resolved">
-              <div className="counter-card__icon"><CheckCircleIcon /></div>
-              <div className="counter-card__body">
-                <span className="counter-card__value">{resolvedCount}
-                  <span style={{fontSize: '0.8rem', paddingLeft: '0.2rem'}}>{`(${pct(resolvedCount)})`}</span>
-                </span>
-                <span className="counter-card__label">Resolved</span>
-              </div>
-            </div>
-          </div>
-
-      <Grid container spacing={3}>
-      {/* Severity chart */}
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>Advisory Count by Severity</Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Number of advisories raised per severity level
-                </Typography>
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart layout="vertical" data={severityChartData} margin={{ top: 8, right: 48, left: 16, bottom: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 13 }} tickCount={7} />
-                    <YAxis type="category" dataKey="severity" width={50} tick={{ fontSize: 13 }} />
-                    <Tooltip formatter={(v) => [`${v}`, 'Count']} />
-                    <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={36}>
-                      <LabelList dataKey="count" position="right" style={{ fontSize: 13, fontWeight: 600 }} />
-                      {severityChartData.map(entry => (
-                        <Cell key={entry.severity} fill={getSeverityColor(entry.originalSeverity)} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* Status chart */}
-          <Grid size={{ xs: 12, md: 6 }}>
-            <Card sx={{ height: '100%' }}>
-              <CardContent>
-                <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>Advisory Count by Status</Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Distribution of advisories across workflow statuses
-                </Typography>
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart layout="vertical" data={statusChartData} margin={{ top: 8, right: 48, left: 24, bottom: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 13 }} tickCount={7} />
-                    <YAxis type="category" dataKey="status" width={100} tick={{ fontSize: 13 }} />
-                    <Tooltip formatter={(v) => [`${v}`, 'Count']} />
-                    <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={36}>
-                      <LabelList dataKey="count" position="right" style={{ fontSize: 13, fontWeight: 600 }} />
-                      {statusChartData.map(entry => (
-                        <Cell key={entry.key} fill={getStatusColor(entry.key)} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </Grid>
-      </Grid>
-      </>
-      )}
-    </Box>
+              {/* Status chart */}
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Card sx={{ height: '100%' }}>
+                  <CardContent>
+                    <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>Advisory Count by Status</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Distribution of advisories across workflow statuses
+                    </Typography>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <BarChart layout="vertical" data={statusChartData} margin={{ top: 8, right: 48, left: 24, bottom: 8 }}>
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                        <XAxis type="number" allowDecimals={false} tick={{ fontSize: 13 }} tickCount={7} />
+                        <YAxis type="category" dataKey="status" width={100} tick={{ fontSize: 13 }} />
+                        <Tooltip formatter={(v) => [`${v}`, 'Count']} />
+                        <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={36}>
+                          <LabelList dataKey="count" position="right" style={{ fontSize: 13, fontWeight: 600 }} />
+                          {statusChartData.map(entry => (
+                            <Cell key={entry.key} fill={getStatusColor(entry.key)} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+          </>
+        )}
+      </div>
+    </PageContainer>
   );
 };
 

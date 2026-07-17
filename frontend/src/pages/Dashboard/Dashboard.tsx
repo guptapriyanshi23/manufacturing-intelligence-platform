@@ -3,18 +3,19 @@ import { useLocation, useNavigate, useOutletContext } from 'react-router-dom';
 import {
   Grid, Typography, Paper, Box, useTheme, Chip, CircularProgress,
   FormControl, InputLabel, Select, MenuItem, Button,
-  IconButton, Dialog, DialogContent, TextField, Breadcrumbs,
+  IconButton, Dialog, DialogContent, TextField,
 } from '@mui/material';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceDot,
 } from 'recharts';
-import { OpenInFull as ExpandIcon, Close as CloseIcon, NavigateNext as NavigateNextIcon } from '@mui/icons-material';
+import { OpenInFull as ExpandIcon, Close as CloseIcon } from '@mui/icons-material';
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { api } from '../../api/client';
 import type { HierarchyNode } from '../../types/hierarchy';
 import { getSeverityBgColor, getSeverityColor, getSeverityLevelFull } from '../../constants/severity';
 import { PageHeader } from '../../components/Cards/PageHeader';
 import { AdvisoryStatus, SeverityLevel } from '../../types/enums';
+import BreadCrumsBar from '../../components/BreadCrumsBar/BreadCrumsBar';
 
 const TIME_RANGE_OPTIONS = [
   { value: 'last_1h', label: 'Last 1 Hour' },
@@ -702,19 +703,7 @@ export const Dashboard: React.FC = () => {
         title="Dashboard"
         />
 
-      {breadcrumbs.length > 0 && (
-        <Breadcrumbs separator={<NavigateNextIcon fontSize="small" sx={{ color: 'text.secondary' }} />} sx={{ mb: 2 }}>
-          {breadcrumbs.map((name, index, arr) => (
-            <Typography
-              key={name}
-              color={index === arr.length - 1 ? 'text.primary' : 'text.secondary'}
-              sx={{ fontWeight: index === arr.length - 1 ? 700 : 500, fontSize: '0.85rem' }}
-            >
-              {name}
-            </Typography>
-          ))}
-        </Breadcrumbs>
-      )}
+      <BreadCrumsBar breadcrumbsData={breadcrumbs}/>
 
       <Box sx={{ mb: 4 }}>
         <Paper sx={{ px: 2, py: 2.5, borderRadius: 2, border: '1px solid #ccc' }}>
