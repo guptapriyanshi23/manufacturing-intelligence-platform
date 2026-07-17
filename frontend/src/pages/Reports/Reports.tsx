@@ -13,7 +13,7 @@ import { api } from '../../api/client';
 import { getSeverityColor, getSeverityLevel } from '../../constants/severity';
 import type { HierarchyNode } from '../../types/hierarchy';
 import { getStatusColor } from '../../constants/status';
-import '../alerts/Alerts.scss';
+import '../Alerts/Alerts.scss';
 import './Reports.scss';
 import { TimeRange, TIME_RANGE_OPTIONS, AdvisoryStatus } from '../../types/enums';
 import BreadCrumsBar from '../../components/BreadCrumsBar/BreadCrumsBar';
