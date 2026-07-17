@@ -361,6 +361,12 @@ export const Alerts: React.FC = () => {
                 });
               }
             };
+            const alertCount = 
+              sev === 'All'
+                ? filteredAlerts.length
+                : filteredAlerts.filter(
+                  alert => `S${alert.severity}` === sev
+                ).length;
             const clsName = `deviation-chip deviation-chip--${severityClassMap[sev]}${isSelected ? ' deviation-chip--active' : ''}`;
 
             return (
@@ -369,7 +375,7 @@ export const Alerts: React.FC = () => {
                 onClick={handleSeverityClick}
               >
                 <span className="deviation-chip__label">{sev}</span>
-                <span className="deviation-chip__count">25</span>
+                <span className="deviation-chip__count">{alertCount}</span>
               </button>
             );
           })}
@@ -381,8 +387,8 @@ export const Alerts: React.FC = () => {
             <Select
               labelId="alerts-asset-filter-label"
               label="Asset"
-              value={selectedSensorId}
-              onChange={(e) => setSelectedSensorId(e.target.value as number | '')}
+              // value={selectedSensorId}
+              // onChange={(e) => setSelectedSensorId(e.target.value as number | '')}
             >
               <MenuItem value="all">All</MenuItem>
               {availableSensors.map(s => (
@@ -391,7 +397,9 @@ export const Alerts: React.FC = () => {
             </Select>
           </FormControl>
 
-          <FormControl size="small" className="alerts-table-filters__field" disabled={!isAssetSelected}>
+          <FormControl size="small" className="alerts-table-filters__field" 
+            disabled={!isAssetSelected}
+            >
             <InputLabel id="alerts-tag-filter-label">Tag</InputLabel>
             <Select
               labelId="alerts-tag-filter-label"
@@ -408,9 +416,8 @@ export const Alerts: React.FC = () => {
 
           <Button
             variant="contained"
-            color="secondary"
             onClick={handleViewClick}
-            sx={{ minWidth: 90, fontWeight: 600, height: 40 }}
+            sx={{ minWidth: 90, fontWeight: 600, height: 35, backgroundColor: '#1a1a1a' }}
           >
             View
           </Button>
@@ -435,7 +442,7 @@ export const Alerts: React.FC = () => {
             <div className="alerts-table-wrap">
               <Table size="small" className="alerts-table">
                 <TableHead>
-                  {/* Total + Acknowledge button */}
+                  {/* Total Selected Alerts + Acknowledge button */}
                   <TableRow>
                     <TableCell colSpan={7}>
                       <Box
@@ -446,7 +453,7 @@ export const Alerts: React.FC = () => {
                         }}
                       >
                         <Typography>
-                          Total Alerts : {filteredAlerts.length}
+                          Total Selected : {selectedIds?.length}
                         </Typography>
 
                         <Button

@@ -231,15 +231,8 @@ export const Reports: React.FC = () => {
             className="reporting-analysis__generate-btn"
             onClick={handleGenerateClick}
             sx={{
-              backgroundColor: 'var(--color-primary) !important',
-              '&:hover': {
-                backgroundColor: 'var(--color-primary-dark) !important'
-              },
-              '&.Mui-disabled': {
-                backgroundColor: '#e0e0e0 !important',
-                color: 'rgba(141, 138, 138, 0.83)'
-
-              }
+              minWidth: 90, fontWeight: 600, height: 35,
+              backgroundColor: '#1a1a1a',
             }}
           >
             Generate Report
@@ -250,6 +243,7 @@ export const Reports: React.FC = () => {
             disabled={!appliedNode}
             onClick={() => console.log('Download PDF')}
             sx={{
+              minWidth: 90, fontWeight: 600, height: 35,
               backgroundColor: 'var(--color-primary) !important',
               '&:hover': {
                 backgroundColor: 'var(--color-primary-dark) !important'
