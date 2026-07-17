@@ -20,7 +20,6 @@ const ReportIcon = () => (
 
 
 export const PageHeader: React.FC<PageHeaderProps> = ({ title, url = '', subtitle }) => {
-  console.log(url);
   const getIcon = () => {
     if (url.includes('/admin')) {
       return <AdminPanelSettingsIcon sx={{ color: '#0076A8', fontSize: 22 }} />;

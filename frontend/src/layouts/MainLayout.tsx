@@ -133,17 +133,20 @@ export const MainLayout: React.FC = () => {
         sx={{
           width: drawerWidth,
           flexShrink: 0,
-          [`& .MuiDrawer-paper`]: { width: drawerWidth, boxSizing: 'border-box' },
+          [`& .MuiDrawer-paper`]: { width: drawerWidth, border: '1px solid #e2e8f0' },
           zIndex: 1
         }}
       >
-        <Toolbar />
-        <Box sx={{ overflow: 'auto', display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <Box sx={{ overflow: 'auto', display: 'flex', flexDirection: 'column', height: '100%',
+          background: '#fff', paddingTop: '3.5rem', border: '1px solid #e2e8f0'
+         }}>
           {showHierarchy && (
             <>
               {/* Hierarchy section */}
-              <Box sx={{ px: 2, my: 1 }}>
-                <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>
+              <Box sx={{ px: 2, py: 1,  borderBottom: '1px solid #e2e8f0' }}>
+                <Typography variant="caption" sx={{ textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700,
+                  color: 'var(--color-ternary) !important'
+                 }}>
                   Plant Hierarchy (ISA-95)
                 </Typography>
               </Box>
