@@ -1,8 +1,8 @@
 export const STATUS_COLORS: Record<string, string> = {
-  open:         '#d87b71', // red
-  acknowledged: '#72b9d3', // blue
-  in_progress:  '#f4e86b', // yellow 
-  resolved:     '#497e3c', // green
+  open:         '#e53a27', // red
+  acknowledged: '#14a6db', // blue
+  in_progress:  '#ecd800', // yellow 
+  resolved:     '#357a23', // green
 };
 
 export const STATUS_BG_COLORS: Record<string, string> = {

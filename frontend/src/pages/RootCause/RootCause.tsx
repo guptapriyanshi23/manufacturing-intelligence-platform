@@ -12,11 +12,10 @@ import {
   Stack,
   FormControlLabel,
   Checkbox,
-  Breadcrumbs,
   CircularProgress,
   Chip,
 } from '@mui/material';
-import { PhotoCameraOutlined, NavigateNext as NavigateNextIcon } from '@mui/icons-material';
+import { PhotoCameraOutlined } from '@mui/icons-material';
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
 import { StatusChip } from '../../components/Forms/StatusChip';
@@ -24,6 +23,7 @@ import { api } from '../../api/client';
 import { getSeverityLevelFull, getSeverityColor, getSeverityBgColor } from '../../constants/severity';
 import type { Advisory } from '../../types/api_types';
 import { AdvisoryStatus } from '../../types/enums';
+import BreadCrumsBar from '../../components/BreadCrumsBar/BreadCrumsBar';
 
 const getBreadcrumbsPath = (nodeId: number, flatNodes: any[]): string[] => {
   const path: string[] = [];
@@ -156,26 +156,14 @@ export const RootCause: React.FC = () => {
         url='/root-cause'
       />
 
-      {breadcrumbs.length > 0 && (
-        <Breadcrumbs separator={<NavigateNextIcon fontSize="small" sx={{ color: 'text.secondary' }} />} sx={{ mb: 2 }}>
-          {breadcrumbs.map((name, index, arr) => (
-            <Typography
-              key={name}
-              color={index === arr.length - 1 ? 'text.primary' : 'text.secondary'}
-              sx={{ fontWeight: index === arr.length - 1 ? 700 : 500, fontSize: '0.85rem' }}
-            >
-              {name}
-            </Typography>
-          ))}
-        </Breadcrumbs>
-      )}
+      <BreadCrumsBar breadcrumbsData={breadcrumbs}/>
 
       <Grid container spacing={3}>
         <Grid size={{ xs: 12 }}>
           <Card sx={{ border: '1px solid #ccc', backgroundColor: '#ffffff' }}>
             <Box
               sx={{
-                backgroundColor: 'secondary.main',
+                backgroundColor: '#1a1a1a',
                 p: 2,
               }}
             >
@@ -187,10 +175,10 @@ export const RootCause: React.FC = () => {
                 }}
               >Root Cause Analysis</Typography>
             </Box>
-            <CardContent sx={{ p: 3 }}>
+            <CardContent sx={{ p: 2 }}>
               <Stack spacing={3}>
                 {activeAdvisory ? (
-                  <Paper variant="outlined" sx={{ p: 2.5, bgcolor: '#f8fafc', borderColor: '#e2e8f0', borderRadius: 2 }}>
+                  <Paper variant="outlined" sx={{ p: 2 }}>
                     <Grid container spacing={3}>
                       <Grid size={{ xs: 12, sm: 6 }}>
                         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>Asset</Typography>
@@ -201,9 +189,8 @@ export const RootCause: React.FC = () => {
                         <Chip
                           label={getSeverityLevelFull(activeAdvisory.severity).toUpperCase()}
                           size="small"
+                          className={`severity-badge severity-s${activeAdvisory.severity}`}
                           sx={{
-                            backgroundColor: getSeverityBgColor(activeAdvisory.severity),
-                            color: getSeverityColor(activeAdvisory.severity),
                             fontWeight: 700,
                             minWidth: 32,
                             justifyContent: 'center',
@@ -241,7 +228,6 @@ export const RootCause: React.FC = () => {
                     width: '100%',
                     minHeight: 180,
                     border: '1px dashed #7b7a7a',
-                    borderRadius: 2,
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'center',

@@ -16,7 +16,7 @@ export const StatusChip: React.FC<StatusChipProps> = ({ label, status }) => (
       color: getStatusColor(status),
       border: `1px solid ${getStatusColor(status)}33`,
       fontWeight: 600,
-      fontSize: '0.75rem',
+      fontSize: '0.85rem',
       borderRadius: '4px',
     }}
   />

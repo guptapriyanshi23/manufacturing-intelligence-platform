@@ -146,7 +146,7 @@ export const MainLayout: React.FC = () => {
                 <Typography variant="caption" sx={{ textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700,
                   color: 'var(--color-ternary) !important'
                  }}>
-                  Plant Hierarchy (ISA-95)
+                  Plant Hierarchy
                 </Typography>
               </Box>
               <Box
