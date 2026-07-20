@@ -741,8 +741,6 @@ export const Dashboard: React.FC = () => {
           sx={{ minWidth: 160 }}
         />
 
-        <Box></Box>
-
         <FormControl size="small" sx={{ minWidth: 200 }} disabled={!isAssetSelected}>
           <InputLabel shrink>Sensor/Tag</InputLabel>
           <Select
@@ -779,7 +777,7 @@ export const Dashboard: React.FC = () => {
             <Grid container spacing={3}>
               {appliedSensors.length === 0 && telemetryPoints.length === 0 && !telemetryLoading ? (
                 <Grid size={12}>
-                  
+
                   <Paper sx={{ p: 6, textAlign: 'center', border: '1px solid #ccc', borderRadius: 2 }}>
                     <Typography variant="h6" color="text.secondary" gutterBottom sx={{ fontWeight: 600 }}>
                       No Telemetry Data Loaded
@@ -838,7 +836,7 @@ export const Dashboard: React.FC = () => {
                         <Grid container spacing={3} sx={{ alignItems: 'stretch' }}>
                           {/* Chart Area */}
                           <Grid size={8}>
-                            <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #ccc', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                            <Card className="process-analysis__chart-card" sx={{ p: 2,  height: '100%', display: 'flex', flexDirection: 'column' }}>
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                 <Typography variant="h6" sx={{ fontWeight: 700 }}>{sensor.display_name}</Typography>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -853,62 +851,64 @@ export const Dashboard: React.FC = () => {
                               <Box sx={{ width: '100%', height: 270 }}>
                                 {renderLineChart(data, sensor, 270, hasActiveAdvisory ? sensorAdvisory : null)}
                               </Box>
-                            </Paper>
+                            </Card>
                           </Grid>
                           {/* Detailed Advisory Panel for this sensor */}
-                          {hasActiveAdvisory ? (<Card className="process-analysis__chart-card process-analysis__advisory-card" sx={{ flex: '0 0 30%', }}>
-                            <Box className="process-analysis__chart-header" sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Typography className="process-analysis__chart-title">Advisory</Typography>
-                              <Chip
-                                label={getSeverityLevelFull(sensorAdvisory.severity)}
-                                size="small"
-                                sx={{ backgroundColor: getSeverityBgColor(sensorAdvisory.severity), color: getSeverityColor(sensorAdvisory.severity), fontWeight: 600 }}
-                              />
-                            </Box>
+                          {hasActiveAdvisory ? (
+                            <Card className="process-analysis__chart-card process-analysis__advisory-card" 
+                              sx={{ flex: '0 0 30%', display: 'flex', flexDirection: 'column' }}>
+                              <Box className="process-analysis__chart-header" sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Typography className="process-analysis__chart-title">Advisory</Typography>
+                                <Chip
+                                  label={getSeverityLevelFull(sensorAdvisory.severity)}
+                                  size="small"
+                                  sx={{ backgroundColor: getSeverityBgColor(sensorAdvisory.severity), color: getSeverityColor(sensorAdvisory.severity), fontWeight: 600 }}
+                                />
+                              </Box>
 
-                            <Box className="process-analysis__advisory-content">
-                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <Typography className="process-analysis__advisory-alert-title">{sensorAdvisory.asset || 'Equipment Advisory'}</Typography>
-                                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, textAlign: 'right' }}>
-                                  {new Date(sensorAdvisory.detected_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                              <Box className="process-analysis__advisory-content">
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                  <Typography className="process-analysis__advisory-alert-title">{sensorAdvisory.asset || 'Equipment Advisory'}</Typography>
+                                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, textAlign: 'right' }}>
+                                    {new Date(sensorAdvisory.detected_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                  </Typography>
+                                </Box>
+                                <Typography className="process-analysis__advisory-description">
+                                  {sensorAdvisory.description}
                                 </Typography>
-                              </Box>
-                              <Typography className="process-analysis__advisory-description">
-                                {sensorAdvisory.description}
-                              </Typography>
 
-                              <Box className="process-analysis__advisory-actions">
-                                <Button variant="outlined" size="small"
-                                  disabled={sensorAdvisory.status === 'acknowledged'}
-                                  sx={{
-                                    borderColor: '#00A3E0',
-                                    color: '#00A3E0',
-                                    // fontWeight: 500,
-                                    '&:hover': {
-                                      backgroundColor: '#00a4e056',
-                                      // fontWeight: 600,
-                                    },
-                                  }}
-                                  onClick={async () => {
-                                    try {
-                                      await api.advisories.update(sensorAdvisory.id, { status: AdvisoryStatus.ACKNOWLEDGED });
-                                      setAdvisories(prev => prev.map(a => a.id === sensorAdvisory.id ? { ...a, status: AdvisoryStatus.ACKNOWLEDGED } : a));
-                                    } catch (err) {
-                                      console.error("Failed to acknowledge advisory:", err);
-                                    }
-                                  }}
-                                >{sensorAdvisory.status === 'acknowledged' ? 'Acknowledged' : 'Acknowledge'}
-                                </Button>
+                                <Box className="process-analysis__advisory-actions">
+                                  <Button variant="outlined" size="small"
+                                    disabled={sensorAdvisory.status === 'acknowledged'}
+                                    sx={{
+                                      borderColor: '#00A3E0',
+                                      color: '#00A3E0',
+                                      // fontWeight: 500,
+                                      '&:hover': {
+                                        backgroundColor: '#00a4e056',
+                                        // fontWeight: 600,
+                                      },
+                                    }}
+                                    onClick={async () => {
+                                      try {
+                                        await api.advisories.update(sensorAdvisory.id, { status: AdvisoryStatus.ACKNOWLEDGED });
+                                        setAdvisories(prev => prev.map(a => a.id === sensorAdvisory.id ? { ...a, status: AdvisoryStatus.ACKNOWLEDGED } : a));
+                                      } catch (err) {
+                                        console.error("Failed to acknowledge advisory:", err);
+                                      }
+                                    }}
+                                  >{sensorAdvisory.status === 'acknowledged' ? 'Acknowledged' : 'Acknowledge'}
+                                  </Button>
 
-                                <Button variant="contained" size="small"
-                                  onClick={() => {
-                                    navigate('/root-cause', { state: { advisoryId: sensorAdvisory.id, selectedNodeName: sensorAdvisory.asset || '' } });
-                                  }}>
-                                  Initiate RCA
-                                </Button>
+                                  <Button variant="contained" size="small"
+                                    onClick={() => {
+                                      navigate('/root-cause', { state: { advisoryId: sensorAdvisory.id, selectedNodeName: sensorAdvisory.asset || '' } });
+                                    }}>
+                                    Initiate RCA
+                                  </Button>
+                                </Box>
                               </Box>
-                            </Box>
-                          </Card>
+                            </Card>
                           ) : (
                             <Card className="process-analysis__chart-card process-analysis__advisory-card" sx={{ flex: '0 0 30%', }}>
 
