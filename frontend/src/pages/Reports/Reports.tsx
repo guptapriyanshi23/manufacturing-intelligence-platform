@@ -174,7 +174,7 @@ export const Reports: React.FC = () => {
     <PageContainer>
       <PageHeader
         title="Analytics"
-        url="/reports"
+        url="/analytics"
       />
 
       <BreadCrumsBar breadcrumbsData={breadcrumbs} />

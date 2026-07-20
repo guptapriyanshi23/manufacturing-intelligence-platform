@@ -144,7 +144,7 @@ export const router = createBrowserRouter([
           },
           {
             element: <ProtectedRoute requiredPermission="reports:view" />,
-            children: [{ path: 'reports', element: <Reports /> }],
+            children: [{ path: 'analytics', element: <Reports /> }],
           },
           {
             element: <ProtectedRoute requiredPermission="admin:view" />,

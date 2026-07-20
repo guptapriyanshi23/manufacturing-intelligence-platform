@@ -25,7 +25,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, url = '', subtitl
       return <AdminPanelSettingsIcon sx={{ color: '#0076A8', fontSize: 22 }} />;
     }
 
-    if (url.includes('/reports') || url.includes('/dashboard') || url.includes('/root-cause')) {
+    if (url.includes('/analytics') || url.includes('/dashboard') || url.includes('/root-cause')) {
       return <BarChart sx={{ color: '#0076A8' }} />;
     }
 

@@ -32,7 +32,7 @@ const navItems = [
   // { path: '/dashboard', label: 'Dashboard', permission: 'dashboard:view' },
   { path: '/advisories', label: 'Advisory Summary', permission: 'advisories:view' },
   // { path: '/root-cause', label: 'Root Cause', permission: 'advisories:rca' },
-  { path: '/reports', label: 'Analytics', permission: 'reports:view' },
+  { path: '/analytics', label: 'Analytics', permission: 'reports:view' },
   { path: '/admin', label: 'Admin', permission: 'admin:view' },
 ];
 

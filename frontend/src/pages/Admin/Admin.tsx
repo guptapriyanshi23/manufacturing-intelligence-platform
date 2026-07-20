@@ -119,7 +119,7 @@ const permissionGroups = [
     ]
   },
   {
-    module: 'Reports',
+    module: 'Aanalytics',
     actions: [
       { name: 'View', value: 'reports:view', description: 'Access report generation page' }
     ]

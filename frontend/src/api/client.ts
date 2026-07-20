@@ -173,8 +173,8 @@ export const api = {
       });
     },
   },
-  reports: {
-    list: () => request<{ id: number; name: string; report_type: string; status: string; created_at: string; download_url: string }[]>('/reports'),
+  analytics: {
+    list: () => request<{ id: number; name: string; report_type: string; status: string; created_at: string; download_url: string }[]>('/analytics'),
   },
   admin: {
     getStatus: () => request<{ database_connected: boolean; version: string; uptime_seconds: number; nodes_count: number }>('/admin/status'),
