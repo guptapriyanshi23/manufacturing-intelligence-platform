@@ -18,6 +18,10 @@ import './Reports.scss';
 import { TimeRange, TIME_RANGE_OPTIONS, AdvisoryStatus } from '../../types/enums';
 import BreadCrumsBar from '../../components/BreadCrumsBar/BreadCrumsBar';
 
+const InboxIcon = () => (
+  <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5v-3h3.56c.69 1.19 1.97 2 3.45 2s2.75-.81 3.45-2H19v3zm0-5h-4.99c0 1.1-.9 1.99-2 1.99S10 15.1 10 14H5V5h14v9z" /></svg>
+);
+
 const getDateRange = (rangeValue: string) => {
   const now = new Date();
   const map: Record<string, number> = {
@@ -256,12 +260,11 @@ export const Reports: React.FC = () => {
         </Box>
 
         {!appliedNode ? (
-          <Paper sx={{ p: 6, borderRadius: 2, border: '1px dashed #ccc', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', backgroundColor: '#fafafa', height: '40vh' }}>
-            <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1 }}>No Node Selected</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Please select a hierarchy node from the left tree panel to generate reports.
-            </Typography>
-          </Paper>
+          <div className="empty-state">
+            <InboxIcon />
+            <p>Select heirarchy node to view analysis.</p>
+          </div>
+
         ) : loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
             <CircularProgress color="secondary" />

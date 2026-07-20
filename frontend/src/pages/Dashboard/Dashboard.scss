@@ -1,3 +1,10 @@
+ .process-analysis__filters-grid {
+	display: grid;
+	grid-template-columns: 0.8fr 1fr 1fr 1.2fr 1fr;
+	gap: 0.75rem;
+	align-items: center;
+}
+
 .process-analysis {
   display: flex;
   flex-direction: column;

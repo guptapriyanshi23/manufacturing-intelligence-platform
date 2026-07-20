@@ -12,10 +12,8 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
-  Paper,
   CircularProgress,
   Dialog,
   DialogTitle,
@@ -23,17 +21,27 @@ import {
   DialogActions,
   TextField,
   Typography,
+  Card,
+  TablePagination,
 } from '@mui/material';
+import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined';
 import type { SelectChangeEvent } from '@mui/material/Select';
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
 import { StatusChip } from '../../components/Forms/StatusChip';
 import { api } from '../../api/client';
-import { getSeverityColor, getSeverityBgColor, severityOptions, getSeverityLevelFull } from '../../constants/severity';
-import { statusOptions } from '../../constants/status';
+import { getSeverityColor, getSeverityBgColor, severityOptions, getSeverityLevelFull, severityClassMap } from '../../constants/severity';
+import { getStatusClassName, getStatusText, statusClassMap, statusLabelMap, statusOptions } from '../../constants/status';
 import type { HierarchyNode } from '../../types/hierarchy';
 import { AdvisoryStatus, NodeType, TimeRange, TIME_RANGE_OPTIONS } from '../../types/enums';
 import BreadCrumsBar from '../../components/BreadCrumsBar/BreadCrumsBar';
+import './Advisories.scss';
+import '../Alerts/Alerts.scss';
+import { fmtDate, fmtTime } from '../../constants/datetimefmt';
+
+const InboxIcon = () => (
+  <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5v-3h3.56c.69 1.19 1.97 2 3.45 2s2.75-.81 3.45-2H19v3zm0-5h-4.99c0 1.1-.9 1.99-2 1.99S10 15.1 10 14H5V5h14v9z" /></svg>
+);
 
 const getDateRange = (rangeValue: string) => {
   const now = new Date();
@@ -82,18 +90,18 @@ export const Advisories: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   // Dropdown states (selection state, not applied immediately)
-  const [statusFilter, setStatusFilter] = useState<string>('');
-  const [severityFilter, setSeverityFilter] = useState<string>('');
+  const [selectedSeverity, setSelectedSeverity] = useState<string>('All');
+  const [selectedStatus, setSelectedStatus] = useState<string>('All');
   const [selectedSensorId, setSelectedSensorId] = useState<number | ''>('');
+  const [selectedAssetId, setSelectedAssetId] = useState<number | ''>('');
   const [timeRange, setTimeRange] = useState<string>(TimeRange.LAST_24H);
   const initial = getDateRange(TimeRange.LAST_24H);
   const [fromDate, setFromDate] = useState(initial.from);
   const [toDate, setToDate] = useState(initial.to);
 
   // Applied states (updates only when 'View' button is clicked)
-  const [appliedStatus, setAppliedStatus] = useState<string>('');
-  const [appliedSeverity, setAppliedSeverity] = useState<string>('');
   const [appliedSensorId, setAppliedSensorId] = useState<number | ''>('');
+  const [appliedAssetId, setAppliedAssetId] = useState<number | ''>('');
   const [appliedTimeRange, setAppliedTimeRange] = useState<string>(TimeRange.LAST_24H);
   const [appliedFromDate, setAppliedFromDate] = useState(initial.from);
   const [appliedToDate, setAppliedToDate] = useState(initial.to);
@@ -120,6 +128,10 @@ export const Advisories: React.FC = () => {
     return getDescendants(treeNodeId);
   }, [treeNodeId, flatNodes]);
 
+  const availableAssets = useMemo(() => {
+    return descendantsOfSidePanel.filter(n => n.node_type === NodeType.ASSET);
+  }, [descendantsOfSidePanel]);
+
   const availableSensors = useMemo(() => {
     return descendantsOfSidePanel.filter(n => n.node_type === NodeType.SENSOR);
   }, [descendantsOfSidePanel]);
@@ -139,33 +151,10 @@ export const Advisories: React.FC = () => {
   }, [treeNodeId, flatNodes]);
 
   useEffect(() => {
-    if (location.state?.prefilledStatus || location.state?.prefilledSeverity) {
-      if (location.state.prefilledStatus) {
-        setStatusFilter(location.state.prefilledStatus);
-        setAppliedStatus(location.state.prefilledStatus);
-      }
-      if (location.state.prefilledSeverity) {
-        const mappedSev = mapToSeverityOption(location.state.prefilledSeverity);
-        setSeverityFilter(mappedSev);
-        setAppliedSeverity(mappedSev);
-      }
-      // Clean up prefilled context from history state so subsequent actions act normally
-      window.history.replaceState({ ...location.state, prefilledStatus: undefined, prefilledSeverity: undefined }, '');
-      return;
-    }
-
     const saved = localStorage.getItem('advisories_applied_filters');
     if (saved) {
       try {
         const filters = JSON.parse(saved);
-        if (filters.status) {
-          setStatusFilter(filters.status);
-          setAppliedStatus(filters.status);
-        }
-        if (filters.severity) {
-          setSeverityFilter(filters.severity);
-          setAppliedSeverity(filters.severity);
-        }
         if (filters.timeRange) {
           setTimeRange(filters.timeRange);
           setAppliedTimeRange(filters.timeRange);
@@ -189,7 +178,9 @@ export const Advisories: React.FC = () => {
 
     if (treeNodeId) {
       setSelectedSensorId('');
+      setSelectedAssetId('');
       setAppliedSensorId('');
+      setAppliedAssetId('');
     }
   }, [treeNodeId, flatNodes]);
 
@@ -225,7 +216,8 @@ export const Advisories: React.FC = () => {
     }
 
     setLoading(true);
-    const targetNodeId = appliedSensorId ? Number(appliedSensorId) : appliedNode.id;
+    // const targetNodeId = appliedSensorId ? Number(appliedSensorId) : appliedNode.id;
+    const targetNodeId = appliedAssetId ? Number(appliedAssetId) : appliedNode.id;
 
     let startIso: string | undefined = undefined;
     let endIso: string | undefined = undefined;
@@ -241,16 +233,46 @@ export const Advisories: React.FC = () => {
 
     api.advisories.list({
       node_id: targetNodeId,
-      status: appliedStatus,
-      severity: appliedSeverity,
       start_time: startIso,
       end_time: endIso,
     })
-      .then((res) => { setAdvisories(res); setLoading(false); })
+      .then((res) => {
+        setAdvisories(res);
+        setSelectedSeverity('All');
+        setSelectedStatus('All');
+        setLoading(false);
+      })
       .catch((err) => { console.error('Failed to fetch advisories:', err); setLoading(false); });
-  }, [appliedNode, appliedStatus, appliedSeverity, appliedSensorId, appliedTimeRange, appliedFromDate, appliedToDate]);
+  }, [appliedNode, appliedSensorId, appliedAssetId, appliedTimeRange, appliedFromDate, appliedToDate]);
 
-  const filteredRows = advisories;
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+
+  const filteredRows = advisories.filter((adv) => {
+  const severityMatch =
+    selectedSeverity === 'All' ||
+    `S${adv.severity}` === selectedSeverity;
+
+  const statusMatch =
+    selectedStatus === 'All' ||
+    statusLabelMap[adv.status] === selectedStatus;
+
+  return severityMatch && statusMatch;
+});
+
+  const paginatedRows = filteredRows.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage
+  );
+
+  const handleChangePage = (_: any, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: any) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   const handleTimeRangeChange = (val: string) => {
     setTimeRange(val);
@@ -262,23 +284,29 @@ export const Advisories: React.FC = () => {
   };
 
   const handleApplyFilters = () => {
-    setAppliedStatus(statusFilter);
-    setAppliedSeverity(severityFilter);
     setAppliedSensorId(selectedSensorId);
+    setAppliedAssetId(selectedAssetId);
     setAppliedTimeRange(timeRange);
     setAppliedFromDate(fromDate);
     setAppliedToDate(toDate);
 
     localStorage.setItem('advisories_applied_filters', JSON.stringify({
-      status: statusFilter,
-      severity: severityFilter,
       timeRange: timeRange,
       fromDate: fromDate,
       toDate: toDate,
     }));
   };
 
-
+  const getAssetName = (row: any) => {
+    if (row.asset_name) return row.asset_name;
+    let currentId: number | undefined = row.node_id;
+    while (currentId) {
+      const node = flatNodes.find(n => n.id === currentId);
+      if (node?.node_type === NodeType.ASSET) return node.display_name;
+      currentId = node?.parent_id;
+    }
+    return 'N/A';
+  };
 
   const handleRowClick = (advisory: any) => { setSelectedAdvisory(advisory); setDetailsOpen(true); };
   const handleCloseDetails = () => { setDetailsOpen(false); setSelectedAdvisory(null); };
@@ -289,8 +317,6 @@ export const Advisories: React.FC = () => {
       if (appliedNode) {
         api.advisories.list({
           node_id: appliedNode.id,
-          status: appliedStatus,
-          severity: appliedSeverity
         })
           .then(setAdvisories)
           .catch((err) => console.error('Failed to refresh advisories:', err));
@@ -313,9 +339,136 @@ export const Advisories: React.FC = () => {
         url="/advisories"
       />
 
-      <BreadCrumsBar breadcrumbsData={breadcrumbs}/>
+      <BreadCrumsBar breadcrumbsData={breadcrumbs} />
 
-      <Paper sx={{ px: 2, py: 2.5, mb: 3, border: '1px solid #ccc' }}>
+      {/* <Box className="advisory-summary__filters-wrap"> */}
+      <Box className="advisory-summary__filters-grid">
+        <FormControl size="small">
+          <InputLabel shrink>Time Range</InputLabel>
+          <Select
+            value={timeRange}
+            label="Time Range"
+            onChange={(e) => handleTimeRangeChange(e.target.value)}
+            displayEmpty
+            renderValue={timeRange === '' ? () => <span >Select</span> : undefined}
+          >
+            <MenuItem value="">Select</MenuItem>
+            {TIME_RANGE_OPTIONS.map(o => (
+              <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <TextField
+          label="Start Date"
+          type="datetime-local"
+          size="small"
+          value={fromDate}
+          disabled={timeRange !== TimeRange.CUSTOM}
+          onChange={(e) => setFromDate(e.target.value)}
+          slotProps={{ inputLabel: { shrink: true } }}
+          fullWidth
+        />
+
+        <TextField
+          label="End Date"
+          type="datetime-local"
+          size="small"
+          value={toDate}
+          disabled={timeRange !== TimeRange.CUSTOM}
+          onChange={(e) => setToDate(e.target.value)}
+          slotProps={{ inputLabel: { shrink: true } }}
+          fullWidth
+        />
+
+        <FormControl size="small">
+          <InputLabel id="alerts-asset-filter-label">Asset</InputLabel>
+          <Select
+            labelId="alerts-asset-filter-label"
+            label="Asset"
+            value={selectedAssetId}
+            onChange={(e) => setSelectedAssetId(e.target.value as number | '')}
+          >
+            <MenuItem value="all">All</MenuItem>
+            {availableAssets.map(s => (
+              <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <Button
+          variant="contained"
+          onClick={handleApplyFilters}
+          sx={{ minWidth: 90, fontWeight: 600, height: 35, backgroundColor: '#1a1a1a', }}
+        >
+          View
+        </Button>
+
+      </Box>
+      {/* </Box> */}
+
+      <div className="advisory-filters-row">
+        <div className="deviation-filters advisory-severity-filters">
+          {['All', 'S1', 'S2', 'S3', 'S4', 'S5'].map((sev) => {
+            const isSelected = selectedSeverity === sev;
+
+            const handleSeverityClick = () => {
+              setSelectedSeverity(sev);
+              setPage(0);
+            };
+
+            const advisoryCount =
+              sev === 'All'
+                ? advisories?.length
+                : advisories?.filter(
+                  adv => `S${adv.severity}` === sev
+                ).length;
+            const clsName = `deviation-chip deviation-chip--${severityClassMap[sev]}${isSelected ? ' deviation-chip--active' : ''}`;
+
+            return (
+              <button key={sev}
+                className={clsName}
+                onClick={handleSeverityClick}
+              >
+                <span className="deviation-chip__label">{sev}</span>
+                <span className="deviation-chip__count">{advisoryCount}</span>
+              </button>
+            );
+          })}
+
+        </div>
+
+        <div className="deviation-filters advisory-status-filters">
+          {['All', 'Open', 'Acknowledged', 'Resolved'].map((status) => {
+            const isSelected = selectedStatus === status;
+
+            const handleStatusClick = () => {
+              setSelectedStatus(status);
+              setPage(0);
+            };
+
+            const advisoryCount =
+              status === 'All'
+                ? advisories?.length
+                : advisories?.filter(
+                  adv => statusLabelMap[adv.status] === status
+                ).length;
+            const mainCls = status === 'All' || status === 'Open' ? 'deviation' : 'advisory-status';
+            const clsName = `deviation-chip ${mainCls}-chip--${statusClassMap[status]}${isSelected ? ' deviation-chip--active' : ''}`;
+
+            return (
+              <button key={status}
+                className={clsName}
+                onClick={handleStatusClick}
+              >
+                <span className="deviation-chip__label">{status}</span>
+                <span className="deviation-chip__count">{advisoryCount}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* <Paper sx={{ px: 2, py: 2.5, mb: 3, border: '1px solid #ccc' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
 
           <FormControl sx={{ flex: 1, minWidth: 0 }} size="small">
@@ -423,92 +576,97 @@ export const Advisories: React.FC = () => {
             View
           </Button>
         </Box>
-      </Paper>
+      </Paper> */}
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
           <CircularProgress color="secondary" />
         </Box>
-      ) : (
-        <TableContainer
-          component={Paper}
-          sx={{ backgroundColor: '#ffffff', boxShadow: 'none', border: '1px solid #ccc' }}
-        >
-          <Table sx={{ minWidth: 720 }}>
-            <TableHead>
-              <TableRow>
-                {['Sensor Name', 'Asset', 'Severity', 'Status', 'Action taken', 'Detected At'].map(col => (
-                  <TableCell key={col} sx={{ color: 'text.secondary', fontWeight: 700, borderBottom: '1px solid #ccc' }}>
-                    {col}
-                  </TableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {appliedNode === null ? (
-                <TableRow>
-                  <TableCell colSpan={6} sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
-                    Please select a hierarchy node from the left tree panel to display advisories.
-                  </TableCell>
-                </TableRow>
-              ) : filteredRows.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
-                    No advisories match the current filter.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredRows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    hover
-                    onClick={() => handleRowClick(row)}
-                    sx={{ cursor: 'pointer', '&:last-child td': { borderBottom: 0 } }}
-                  >
-                    <TableCell sx={{ color: 'text.primary', fontWeight: 600, borderBottom: '1px solid #ccc' }}>
-                      {row.sensor_name || '—'}
-                    </TableCell>
-                    <TableCell sx={{ color: 'text.secondary', borderBottom: '1px solid #ccc' }}>
-                      {row.asset}
-                    </TableCell>
-                    <TableCell sx={{ borderBottom: '1px solid #ccc' }}>
-                      <Chip
-                        label={getSeverityLevelFull(row.severity).toUpperCase()}
-                        size="small"
-                        sx={{
-                          backgroundColor: getSeverityBgColor(row.severity),
-                          color: getSeverityColor(row.severity),
-                          fontWeight: 700,
-                          minWidth: 32,
-                          justifyContent: 'center',
-                          borderRadius: '4px',
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell sx={{ borderBottom: '1px solid #ccc' }}>
-                      <StatusChip label={row.status.toUpperCase()} status={row.status} />
-                    </TableCell>
-                    <TableCell sx={{ color: 'text.secondary', borderBottom: '1px solid #ccc' }}>
-                      {row.action_taken || '—'}
-                    </TableCell>
-                    <TableCell sx={{ color: 'text.secondary', borderBottom: '1px solid #ccc' }}>
-                      {row.detected_at
-                        ? new Date(row.detected_at).toLocaleString('en-IN', {
-                            timeZone: 'Asia/Kolkata',
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })
-                        : '—'}
-                    </TableCell>
+      ) : (<>
+        <Card className="advisory-summary__grid-card">
+          <Box className="advisory-summary__export-actions">
+            <button type="button" className="advisory-export-btn">
+              <DownloadOutlinedIcon className="advisory-export-btn__icon" />
+              <span> PDF</span>
+            </button>
+            <button type="button" className="advisory-export-btn advisory-export-btn--xlsx">
+              <DownloadOutlinedIcon className="advisory-export-btn__icon" />
+              <span>XLSX</span>
+            </button>
+          </Box>
+          <Box className="advisory-summary__grid-wrap">
+            {paginatedRows?.length === 0 ? (
+              <div className="empty-state">
+                <InboxIcon />
+                <p>No advisory found for the selected item.</p>
+              </div>
+            ) : (
+              <Table size="small" className="alerts-table">
+                <TableHead>
+                  <TableRow>
+                    {['Timestamp', 'Asset', 'Severity', 'Status', 'Engineer', 'Action Taken'].map(col => (
+                      <TableCell key={col}>{col}</TableCell>
+                    ))}
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                </TableHead>
+
+                <TableBody>
+                  {paginatedRows?.map((row) => {
+                    const sevClsName = `severity-badge severity-s${row?.severity}`;
+                    const statusClsName = getStatusClassName(row?.status)
+                    return (
+                      <TableRow
+                        key={row.id}
+                        onClick={() => handleRowClick(row)}
+                        sx={{
+                          cursor: 'pointer',
+                          '&:hover': {
+                            backgroundColor: '#f8fafc',
+                          },
+                        }}
+                      ><TableCell>
+                          {`${fmtDate(new Date(row?.detected_at))} ${fmtTime(new Date(row?.detected_at))}`}
+                        </TableCell>
+                        <TableCell>{getAssetName(row)}</TableCell>
+                        <TableCell>
+                          <span className={sevClsName}>{getSeverityLevelFull(row.severity)}</span>
+                        </TableCell>
+                        <TableCell>
+                          <span className={statusClsName}>{getStatusText(row?.status)}</span>
+                        </TableCell>
+                        <TableCell>Engineer Name</TableCell>
+                        <TableCell>{row?.action_taken}</TableCell>
+
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+
+              </Table>
+            )}
+            {/* <DataGrid
+                rows={visibleRows}
+                columns={columns}
+                disableRowSelectionOnClick
+                hideFooterSelectedRowCount
+                pageSizeOptions={[5, 10]}
+                initialState={{ pagination: { paginationModel: { pageSize: 5, page: 0 } } }}
+                sx={{ border: 'none' }}
+              /> */}
+          </Box>
+
+          <TablePagination
+            component="div"
+            count={paginatedRows.length}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[5, 10, 25]}
+          />
+
+        </Card>
+      </>
       )}
 
       {/* Advisory Details Modal */}

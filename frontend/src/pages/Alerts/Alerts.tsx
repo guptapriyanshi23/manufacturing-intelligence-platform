@@ -78,14 +78,13 @@ export const Alerts: React.FC = () => {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
   // Filter states
-  const [selectedSeverities, setSelectedSeverities] = useState<string[]>(['All']);
+  const [selectedSeverity, setSelectedSeverity] = useState<string>('All');
   const [selectedAssetId, setSelectedAssetId] = useState<number | ''>('');
   const [selectedSensorId, setSelectedSensorId] = useState<number | ''>('');
 
   // Applied filter states
   const [appliedAssetId, setAppliedAssetId] = useState<number | ''>('');
   const [appliedSensorId, setAppliedSensorId] = useState<number | ''>('');
-  const [appliedSeverities, setAppliedSeverities] = useState<string[]>(['All']);
 
   useEffect(() => {
     api.hierarchy.list(true)
@@ -122,8 +121,7 @@ export const Alerts: React.FC = () => {
       .then((res) => {
         setAlerts(res || []);
         // Reset applied filters to matching tree state on sidebar selection change
-        setAppliedSeverities(['All']);
-        setSelectedSeverities(['All']);
+        setSelectedSeverity('All');
       })
       .catch(() => setAlerts([]))
       .finally(() => setLoading(false));
@@ -224,7 +222,6 @@ export const Alerts: React.FC = () => {
       setAlerts([]);
       setAppliedAssetId(selectedAssetId);
       setAppliedSensorId(selectedSensorId);
-      setAppliedSeverities(selectedSeverities);
       return;
     }
 
@@ -233,7 +230,6 @@ export const Alerts: React.FC = () => {
       setAlerts([]);
       setAppliedAssetId(selectedAssetId);
       setAppliedSensorId(selectedSensorId);
-      setAppliedSeverities(selectedSeverities);
       return;
     }
 
@@ -243,13 +239,11 @@ export const Alerts: React.FC = () => {
         setAlerts(res || []);
         setAppliedAssetId(selectedAssetId);
         setAppliedSensorId(selectedSensorId);
-        setAppliedSeverities(selectedSeverities);
       })
       .catch(() => {
         setAlerts([]);
         setAppliedAssetId(selectedAssetId);
         setAppliedSensorId(selectedSensorId);
-        setAppliedSeverities(selectedSeverities);
       })
       .finally(() => setLoading(false));
   };
@@ -293,16 +287,6 @@ export const Alerts: React.FC = () => {
       result = result.filter(a => matchesNode(a, selectedNodeId));
     }
 
-    // 2. Filter by Sensor/Tag dropdown
-    // if (appliedSensorId) {
-    //   result = result.filter(a => matchesNode(a, Number(appliedSensorId)));
-    // }
-
-    // 4. Filter by Severity Chip (multiselect)
-    if (!appliedSeverities.includes('All')) {
-      result = result.filter(a => appliedSeverities.includes(getSeverityLevel(a.severity)));
-    }
-
     // Sort by severity first (S1 to S5), then by timestamp descending
     result.sort((a, b) => {
       const levelA = getSeverityLevel(a.severity);
@@ -314,7 +298,15 @@ export const Alerts: React.FC = () => {
     });
 
     return result;
-  }, [alerts, selectedNodeId, appliedSensorId, selectedSeverities, flatNodes]);
+  }, [alerts, selectedNodeId, appliedSensorId, flatNodes]);
+
+  const filteredRows = filteredAlerts?.filter((adv) => {
+  const severityMatch =
+    selectedSeverity === 'All' ||
+    `S${adv.severity}` === selectedSeverity;
+
+  return severityMatch;
+});
 
   const allSelected = filteredAlerts.length > 0 && selectedIds.length === filteredAlerts.length;
   const someSelected = selectedIds.length > 0 && !allSelected;
@@ -370,26 +362,16 @@ export const Alerts: React.FC = () => {
       <div className="stats-row alerts-severity-filters-row">
         <div className="deviation-filters alerts-severity-filters">
           {['All', 'S1', 'S2', 'S3', 'S4', 'S5'].map((sev) => {
-            const isSelected = selectedSeverities.includes(sev);
+            const isSelected = selectedSeverity === sev;
+
             const handleSeverityClick = () => {
-              if (sev === 'All') {
-                setSelectedSeverities(['All']);
-              } else {
-                setSelectedSeverities((prev) => {
-                  const next = prev.filter(s => s !== 'All');
-                  if (next.includes(sev)) {
-                    const filtered = next.filter(s => s !== sev);
-                    return filtered.length === 0 ? ['All'] : filtered;
-                  } else {
-                    return [...next, sev];
-                  }
-                });
-              }
+              setSelectedSeverity(sev);
             };
+
             const alertCount = 
               sev === 'All'
-                ? filteredAlerts.length
-                : filteredAlerts.filter(
+                ? alerts?.length
+                : alerts?.filter(
                   alert => `S${alert.severity}` === sev
                 ).length;
             const clsName = `deviation-chip deviation-chip--${severityClassMap[sev]}${isSelected ? ' deviation-chip--active' : ''}`;
@@ -458,7 +440,7 @@ export const Alerts: React.FC = () => {
         {/* Alert List */}
         <div className="alert-list" style={{ paddingTop: '1rem' }}>
 
-          {filteredAlerts?.length === 0 ? (
+          {filteredRows?.length === 0 ? (
             <div className="empty-state">
               <InboxIcon />
               <p>No alerts found for the selected item.</p>
@@ -526,7 +508,7 @@ export const Alerts: React.FC = () => {
                 </TableHead>
 
                 <TableBody>
-                  {filteredAlerts?.map((row) => {
+                  {filteredRows?.map((row) => {
                     const statusText = getStatusFromSeverity(row?.severity);
                     const badgeClsName = `severity-badge severity-s${row?.severity}`;
                     const statusClsName = tableStatusClass(statusText);
