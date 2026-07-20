@@ -3,8 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Box, Button } from '@mui/material';
 // import { UNRESOLVED_ALERT_COUNT } from '../../pages/alerts';
 // import { OPEN_ADVISORY_COUNT } from '../../pages/advisory-summary';
-const UNRESOLVED_ALERT_COUNT = 10
-const OPEN_ADVISORY_COUNT = 5
+const UNRESOLVED_ALERT_COUNT = 2
+const OPEN_ADVISORY_COUNT = 2
 import './Header.scss';
 import { api } from '../../api/client';
 

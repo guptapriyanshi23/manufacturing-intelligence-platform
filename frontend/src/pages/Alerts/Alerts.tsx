@@ -80,9 +80,11 @@ export const Alerts: React.FC = () => {
 
   // Filter states
   const [selectedSeverities, setSelectedSeverities] = useState<string[]>(['All']);
+  const [selectedAssetId, setSelectedAssetId] = useState<number | ''>('');
   const [selectedSensorId, setSelectedSensorId] = useState<number | ''>('');
 
   // Applied filter states
+  const [appliedAssetId, setAppliedAssetId] = useState<number | ''>('');
   const [appliedSensorId, setAppliedSensorId] = useState<number | ''>('');
   const [appliedSeverities, setAppliedSeverities] = useState<string[]>(['All']);
 
@@ -160,12 +162,21 @@ export const Alerts: React.FC = () => {
   }, [selectedNodeId, flatNodes, getDescendantNodes]);
 
   // Sensor/Tag dropdown options
+  const availableAssets = useMemo(() => {
+    return descendantsOfSidePanel.filter(n => n.node_type === NodeType.ASSET);
+  }, [descendantsOfSidePanel]);
+  
+  // Sensor/Tag dropdown options
   const availableSensors = useMemo(() => {
     return descendantsOfSidePanel.filter(n => n.node_type === NodeType.SENSOR);
   }, [descendantsOfSidePanel]);
 
   const isAssetSelected = useMemo(() => {
     return flatNodes.find(n => n.id === selectedNodeId)?.node_type === NodeType.ASSET;
+  }, [selectedNodeId, flatNodes]);
+  
+  const isLineSelected = useMemo(() => {
+    return flatNodes.find(n => n.id === selectedNodeId)?.node_type === NodeType.LINE;
   }, [selectedNodeId, flatNodes]);
 
   // Autopopulate and sync dropdown selections based on the side panel hierarchy node selection
@@ -174,17 +185,24 @@ export const Alerts: React.FC = () => {
 
     if (!selectedNodeId) {
       setSelectedSensorId('');
+      setSelectedAssetId('');
       setAppliedSensorId('');
+      setAppliedAssetId('');
       return;
     }
 
     const node = flatNodes.find(n => n.id === selectedNodeId);
     if (!node) return;
 
-    if (node.node_type === NodeType.SENSOR) {
+    if (node.node_type === NodeType.ASSET) {
+      setSelectedAssetId(node.id);
+      setAppliedAssetId(node.id);
+    }
+    else if (node.node_type === NodeType.SENSOR) {
       setSelectedSensorId(node.id);
       setAppliedSensorId(node.id);
-    } else {
+    }
+     else {
       if (selectedSensorId && !availableSensors.some(s => s.id === selectedSensorId)) {
         setSelectedSensorId('');
         setAppliedSensorId('');
@@ -195,12 +213,17 @@ export const Alerts: React.FC = () => {
 
   const handleViewClick = () => {
     let activeNodeId = selectedNodeId;
-    if (selectedSensorId) {
+
+    if (Number(selectedAssetId)) {
+      activeNodeId = Number(selectedAssetId);
+    }
+    if (Number(selectedSensorId)) {
       activeNodeId = Number(selectedSensorId);
     }
 
     if (!activeNodeId) {
       setAlerts([]);
+      setAppliedAssetId(selectedAssetId);
       setAppliedSensorId(selectedSensorId);
       setAppliedSeverities(selectedSeverities);
       return;
@@ -209,6 +232,7 @@ export const Alerts: React.FC = () => {
     const node = flatNodes.find(n => n.id === activeNodeId);
     if (!node || node.node_type === NodeType.SITE) {
       setAlerts([]);
+      setAppliedAssetId(selectedAssetId);
       setAppliedSensorId(selectedSensorId);
       setAppliedSeverities(selectedSeverities);
       return;
@@ -218,11 +242,13 @@ export const Alerts: React.FC = () => {
     api.alerts.list({ node_id: activeNodeId })
       .then((res) => {
         setAlerts(res || []);
+        setAppliedAssetId(selectedAssetId);
         setAppliedSensorId(selectedSensorId);
         setAppliedSeverities(selectedSeverities);
       })
       .catch(() => {
         setAlerts([]);
+        setAppliedAssetId(selectedAssetId);
         setAppliedSensorId(selectedSensorId);
         setAppliedSeverities(selectedSeverities);
       })
@@ -269,9 +295,9 @@ export const Alerts: React.FC = () => {
     }
 
     // 2. Filter by Sensor/Tag dropdown
-    if (appliedSensorId) {
-      result = result.filter(a => matchesNode(a, Number(appliedSensorId)));
-    }
+    // if (appliedSensorId) {
+    //   result = result.filter(a => matchesNode(a, Number(appliedSensorId)));
+    // }
 
     // 4. Filter by Severity Chip (multiselect)
     if (!appliedSeverities.includes('All')) {
@@ -382,16 +408,16 @@ export const Alerts: React.FC = () => {
         </div>
 
         <div className="alerts-table-filters">
-          <FormControl size="small" className="alerts-table-filters__field" disabled={true}>
+          <FormControl size="small" className="alerts-table-filters__field" disabled={!isLineSelected}>
             <InputLabel id="alerts-asset-filter-label">Asset</InputLabel>
             <Select
               labelId="alerts-asset-filter-label"
               label="Asset"
-              // value={selectedSensorId}
-              // onChange={(e) => setSelectedSensorId(e.target.value as number | '')}
+              value={selectedAssetId}
+              onChange={(e) => setSelectedAssetId(e.target.value as number | '')}
             >
               <MenuItem value="all">All</MenuItem>
-              {availableSensors.map(s => (
+              {availableAssets.map(s => (
                 <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
               ))}
             </Select>
@@ -400,10 +426,10 @@ export const Alerts: React.FC = () => {
           <FormControl size="small" className="alerts-table-filters__field" 
             disabled={!isAssetSelected}
             >
-            <InputLabel id="alerts-tag-filter-label">Tag</InputLabel>
+            <InputLabel id="alerts-tag-filter-label">Sensor/Tag</InputLabel>
             <Select
               labelId="alerts-tag-filter-label"
-              label="Tag"
+              label="Sensor/Tag"
               value={selectedSensorId}
               onChange={(e) => setSelectedSensorId(e.target.value as number | '')}
             >
