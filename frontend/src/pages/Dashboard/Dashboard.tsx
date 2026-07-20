@@ -12,11 +12,11 @@ import { OpenInFull as ExpandIcon, Close as CloseIcon } from '@mui/icons-materia
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { api } from '../../api/client';
 import type { HierarchyNode } from '../../types/hierarchy';
-import { getSeverityBgColor, getSeverityColor, getSeverityLevelFull } from '../../constants/severity';
+import { getSeverityLevelFull } from '../../constants/severity';
 import { PageHeader } from '../../components/Cards/PageHeader';
 import { AdvisoryStatus, SeverityLevel, TimeRange, TIME_RANGE_OPTIONS, NodeType } from '../../types/enums';
 import BreadCrumsBar from '../../components/BreadCrumsBar/BreadCrumsBar';
-import '../alerts/Alerts.scss';
+import '../Alerts/Alerts.scss';
 import './Dashboard.scss';
 
 const getDateRange = (rangeValue: string) => {

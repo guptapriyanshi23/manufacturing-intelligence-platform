@@ -1,10 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Box, Button } from '@mui/material';
-// import { UNRESOLVED_ALERT_COUNT } from '../../pages/alerts';
-// import { OPEN_ADVISORY_COUNT } from '../../pages/advisory-summary';
-const UNRESOLVED_ALERT_COUNT = 2
-const OPEN_ADVISORY_COUNT = 2
 import './Header.scss';
 import { api } from '../../api/client';
 
@@ -39,28 +35,52 @@ const navItems = [
 const Header: React.FC<HeaderProps> = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const selectedNodeId = location.state?.selectedNodeId;
 
+  const [activeAlerts, setActiveAlerts] = useState(0);
+  const [activeAdvisories, setActiveAdvisories] = useState(0);
   const [profile, setProfile] = useState<{ email: string; permissions: string[] } | null>(null);
 
   useEffect(() => {
-      const cached = localStorage.getItem('user_profile');
-      if (cached) {
-        try {
-          setProfile(JSON.parse(cached));
-        } catch (e) {}
-      } else {
-        api.auth.getMe()
-          .then((res) => {
-            setProfile(res);
-            localStorage.setItem('user_profile', JSON.stringify(res));
-          })
-          .catch(() => {
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('user_profile');
-            navigate('/login');
-          });
-      }
-    }, [navigate]);
+    const cached = localStorage.getItem('user_profile');
+    if (cached) {
+      try {
+        setProfile(JSON.parse(cached));
+      } catch (e) { }
+    } else {
+      api.auth.getMe()
+        .then((res) => {
+          setProfile(res);
+          localStorage.setItem('user_profile', JSON.stringify(res));
+        })
+        .catch(() => {
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('user_profile');
+          navigate('/login');
+        });
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    if(selectedNodeId){
+      //Fetching active alerts
+      api.alerts.list({ status: 'active', node_id: selectedNodeId })
+      .then((res) => {
+        setActiveAlerts(res?.length)
+      })
+      .catch(() => setActiveAlerts(0))
+
+      //Fetching active advisories
+      api.advisories.list({ node_id: selectedNodeId })
+      .then((res) => {
+        if(res?.length){
+          const openAdvisories = res.filter((ad) => ad.status !== 'resolved')
+          setActiveAdvisories(openAdvisories?.length)
+        }
+      })
+      .catch(() => setActiveAdvisories(0))
+    }
+  }, [selectedNodeId]);
 
   const handleLogout = () => {
     localStorage.removeItem('auth_token');
@@ -86,21 +106,21 @@ const Header: React.FC<HeaderProps> = () => {
         <Box className="header-right">
           <Box className="header-nav">
             {allowedNavItems?.map((item) => (
-                <button
-                  key={item.path}
-                  className={`header-nav__item${location.pathname === item.path ? ' header-nav__item--active' : ''}`}
-                  type="button"
-                  onClick={() => navigate(item.path)}
-                >
-                  {item.label}
-                  {item.path === '/' && UNRESOLVED_ALERT_COUNT > 0 && (
-                    <span className="header-nav__badge">{UNRESOLVED_ALERT_COUNT}</span>
-                  )}
-                  {item.path === '/advisories' && OPEN_ADVISORY_COUNT > 0 && (
-                    <span className="header-nav__badge">{OPEN_ADVISORY_COUNT}</span>
-                  )}
-                </button>
-              ))}
+              <button
+                key={item.path}
+                className={`header-nav__item${location.pathname === item.path ? ' header-nav__item--active' : ''}`}
+                type="button"
+                onClick={() => navigate(item.path)}
+              >
+                {item.label}
+                {item.path === '/' && activeAlerts > 0 && (
+                  <span className="header-nav__badge">{activeAlerts}</span>
+                )}
+                {item.path === '/advisories' && activeAdvisories > 0 && (
+                  <span className="header-nav__badge">{activeAdvisories}</span>
+                )}
+              </button>
+            ))}
           </Box>
 
           <Box className="user-profile">

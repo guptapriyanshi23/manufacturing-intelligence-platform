@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   List,
   ListItemButton,
@@ -70,9 +70,9 @@ const TreeNode: React.FC<{
     setOpen(!open);
   };
 
-  
-const iconEl = iconMap[node.node_type as NodeType] ?? <MachineIcon />;
-const iconClass = `tree-icon tree-icon--${node.node_type}`;
+
+  const iconEl = iconMap[node.node_type as NodeType] ?? <MachineIcon />;
+  const iconClass = `tree-icon tree-icon--${node.node_type}`;
 
   return (
     <Box>
@@ -85,15 +85,15 @@ const iconClass = `tree-icon tree-icon--${node.node_type}`;
         >
           {hasChildren ? (
             <Box onClick={handleToggle} sx={{ display: 'flex', alignItems: 'center', mr: 0.25, p: 0 }}>
-              {open ? <ExpandLess sx={{ color: '#595d5e !important', fontSize: '1rem'}} /> 
-                : <ExpandMore sx={{ color: '#595d5e !important', fontSize: '1rem'}} />}
+              {open ? <ExpandLess sx={{ color: '#595d5e !important', fontSize: '1rem' }} />
+                : <ExpandMore sx={{ color: '#595d5e !important', fontSize: '1rem' }} />}
             </Box>
           ) : (
             <Box sx={{ width: 20 }} />
           )}
           <ListItemIcon sx={{ minWidth: 28 }}>
-          <Box className={iconClass}>{iconEl}</Box>
-        </ListItemIcon>
+            <Box className={iconClass}>{iconEl}</Box>
+          </ListItemIcon>
           <ListItemText
             primary={
               <Typography
@@ -139,6 +139,26 @@ export const TreeView: React.FC<TreeViewProps> = ({ nodes, onSelectNode, selecte
   };
 
   const rootNodes = nodes.filter(n => n.node_type !== 'sensor' && n.node_type !== 'component');
+
+  useEffect(() => {
+    if (!nodes?.length || !onSelectNode) return;
+
+    const rootNodes = nodes.filter(
+      n => n.node_type !== 'sensor' && n.node_type !== 'component'
+    );
+
+    const firstRoot = rootNodes[0];
+
+    if (firstRoot?.children?.length) {
+      const firstChild = firstRoot.children.find(
+        c => c.node_type !== 'sensor' && c.node_type !== 'component'
+      );
+
+      if (firstChild) {
+        onSelectNode(firstChild);
+      }
+    }
+  }, [nodes]);
 
   if (!rootNodes || rootNodes.length === 0) {
     return (

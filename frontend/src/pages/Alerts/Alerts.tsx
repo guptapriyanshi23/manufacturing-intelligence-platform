@@ -58,7 +58,6 @@ export const Alerts: React.FC = () => {
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const context = useOutletContext<{ selectedNodeId?: number | null }>();
   const selectedNodeId = context?.selectedNodeId ?? (location.state?.selectedNodeId ? Number(location.state.selectedNodeId) : (searchParams.get('selectedNodeId') ? Number(searchParams.get('selectedNodeId')) : null));
-
   const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
   const [hierarchyLoading, setHierarchyLoading] = useState(true);
   const [selectedSiteId, setSelectedSiteId] = useState<number | ''>('');
