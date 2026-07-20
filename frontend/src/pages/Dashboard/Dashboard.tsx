@@ -878,8 +878,7 @@ export const Dashboard: React.FC = () => {
                                   label={getSeverityLevelFull(sensorAdvisory.severity)}
                                   size="small"
                                   className={`severity-badge severity-s${sensorAdvisory.severity}`}
-                                  // sx={{ backgroundColor: getSeverityBgColor(sensorAdvisory.severity), color: getSeverityColor(sensorAdvisory.severity), fontWeight: 600 }}
-                                />
+                                  />
                               </Box>
 
                               <Box className="process-analysis__advisory-content">

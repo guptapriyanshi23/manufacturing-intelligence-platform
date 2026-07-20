@@ -13,11 +13,11 @@ export const Severity = {
 export type Severity = typeof Severity[keyof typeof Severity];
 
 export const SEVERITY_COLORS: Record<string, string> = {
-  S1: '#fecdd3',
-  S2: '#ffe4e6',
-  S3: '#fef3c7',
-  S4: '#fefce8',
-  S5: '#f1f5f9',
+  S1: '#7f1d1d',
+  S2: '#9f1239',
+  S3: '#b45309',
+  S4: '#854d0e',
+  S5: '#475569',
 };
 
 export const SEVERITY_BG_COLORS: Record<string, string> = {

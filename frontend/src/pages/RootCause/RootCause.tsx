@@ -192,9 +192,6 @@ export const RootCause: React.FC = () => {
                           className={`severity-badge severity-s${activeAdvisory.severity}`}
                           sx={{
                             fontWeight: 700,
-                            minWidth: 32,
-                            justifyContent: 'center',
-                            borderRadius: '4px',
                           }}
                         />
                       </Grid>
