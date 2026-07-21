@@ -37,6 +37,8 @@ import BreadCrumsBar from '../../components/BreadCrumsBar/BreadCrumsBar';
 import './Advisories.scss';
 import '../Alerts/Alerts.scss';
 import { fmtDate, fmtTime } from '../../constants/datetimefmt';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 const InboxIcon = () => (
   <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5v-3h3.56c.69 1.19 1.97 2 3.45 2s2.75-.81 3.45-2H19v3zm0-5h-4.99c0 1.1-.9 1.99-2 1.99S10 15.1 10 14H5V5h14v9z" /></svg>
@@ -287,6 +289,151 @@ export const Advisories: React.FC = () => {
     }));
   };
 
+  const exportToXlsx = async () => {
+    if(paginatedRows?.length === 0) return;
+    
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Advisories');
+
+    // Column definitions
+    worksheet.columns = [
+      { header: 'Asset', key: 'asset', width: 25 },
+      { header: 'Severity', key: 'severity', width: 20 },
+      { header: 'Status', key: 'status', width: 20 },
+      { header: 'Engineer', key: 'engineer', width: 20 },
+      { header: 'Action Taken', key: 'actionTaken', width: 50 },
+      { header: 'Timestamp', key: 'timestamp', width: 25 },
+    ];
+
+    // Header styling
+    const headerRow = worksheet.getRow(1);
+
+    headerRow.eachCell((cell) => {
+      cell.font = {
+        bold: true,
+        color: { argb: 'FFFFFFFF' },
+      };
+
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: '1A1A1A' },
+      };
+
+      cell.alignment = {
+        vertical: 'middle',
+        horizontal: 'center',
+      };
+
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' },
+      };
+    });
+
+    // Visible data only (same as table)
+    paginatedRows.forEach((row) => {
+      const excelRow = worksheet.addRow({
+        asset: getAssetName(row),
+        severity: getSeverityLevelFull(row.severity),
+        status: getStatusText(row.status),
+        engineer: 'Engineer Name',
+        actionTaken: row.action_taken,
+        timestamp: `${fmtDate(new Date(row.detected_at))} ${fmtTime(
+          new Date(row.detected_at)
+        )}`,
+      });
+
+      // Severity color
+      const severityCell = excelRow.getCell(2);
+
+      const severityColors: Record<number, { bg: string; font: string }> = {
+        1: { bg: 'FDE2E2', font: 'B91C1C' },
+        2: { bg: 'FFE8CC', font: 'C2410C' },
+        3: { bg: 'FEF3C7', font: 'B45309' },
+        4: { bg: 'DBEAFE', font: '1D4ED8' },
+        5: { bg: 'E5E7EB', font: '6B7280' },
+      };
+
+      const sev = severityColors[row.severity];
+
+      if (sev) {
+        severityCell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: sev.bg },
+        };
+
+        severityCell.font = {
+          bold: true,
+          color: { argb: sev.font },
+        };
+      }
+
+      // Status color
+      const statusCell = excelRow.getCell(3);
+
+      const statusText = getStatusText(row.status);
+
+      const statusStyles : Record<string, { bg: string; font: string }>= {
+        Open: {
+          bg: 'FDE2E2',
+          font: 'B91C1C',
+        },
+        Acknowledged: {
+          bg: 'DBEAFE',
+          font: '1D4ED8',
+        },
+        'In Progress': {
+          bg: 'FEF3C7',
+          font: 'B45309',
+        },
+        Resolved: {
+          bg: 'DCFCE7',
+          font: '15803D',
+        },
+      };
+
+      const style = statusStyles[statusText];
+
+      if (style) {
+        statusCell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: style.bg },
+        };
+
+        statusCell.font = {
+          bold: true,
+          color: { argb: style.font },
+        };
+      }
+
+      // All cell borders
+      excelRow.eachCell((cell) => {
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'D1D5DB' } },
+          left: { style: 'thin', color: { argb: 'D1D5DB' } },
+          bottom: { style: 'thin', color: { argb: 'D1D5DB' } },
+          right: { style: 'thin', color: { argb: 'D1D5DB' } },
+        };
+
+        cell.alignment = {
+          vertical: 'middle',
+        };
+      });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    saveAs(
+      new Blob([buffer]),
+      `Advisory_Report_${new Date().toISOString().split('T')[0]}.xlsx`
+    );
+  };
+
   const getAssetName = (row: any) => {
     if (row.asset_name) return row.asset_name;
     let currentId: number | undefined = row.node_id;
@@ -463,11 +610,13 @@ export const Advisories: React.FC = () => {
       ) : (<>
         <Card className="advisory-summary__grid-card">
           <Box className="advisory-summary__export-actions">
-            <button type="button" className="advisory-export-btn">
+            <button type="button" className="advisory-export-btn"
+              disabled={paginatedRows?.length === 0}>
               <DownloadOutlinedIcon className="advisory-export-btn__icon" />
               <span> PDF</span>
             </button>
-            <button type="button" className="advisory-export-btn advisory-export-btn--xlsx">
+            <button type="button" className="advisory-export-btn advisory-export-btn--xlsx"
+              onClick={exportToXlsx} disabled={paginatedRows?.length === 0}>
               <DownloadOutlinedIcon className="advisory-export-btn__icon" />
               <span>XLSX</span>
             </button>
