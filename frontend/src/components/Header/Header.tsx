@@ -25,9 +25,7 @@ interface HeaderProps {
 
 const navItems = [
   { path: '/', label: 'Alerts', permission: 'alerts:view' },
-  // { path: '/dashboard', label: 'Dashboard', permission: 'dashboard:view' },
-  { path: '/advisories', label: 'Advisory Summary', permission: 'advisories:view' },
-  // { path: '/root-cause', label: 'Root Cause', permission: 'advisories:rca' },
+  { path: '/advisories', label: 'Advisory', permission: 'advisories:view' },
   { path: '/analytics', label: 'Analytics', permission: 'reports:view' },
   { path: '/admin', label: 'Admin', permission: 'admin:view' },
 ];
@@ -64,20 +62,13 @@ const Header: React.FC<HeaderProps> = () => {
   useEffect(() => {
     if(selectedNodeId){
       //Fetching active alerts
-      api.alerts.list({ status: 'active', node_id: selectedNodeId })
-      .then((res) => {
-        setActiveAlerts(res?.length)
-      })
+      api.alerts.list({ node_id: selectedNodeId })
+      .then((res) => setActiveAlerts(res?.length))
       .catch(() => setActiveAlerts(0))
 
       //Fetching active advisories
       api.advisories.list({ node_id: selectedNodeId })
-      .then((res) => {
-        if(res?.length){
-          const openAdvisories = res.filter((ad) => ad.status !== 'resolved')
-          setActiveAdvisories(openAdvisories?.length)
-        }
-      })
+      .then((res) => setActiveAdvisories(res?.length))
       .catch(() => setActiveAdvisories(0))
     }
   }, [selectedNodeId]);

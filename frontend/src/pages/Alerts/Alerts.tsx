@@ -24,16 +24,16 @@ import type { HierarchyNode } from '../../types/hierarchy';
 import { AlertStatus, NodeType } from '../../types/enums';
 import BreadCrumsBar from '../../components/BreadCrumsBar/BreadCrumsBar';
 import { fmtDate, fmtTime } from '../../constants/datetimefmt';
+import './Alerts.scss';
 
 const InboxIcon = () => (
   <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5v-3h3.56c.69 1.19 1.97 2 3.45 2s2.75-.81 3.45-2H19v3zm0-5h-4.99c0 1.1-.9 1.99-2 1.99S10 15.1 10 14H5V5h14v9z" /></svg>
 );
 
-const getStatusFromSeverity = (severity: string): string => {
-  const level = getSeverityLevel(severity);
-  if (level === 'S1' || level === 'S2') return 'Act Now';
-  if (level === 'S3' || level === 'S4') return 'Monitor';
-  return 'Watch';
+const getStatusTextFromStatus = (status: string): string => {
+  if (status === 'active') return 'Act now';
+  if (status === 'resolved') return 'Watch';
+  return 'Monitor';
 };
 const tableStatusClass = (status: string): string => {
   if (status === 'Act now') return 'alerts-table__status alerts-table__status--act';
@@ -168,12 +168,13 @@ export const Alerts: React.FC = () => {
     return descendantsOfSidePanel.filter(n => n.node_type === NodeType.SENSOR);
   }, [descendantsOfSidePanel]);
 
+  const isLineSelected = useMemo(() => {
+    setSelectedSensorId('')
+    return flatNodes.find(n => n.id === selectedNodeId)?.node_type === NodeType.LINE;
+  }, [selectedNodeId, flatNodes]);
+
   const isAssetSelected = useMemo(() => {
     return flatNodes.find(n => n.id === selectedNodeId)?.node_type === NodeType.ASSET;
-  }, [selectedNodeId, flatNodes]);
-  
-  const isLineSelected = useMemo(() => {
-    return flatNodes.find(n => n.id === selectedNodeId)?.node_type === NodeType.LINE;
   }, [selectedNodeId, flatNodes]);
 
   // Autopopulate and sync dropdown selections based on the side panel hierarchy node selection
@@ -509,7 +510,7 @@ export const Alerts: React.FC = () => {
 
                 <TableBody>
                   {filteredRows?.map((row) => {
-                    const statusText = getStatusFromSeverity(row?.severity);
+                    const statusText = getStatusTextFromStatus(row?.status);
                     const badgeClsName = `severity-badge severity-s${row?.severity}`;
                     const statusClsName = tableStatusClass(statusText);
                     return (
@@ -540,13 +541,13 @@ export const Alerts: React.FC = () => {
                         <TableCell>
                           <span className={badgeClsName}>{getSeverityLevelFull(row.severity)}</span>
                         </TableCell>
-                        <TableCell>{getAssetName(row)}</TableCell>
-                        <TableCell>{getComponentName(row)}</TableCell>
+                        <TableCell sx={{whiteSpace: 'nowrap'}}>{getAssetName(row)}</TableCell>
+                        <TableCell sx={{whiteSpace: 'nowrap'}}>{getComponentName(row)}</TableCell>
                         <TableCell>
                           <span className={statusClsName}>{statusText}</span>
                         </TableCell>
                         <TableCell>{row.description}</TableCell>
-                        <TableCell>
+                        <TableCell sx={{whiteSpace: 'nowrap'}}>
                           {`${fmtDate(new Date(row?.timestamp))} ${fmtTime(new Date(row?.timestamp))}`}
                         </TableCell>
                       </TableRow>

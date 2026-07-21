@@ -428,7 +428,7 @@ export const Advisories: React.FC = () => {
         </div>
 
         <div className="deviation-filters advisory-status-filters">
-          {['All', 'Open', 'Acknowledged', 'Resolved'].map((status) => {
+          {['All', 'Open', 'Acknowledged', 'In Progress', 'Resolved'].map((status) => {
             const isSelected = selectedStatus === status;
 
             const handleStatusClick = () => {
@@ -484,7 +484,7 @@ export const Advisories: React.FC = () => {
               <Table size="small" className="alerts-table">
                 <TableHead>
                   <TableRow>
-                    {['Timestamp', 'Asset', 'Severity', 'Status', 'Engineer', 'Action Taken'].map(col => (
+                    {['Asset', 'Severity', 'Status', 'Engineer', 'Action Taken', 'Timestamp'].map(col => (
                       <TableCell key={col}>{col}</TableCell>
                     ))}
                   </TableRow>
@@ -504,10 +504,8 @@ export const Advisories: React.FC = () => {
                             backgroundColor: '#f8fafc',
                           },
                         }}
-                      ><TableCell>
-                          {`${fmtDate(new Date(row?.detected_at))} ${fmtTime(new Date(row?.detected_at))}`}
-                        </TableCell>
-                        <TableCell>{getAssetName(row)}</TableCell>
+                      >
+                        <TableCell sx={{whiteSpace: 'nowrap'}}>{getAssetName(row)}</TableCell>
                         <TableCell>
                           <span className={sevClsName}>{getSeverityLevelFull(row.severity)}</span>
                         </TableCell>
@@ -516,7 +514,9 @@ export const Advisories: React.FC = () => {
                         </TableCell>
                         <TableCell>Engineer Name</TableCell>
                         <TableCell>{row?.action_taken}</TableCell>
-
+                        <TableCell sx={{whiteSpace: 'nowrap'}}>
+                          {`${fmtDate(new Date(row?.detected_at))} ${fmtTime(new Date(row?.detected_at))}`}
+                        </TableCell>
                       </TableRow>
                     )
                   })}
