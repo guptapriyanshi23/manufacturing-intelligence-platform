@@ -25,13 +25,12 @@ import {
   TablePagination,
 } from '@mui/material';
 import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined';
-import type { SelectChangeEvent } from '@mui/material/Select';
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
 import { StatusChip } from '../../components/Forms/StatusChip';
 import { api } from '../../api/client';
-import { getSeverityColor, getSeverityBgColor, severityOptions, getSeverityLevelFull, severityClassMap } from '../../constants/severity';
-import { getStatusClassName, getStatusText, statusClassMap, statusLabelMap, statusOptions } from '../../constants/status';
+import { getSeverityColor, getSeverityBgColor, getSeverityLevelFull, severityClassMap } from '../../constants/severity';
+import { getStatusClassName, getStatusText, statusClassMap, statusLabelMap } from '../../constants/status';
 import type { HierarchyNode } from '../../types/hierarchy';
 import { AdvisoryStatus, NodeType, TimeRange, TIME_RANGE_OPTIONS } from '../../types/enums';
 import BreadCrumsBar from '../../components/BreadCrumsBar/BreadCrumsBar';
@@ -66,16 +65,6 @@ const getBreadcrumbsPath = (nodeId: number, flatNodes: HierarchyNode[]): string[
     current = pid ? flatNodes.find(n => n.id === pid) : undefined;
   }
   return path;
-};
-
-const mapToSeverityOption = (sev: string | number): string => {
-  const s = typeof sev === 'string' ? sev.toLowerCase() : sev;
-  if (s === 1 || s === 'critical') return 'critical';
-  if (s === 2 || s === 'high') return 'high';
-  if (s === 3 || s === 'warning' || s === 'medium') return 'warning';
-  if (s === 4 || s === 'low') return 'low';
-  if (s === 5 || s === 'info' || s === 'informational') return 'info';
-  return 'info';
 };
 
 export const Advisories: React.FC = () => {
@@ -136,8 +125,8 @@ export const Advisories: React.FC = () => {
     return descendantsOfSidePanel.filter(n => n.node_type === NodeType.SENSOR);
   }, [descendantsOfSidePanel]);
 
-  const isAssetSelected = useMemo(() => {
-    return flatNodes.find(n => n.id === treeNodeId)?.node_type === NodeType.ASSET;
+  const isLineSelected = useMemo(() => {
+    return flatNodes.find(n => n.id === treeNodeId)?.node_type === NodeType.LINE;
   }, [treeNodeId, flatNodes]);
 
   const [breadcrumbs, setBreadcrumbs] = useState<string[]>([]);
@@ -217,7 +206,7 @@ export const Advisories: React.FC = () => {
 
     setLoading(true);
     // const targetNodeId = appliedSensorId ? Number(appliedSensorId) : appliedNode.id;
-    const targetNodeId = appliedAssetId ? Number(appliedAssetId) : appliedNode.id;
+    const targetNodeId = Number(appliedAssetId) ? Number(appliedAssetId) : appliedNode.id;
 
     let startIso: string | undefined = undefined;
     let endIso: string | undefined = undefined;
@@ -283,7 +272,8 @@ export const Advisories: React.FC = () => {
     }
   };
 
-  const handleApplyFilters = () => {
+  const handleView = () => {
+    
     setAppliedSensorId(selectedSensorId);
     setAppliedAssetId(selectedAssetId);
     setAppliedTimeRange(timeRange);
@@ -380,7 +370,7 @@ export const Advisories: React.FC = () => {
           fullWidth
         />
 
-        <FormControl size="small">
+        <FormControl size="small" disabled={!isLineSelected}>
           <InputLabel id="alerts-asset-filter-label">Asset</InputLabel>
           <Select
             labelId="alerts-asset-filter-label"
@@ -397,7 +387,7 @@ export const Advisories: React.FC = () => {
 
         <Button
           variant="contained"
-          onClick={handleApplyFilters}
+          onClick={handleView}
           sx={{ minWidth: 90, fontWeight: 600, height: 35, backgroundColor: '#1a1a1a', }}
         >
           View
@@ -468,116 +458,6 @@ export const Advisories: React.FC = () => {
         </div>
       </div>
 
-      {/* <Paper sx={{ px: 2, py: 2.5, mb: 3, border: '1px solid #ccc' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-
-          <FormControl sx={{ flex: 1, minWidth: 0 }} size="small">
-            <InputLabel id="status-filter-label" shrink>Status</InputLabel>
-            <Select
-              labelId="status-filter-label"
-              value={statusFilter}
-              label="Status"
-              onChange={(e: SelectChangeEvent) => setStatusFilter(e.target.value)}
-              displayEmpty
-              renderValue={(selected) =>
-                selected ? (String(selected) === AdvisoryStatus.IN_PROGRESS ? 'In Progress' : String(selected).charAt(0).toUpperCase() + String(selected).slice(1)) : <span style={{ color: '#9e9e9e' }}>Select</span>
-              }
-            >
-              <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
-              {statusOptions.map((option) => (
-                <MenuItem key={option} value={option}>
-                  {option === AdvisoryStatus.IN_PROGRESS ? 'In Progress' : option.charAt(0).toUpperCase() + option.slice(1)}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl sx={{ flex: 1, minWidth: 0 }} size="small">
-            <InputLabel id="severity-filter-label" shrink>Severity</InputLabel>
-            <Select
-              labelId="severity-filter-label"
-              value={severityFilter}
-              label="Severity"
-              onChange={(e: SelectChangeEvent) => setSeverityFilter(e.target.value)}
-              displayEmpty
-              renderValue={(selected) =>
-                selected ? String(selected).charAt(0).toUpperCase() + String(selected).slice(1) : <span style={{ color: '#9e9e9e' }}>Select</span>
-              }
-            >
-              <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
-              {severityOptions.map((option) => (
-                <MenuItem key={option} value={option}>
-                  {option.charAt(0).toUpperCase() + option.slice(1)}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl sx={{ flex: 1, minWidth: 0 }} size="small" disabled={!isAssetSelected}>
-            <InputLabel id="sensor-filter-label" shrink>Sensor/Tag</InputLabel>
-            <Select
-              labelId="sensor-filter-label"
-              value={selectedSensorId}
-              label="Sensor/Tag"
-              onChange={(e) => setSelectedSensorId(e.target.value as number | '')}
-              displayEmpty
-            >
-              <MenuItem value="">All Sensors/Tags</MenuItem>
-              {availableSensors.map(s => (
-                <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl size="small" sx={{ flex: 1.2, minWidth: 160 }}>
-            <InputLabel shrink>Time Range</InputLabel>
-            <Select
-              value={timeRange}
-              label="Time Range"
-              onChange={(e) => handleTimeRangeChange(e.target.value)}
-              displayEmpty
-              renderValue={timeRange === '' ? () => <span style={{ color: '#9e9e9e' }}>Select</span> : undefined}
-            >
-              <MenuItem value="" style={{ color: '#9e9e9e' }}>Select</MenuItem>
-              {TIME_RANGE_OPTIONS.map(o => (
-                <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <TextField
-            label="From"
-            type="datetime-local"
-            size="small"
-            value={fromDate}
-            disabled={timeRange !== TimeRange.CUSTOM}
-            onChange={(e) => setFromDate(e.target.value)}
-            slotProps={{ inputLabel: { shrink: true } }}
-            sx={{ flex: 1.5, minWidth: 180 }}
-          />
-
-          <TextField
-            label="To"
-            type="datetime-local"
-            size="small"
-            value={toDate}
-            disabled={timeRange !== TimeRange.CUSTOM}
-            onChange={(e) => setToDate(e.target.value)}
-            slotProps={{ inputLabel: { shrink: true } }}
-            sx={{ flex: 1.5, minWidth: 180 }}
-          />
-
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={handleApplyFilters}
-            sx={{ minWidth: 100, fontWeight: 700, ml: 1 }}
-          >
-            View
-          </Button>
-        </Box>
-      </Paper> */}
-
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
           <CircularProgress color="secondary" />
@@ -644,15 +524,6 @@ export const Advisories: React.FC = () => {
 
               </Table>
             )}
-            {/* <DataGrid
-                rows={visibleRows}
-                columns={columns}
-                disableRowSelectionOnClick
-                hideFooterSelectedRowCount
-                pageSizeOptions={[5, 10]}
-                initialState={{ pagination: { paginationModel: { pageSize: 5, page: 0 } } }}
-                sx={{ border: 'none' }}
-              /> */}
           </Box>
 
           <TablePagination
@@ -770,22 +641,14 @@ export const Advisories: React.FC = () => {
               {selectedAdvisory.status !== AdvisoryStatus.RESOLVED && (
                 <Button
                   variant="contained"
-                  color="secondary"
+                  color="primary"
                   disabled={!canRca}
-                  sx={{
-                    fontWeight: 600,
-                    textTransform: 'none',
-                    '&.Mui-disabled': {
-                      backgroundColor: '#e2e8f0',
-                      color: '#94a3b8',
-                    }
-                  }}
                   onClick={() => handleInitiateRcaFromDetails(selectedAdvisory)}
                 >
                   Initiate RCA
                 </Button>
               )}
-              <Button variant="outlined" color='secondary' sx={{ textTransform: 'none', fontWeight: 600 }} onClick={handleCloseDetails} >
+              <Button variant="outlined" color='secondary' onClick={handleCloseDetails} >
                 Close
               </Button>
             </DialogActions>
