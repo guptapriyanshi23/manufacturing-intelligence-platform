@@ -238,18 +238,18 @@ export const Advisories: React.FC = () => {
   const [rowsPerPage, setRowsPerPage] = useState(5);
 
   const filteredRows = advisories.filter((adv) => {
-  const severityMatch =
-    selectedSeverity === 'All' ||
-    `S${adv.severity}` === selectedSeverity;
+    const severityMatch =
+      selectedSeverity === 'All' ||
+      `S${adv.severity}` === selectedSeverity;
 
-  const statusMatch =
-    selectedStatus === 'All' ||
-    statusLabelMap[adv.status] === selectedStatus;
+    const statusMatch =
+      selectedStatus === 'All' ||
+      statusLabelMap[adv.status] === selectedStatus;
 
-  return severityMatch && statusMatch;
-});
+    return severityMatch && statusMatch;
+  });
 
-  const paginatedRows = filteredRows.slice(
+  const paginatedRows = filteredRows?.slice(
     page * rowsPerPage,
     page * rowsPerPage + rowsPerPage
   );
@@ -273,7 +273,7 @@ export const Advisories: React.FC = () => {
   };
 
   const handleView = () => {
-    
+
     setAppliedSensorId(selectedSensorId);
     setAppliedAssetId(selectedAssetId);
     setAppliedTimeRange(timeRange);
@@ -331,7 +331,6 @@ export const Advisories: React.FC = () => {
 
       <BreadCrumsBar breadcrumbsData={breadcrumbs} />
 
-      {/* <Box className="advisory-summary__filters-wrap"> */}
       <Box className="advisory-summary__filters-grid">
         <FormControl size="small">
           <InputLabel shrink>Time Range</InputLabel>
@@ -394,7 +393,6 @@ export const Advisories: React.FC = () => {
         </Button>
 
       </Box>
-      {/* </Box> */}
 
       <div className="advisory-filters-row">
         <div className="deviation-filters advisory-severity-filters">
@@ -505,7 +503,7 @@ export const Advisories: React.FC = () => {
                           },
                         }}
                       >
-                        <TableCell sx={{whiteSpace: 'nowrap'}}>{getAssetName(row)}</TableCell>
+                        <TableCell sx={{ whiteSpace: 'nowrap' }}>{getAssetName(row)}</TableCell>
                         <TableCell>
                           <span className={sevClsName}>{getSeverityLevelFull(row.severity)}</span>
                         </TableCell>
@@ -514,7 +512,7 @@ export const Advisories: React.FC = () => {
                         </TableCell>
                         <TableCell>Engineer Name</TableCell>
                         <TableCell>{row?.action_taken}</TableCell>
-                        <TableCell sx={{whiteSpace: 'nowrap'}}>
+                        <TableCell sx={{ whiteSpace: 'nowrap' }}>
                           {`${fmtDate(new Date(row?.detected_at))} ${fmtTime(new Date(row?.detected_at))}`}
                         </TableCell>
                       </TableRow>
@@ -526,15 +524,15 @@ export const Advisories: React.FC = () => {
             )}
           </Box>
 
-          <TablePagination
+          {paginatedRows && paginatedRows?.length > 0 && <TablePagination
             component="div"
-            count={paginatedRows.length}
+            count={filteredRows?.length || 0}
             page={page}
             onPageChange={handleChangePage}
             rowsPerPage={rowsPerPage}
             onRowsPerPageChange={handleChangeRowsPerPage}
             rowsPerPageOptions={[5, 10, 25]}
-          />
+          />}
 
         </Card>
       </>

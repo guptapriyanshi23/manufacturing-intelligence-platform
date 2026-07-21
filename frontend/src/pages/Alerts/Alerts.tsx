@@ -15,6 +15,8 @@ import {
   TableHead,
   TableRow,
   Checkbox,
+  Card,
+  TablePagination,
 } from '@mui/material';
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
@@ -61,11 +63,7 @@ export const Alerts: React.FC = () => {
   const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
   const [hierarchyLoading, setHierarchyLoading] = useState(true);
   const [selectedSiteId, setSelectedSiteId] = useState<number | ''>('');
-
-  const sites = useMemo(() => {
-    return flatNodes.filter(n => n.node_type === NodeType.SITE);
-  }, [flatNodes]);
-
+  
   useEffect(() => {
     if (flatNodes.length > 0 && !selectedSiteId) {
       const sitesList = flatNodes.filter(n => n.node_type === NodeType.SITE);
@@ -74,6 +72,8 @@ export const Alerts: React.FC = () => {
   }, [flatNodes, selectedSiteId]);
 
   const [alerts, setAlerts] = useState<any[]>([]);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
@@ -162,7 +162,7 @@ export const Alerts: React.FC = () => {
   const availableAssets = useMemo(() => {
     return descendantsOfSidePanel.filter(n => n.node_type === NodeType.ASSET);
   }, [descendantsOfSidePanel]);
-  
+
   // Sensor/Tag dropdown options
   const availableSensors = useMemo(() => {
     return descendantsOfSidePanel.filter(n => n.node_type === NodeType.SENSOR);
@@ -200,7 +200,7 @@ export const Alerts: React.FC = () => {
       setSelectedSensorId(node.id);
       setAppliedSensorId(node.id);
     }
-     else {
+    else {
       if (selectedSensorId && !availableSensors.some(s => s.id === selectedSensorId)) {
         setSelectedSensorId('');
         setAppliedSensorId('');
@@ -302,12 +302,26 @@ export const Alerts: React.FC = () => {
   }, [alerts, selectedNodeId, appliedSensorId, flatNodes]);
 
   const filteredRows = filteredAlerts?.filter((adv) => {
-  const severityMatch =
-    selectedSeverity === 'All' ||
-    `S${adv.severity}` === selectedSeverity;
+    const severityMatch =
+      selectedSeverity === 'All' ||
+      `S${adv.severity}` === selectedSeverity;
 
-  return severityMatch;
-});
+    return severityMatch;
+  });
+
+  const paginatedRows = filteredRows?.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage
+  );
+
+  const handleChangePage = (_: any, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: any) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   const allSelected = filteredAlerts.length > 0 && selectedIds.length === filteredAlerts.length;
   const someSelected = selectedIds.length > 0 && !allSelected;
@@ -367,9 +381,10 @@ export const Alerts: React.FC = () => {
 
             const handleSeverityClick = () => {
               setSelectedSeverity(sev);
+              setPage(0);
             };
 
-            const alertCount = 
+            const alertCount =
               sev === 'All'
                 ? alerts?.length
                 : alerts?.filter(
@@ -405,9 +420,9 @@ export const Alerts: React.FC = () => {
             </Select>
           </FormControl>
 
-          <FormControl size="small" className="alerts-table-filters__field" 
+          <FormControl size="small" className="alerts-table-filters__field"
             disabled={!isAssetSelected}
-            >
+          >
             <InputLabel id="alerts-tag-filter-label">Sensor/Tag</InputLabel>
             <Select
               labelId="alerts-tag-filter-label"
@@ -438,63 +453,54 @@ export const Alerts: React.FC = () => {
           <CircularProgress color="secondary" />
         </Box>
       ) : (<>
-        {/* Alert List */}
-        <div className="alert-list" style={{ paddingTop: '1rem' }}>
+        <Card className="advisory-summary__grid-card">
+          <Box sx={{
+            mb: 1,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}>
+            <Typography sx={{ fontSize: '0.9rem' }}>
+              Total Selected : {selectedIds?.length}
+            </Typography>
 
-          {filteredRows?.length === 0 ? (
-            <div className="empty-state">
-              <InboxIcon />
-              <p>No alerts found for the selected item.</p>
-            </div>
-          ) : (
-            <div className="alerts-table-wrap">
+            <Button
+              variant="outlined"
+              size="small"
+              disabled={selectedIds.length === 0}
+              onClick={handleAcknowledge}
+              sx={{
+                my: 0.5,
+                borderColor: '#93c5fd',
+                color: '#1e40af',
+                '&:hover': {
+                  backgroundColor: '#bfdbfe',
+                  borderColor: '#60a5fa',
+                },
+              }}
+            >
+              Acknowledge
+            </Button>
+          </Box>
+
+          <Box className="advisory-summary__grid-wrap">
+            {paginatedRows?.length === 0 ? (
+              <div className="empty-state">
+                <InboxIcon />
+                <p>No alert found for the selected item.</p>
+              </div>
+            ) : (
               <Table size="small" className="alerts-table">
                 <TableHead>
-                  {/* Total Selected Alerts + Acknowledge button */}
-                  <TableRow>
-                    <TableCell colSpan={7}>
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                        }}
-                      >
-                        <Typography>
-                          Total Selected : {selectedIds?.length}
-                        </Typography>
-
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          disabled={selectedIds.length === 0}
-                          onClick={handleAcknowledge}
-                          sx={{
-                            my: 0.5,
-                            borderColor: '#00A3E0',
-                            color: '#00A3E0',
-                            fontWeight: 500,
-                            '&:hover': {
-                              backgroundColor: '#00a4e056',
-                              fontWeight: 600,
-                            },
-                          }}
-                        >
-                          Acknowledge
-                        </Button>
-                      </Box>
-                    </TableCell>
-
-                  </TableRow>
                   <TableRow>
                     <TableCell padding="checkbox" >
                       <Checkbox indeterminate={someSelected} checked={allSelected} onChange={handleSelectAll}
                         sx={{
                           '&.Mui-checked': {
-                            color: '#00A3E0',
+                            color: '#60a5fa',
                           },
                           '&.MuiCheckbox-indeterminate': {
-                            color: '#00A3E0',
+                            color: '#60a5fa',
                           },
                           '& .MuiSvgIcon-root': {
                             fontSize: 18,
@@ -509,7 +515,7 @@ export const Alerts: React.FC = () => {
                 </TableHead>
 
                 <TableBody>
-                  {filteredRows?.map((row) => {
+                  {paginatedRows?.map((row) => {
                     const statusText = getStatusTextFromStatus(row?.status);
                     const badgeClsName = `severity-badge severity-s${row?.severity}`;
                     const statusClsName = tableStatusClass(statusText);
@@ -531,7 +537,7 @@ export const Alerts: React.FC = () => {
                             onChange={() => handleSelectRow(row.id)}
                             sx={{
                               '&.Mui-checked': {
-                                color: '#00A3E0',
+                                color: '#60a5fa',
                               },
                               '& .MuiSvgIcon-root': {
                                 fontSize: 18,
@@ -541,13 +547,13 @@ export const Alerts: React.FC = () => {
                         <TableCell>
                           <span className={badgeClsName}>{getSeverityLevelFull(row.severity)}</span>
                         </TableCell>
-                        <TableCell sx={{whiteSpace: 'nowrap'}}>{getAssetName(row)}</TableCell>
-                        <TableCell sx={{whiteSpace: 'nowrap'}}>{getComponentName(row)}</TableCell>
+                        <TableCell sx={{ whiteSpace: 'nowrap' }}>{getAssetName(row)}</TableCell>
+                        <TableCell sx={{ whiteSpace: 'nowrap' }}>{getComponentName(row)}</TableCell>
                         <TableCell>
                           <span className={statusClsName}>{statusText}</span>
                         </TableCell>
                         <TableCell>{row.description}</TableCell>
-                        <TableCell sx={{whiteSpace: 'nowrap'}}>
+                        <TableCell sx={{ whiteSpace: 'nowrap' }}>
                           {`${fmtDate(new Date(row?.timestamp))} ${fmtTime(new Date(row?.timestamp))}`}
                         </TableCell>
                       </TableRow>
@@ -556,10 +562,20 @@ export const Alerts: React.FC = () => {
 
                 </TableBody>
               </Table>
-            </div>
-          )}
-        </div>
+            )}
+          </Box>
 
+          {paginatedRows && paginatedRows?.length > 0 && <TablePagination
+            component="div"
+            count={filteredRows?.length || 0}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[5, 10, 25]}
+          />}
+
+        </Card>
       </>
       )}
     </PageContainer>

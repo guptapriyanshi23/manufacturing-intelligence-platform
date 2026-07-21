@@ -113,10 +113,10 @@
 }
 
 .advisory-summary__grid-card {
-	padding: 1rem 1.1rem 1.1rem;
+	padding: 0.8rem 1.1rem 1.1rem;
 	border-radius: 12px;
-	border: 1px solid #e2e8f0;
-	box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+	border: 1px solid #e2e8f0 !important;
+	box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06) !important;
 }
 
 .advisory-summary__grid-title {
@@ -127,7 +127,7 @@
 }
 
 .advisory-summary__grid-wrap {
-	height: 560px;
+	min-height: 50vh;
 
 	.MuiDataGrid-root {
 		border: none;
