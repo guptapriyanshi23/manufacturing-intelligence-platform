@@ -44,6 +44,7 @@ import { api } from '../../api/client';
 import type { HierarchyNode, NodeType } from '../../types/hierarchy';
 import { getSeverityColor, getSeverityBgColor, getSeverityLevelFull } from '../../constants/severity';
 import { SeverityLevel, AlertStatus, NodeType as NodeTypeEnum } from '../../types/enums';
+import './Admin.scss'
 
 // ─── Hierarchy constants ────────────────────────────────────────────────────
 const LEVELS: NodeType[] = [
@@ -63,6 +64,21 @@ const LEVEL_LABELS: Record<NodeType, string> = {
   [NodeTypeEnum.COMPONENT]: 'Component',
   [NodeTypeEnum.SENSOR]: 'Sensor',
 };
+
+interface SeverityThreshold {
+  severity: number;
+  label: string;
+  minDeviation: number;
+  maxDeviation: number | null;
+}
+
+const SEVERITY_THRESHOLDS: SeverityThreshold[] = [
+  { severity: 1, label: 'Critical', minDeviation: 60, maxDeviation: null },
+  { severity: 2, label: 'High', minDeviation: 35, maxDeviation: 60 },
+  { severity: 3, label: 'Medium', minDeviation: 20, maxDeviation: 35 },
+  { severity: 4, label: 'Low', minDeviation: 10, maxDeviation: 20 },
+  { severity: 5, label: 'Informational', minDeviation: 3, maxDeviation: 10 },
+];
 
 const schema = z.object({
   parent_id: z.number().nullable().optional(),
@@ -237,10 +253,6 @@ export const Admin: React.FC = () => {
 
   const DEMO_RULES = [
     { id: 1, name: 'High Temperature Alert', asset: 'Compressor A', trigger: 'temp_sensor_01', condition: 'Greater than 85°C', severity: 'critical', pendingPeriod: '2m', status: 'Active' },
-    { id: 2, name: 'Low Pressure Warning', asset: 'Pump Station B', trigger: 'pressure_sensor_02', condition: 'Less than 2.5 bar', severity: 'warning', pendingPeriod: '1m', status: 'Active' },
-    { id: 3, name: 'Vibration Spike', asset: 'Motor Unit C', trigger: 'vibration_sensor_03', condition: 'Greater than 12 mm/s', severity: 'critical', pendingPeriod: '3m', status: 'Inactive' },
-    { id: 4, name: 'Flow Rate Drop', asset: 'Line 2 Feed', trigger: 'flow_sensor_04', condition: 'Less than 50 L/min', severity: 'warning', pendingPeriod: 'None', status: 'Active' },
-    { id: 5, name: 'Power Consumption High', asset: 'Assembly Station 1', trigger: 'power_meter_01', condition: 'Greater than 200 kW', severity: 'info', pendingPeriod: '5m', status: 'Active' },
   ];
   const [alertRules, setAlertRules] = useState<any[]>(DEMO_RULES);
 
@@ -760,20 +772,26 @@ export const Admin: React.FC = () => {
         subtitle='Defines the hierarchy and severity thresholds every operator screen relies on'
       />
 
-      <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ mb: 3, borderBottom: '1px solid #ccc' }}>
-        <Tab label="Hierarchy" />
-        <Tab label="Alert Rule" />
+      <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} className="admin-page__tabs">
+        <Tab label="Asset Hierarchy" />
+        {/* <Tab label="Alert Rule" /> */}
+        <Tab label="Severity Thresholds" />
         <Tab label="Permissions" />
       </Tabs>
 
-      {/* ── Tab 0: Hierarchy ── */}
-      {activeTab === 0 && (
-        <Card>
+      <Card className="admin-card admin-card--form">
+        {/* ── Tab 0: Hierarchy ── */}
+        {activeTab === 0 && (
           <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                {selectedNodeId ? `Edit Node: ${selectedNodeName || selectedNodeId}` : 'Create New Hierarchy Node'}
-              </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Box>
+                <Typography className="admin-card__title">
+                  {selectedNodeId ? `Edit Node: ${selectedNodeName || selectedNodeId}` : 'Create New Hierarchy Node'}
+                </Typography>
+                {!selectedNodeId &&
+                  <div className="chart-subtitle">Onboard new equipment into the ISA-95 structure</div>
+                }
+              </Box>
               {selectedNodeId && (
                 <Box sx={{ display: 'flex', gap: 2 }}>
                   <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={handleDelete}>Delete Node</Button>
@@ -781,11 +799,10 @@ export const Admin: React.FC = () => {
                 </Box>
               )}
             </Box>
-            <Divider sx={{ mb: 3 }} />
 
-            {saveSuccess && <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSaveSuccess(false)}>Node saved successfully.</Alert>}
-            {deleteSuccess && <Alert severity="success" sx={{ mb: 3 }} onClose={() => setDeleteSuccess(false)}>Node deleted.</Alert>}
-            {apiError && <Alert severity="error" sx={{ mb: 3 }} onClose={() => setApiError(null)}>{apiError}</Alert>}
+            {saveSuccess && <Alert severity="success" sx={{ mb: 1 }} onClose={() => setSaveSuccess(false)}>Node saved successfully.</Alert>}
+            {deleteSuccess && <Alert severity="success" sx={{ mb: 1 }} onClose={() => setDeleteSuccess(false)}>Node deleted.</Alert>}
+            {apiError && <Alert severity="error" sx={{ mb: 1 }} onClose={() => setApiError(null)}>{apiError}</Alert>}
 
             {loading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress size={30} /></Box>
@@ -833,42 +850,57 @@ export const Admin: React.FC = () => {
               </form>
             )}
           </CardContent>
-        </Card>
-      )}
+        )}
 
-      {/* ── Tab 1: Alert Rules Table ── */}
-      {activeTab === 1 && (
-        <Card>
+        {/* ── Tab 1: Alert Rules Table ── */}
+        {activeTab === 1 && (
           <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>Alert Rules</Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Box>
+                <Typography className="admin-card__title">
+                  Severity Thresholds
+                </Typography>
+                <div className="chart-subtitle">Severity one is the highest priority, 5 is the lowest - defined on deviation between twin (reference) and actual value.</div>
+
+              </Box>
               <Button variant="outlined" color="primary" startIcon={<AddIcon />} onClick={openDrawer}>
-                Create Rule
+                Create
               </Button>
             </Box>
-            <Divider sx={{ mb: 2 }} />
 
             {alertSaved && (
-              <Alert severity="success" sx={{ mb: 2 }} onClose={() => setAlertSaved(false)}>
-                Alert rule saved successfully.
+              <Alert severity="success" sx={{ mb: 1 }} onClose={() => setAlertSaved(false)}>
+                Threshold saved successfully.
               </Alert>
             )}
 
-            <TableContainer>
+            <Box className="admin-table-wrap">
               <Table size="small">
                 <TableHead>
-                  <TableRow sx={{ '& th': { fontWeight: 700, backgroundColor: 'grey.50' } }}>
-                    <TableCell>#</TableCell>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Asset</TableCell>
-                    <TableCell>Trigger</TableCell>
-                    <TableCell>Condition</TableCell>
+                  <TableRow>
                     <TableCell>Severity</TableCell>
-                    <TableCell>Pending</TableCell>
-                    <TableCell>Status</TableCell>
+                    <TableCell>Label</TableCell>
+                    <TableCell>Min Deviation %</TableCell>
+                    <TableCell>Max Deviation %</TableCell>
                   </TableRow>
                 </TableHead>
+
                 <TableBody>
+                {SEVERITY_THRESHOLDS.map((row) => (
+                  <TableRow key={row.severity}>
+                    <TableCell>
+                      <span className={`severity-badge severity-s${row.severity}`}>S{row.severity}</span>
+                    </TableCell>
+                    <TableCell sx={{fontWeight: 600}}>
+                      <span className={`severity-s${row.severity}`}>{row.label}</span>
+                    </TableCell>
+                    <TableCell >{row.minDeviation}</TableCell>
+                    <TableCell >{row.maxDeviation !== null ? `${row.maxDeviation}` : '-'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+
+                {/* <TableBody>
                   {alertRules.map(rule => {
                     const assetNode = flatNodes.find(n => n.id === rule.node_id);
                     const sensorNode = flatNodes.find(n => String(n.id) === rule.sensor_id);
@@ -905,12 +937,76 @@ export const Admin: React.FC = () => {
                       </TableRow>
                     );
                   })}
+                </TableBody> */}
+              </Table>
+            </Box>
+          </CardContent>
+        )}
+
+        {/* ── Tab 2: Users & Permissions ── */}
+        {activeTab === 2 && (
+          <CardContent>
+            <Box sx={{mb: 1}}>
+                <Typography className="admin-card__title">
+                  Manage User Permissions
+                </Typography>
+                <div className="chart-subtitle">Select a user to review and update their access permissions.</div>
+              </Box>
+
+            <Box className="admin-table-wrap">
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>ID</TableCell>
+                    <TableCell>Email Address</TableCell>
+                    <TableCell>Active Status</TableCell>
+                    <TableCell>Assigned Permissions</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {users.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell >{user.id}</TableCell>
+                      <TableCell sx={{whiteSpace: 'nowrap'}}>{user.email}</TableCell>
+                      <TableCell className={`${user.is_active ? 'active-user-cell' : 'inactive-user-cell' }`}>
+                        {user.is_active ? 'Active' : 'Inactive'}
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {user.permissions.map((p: string) => (
+                            <Chip key={p} label={p} size="small" variant="outlined" />
+                          ))}
+                          {user.permissions.length === 0 && (
+                            <Typography variant="caption" color="text.secondary">None</Typography>
+                          )}
+                        </Box>
+                      </TableCell>
+                      <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setUserPermissionsSelected(user.permissions);
+                            setUserHierarchySelected([]);
+                            api.admin.getUserHierarchy(user.id)
+                              .then(setUserHierarchySelected)
+                              .catch(err => console.error("Failed to load user hierarchy:", err));
+                            setUserPermissionsOpen(true);
+                          }}
+                        >
+                          Edit Permissions
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
-            </TableContainer>
+            </Box>
           </CardContent>
-        </Card>
-      )}
+        )}
+      </Card>
 
       {/* ── Create Rule Dialog ── */}
       <Dialog open={drawerOpen} onClose={closeDrawer} maxWidth="sm" fullWidth
@@ -952,77 +1048,6 @@ export const Admin: React.FC = () => {
           )}
         </DialogActions>
       </Dialog>
-
-      {/* ── Tab 2: Users & Permissions ── */}
-      {activeTab === 2 && (
-        <Card sx={{ border: '1px solid #ccc' }}>
-          <CardContent>
-            <Typography variant="h6" sx={{ fontWeight: 600, }}>
-              Manage User Permissions
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Select a user to review and update their access permissions.
-            </Typography>
-            <Divider sx={{ mb: 2 }} />
-
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ '& th': { fontWeight: 700, backgroundColor: 'grey.50' } }}>
-                    <TableCell sx={{ fontWeight: 700 }}>ID</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Email Address</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Active Status</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Assigned Permissions</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }} align="right">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {users.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell>{user.id}</TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>{user.email}</TableCell>
-                      <TableCell>
-                        <Chip
-                          label={user.is_active ? 'Active' : 'Inactive'}
-                          size="small"
-                          color={user.is_active ? 'success' : 'default'}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {user.permissions.map((p: string) => (
-                            <Chip key={p} label={p} size="small" variant="outlined" />
-                          ))}
-                          {user.permissions.length === 0 && (
-                            <Typography variant="caption" color="text.secondary">None</Typography>
-                          )}
-                        </Box>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          onClick={() => {
-                            setSelectedUser(user);
-                            setUserPermissionsSelected(user.permissions);
-                            setUserHierarchySelected([]);
-                            api.admin.getUserHierarchy(user.id)
-                              .then(setUserHierarchySelected)
-                              .catch(err => console.error("Failed to load user hierarchy:", err));
-                            setUserPermissionsOpen(true);
-                          }}
-                        >
-                          Edit Permissions
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Edit Permissions Dialog */}
       <Dialog open={userPermissionsOpen} onClose={() => setUserPermissionsOpen(false)} fullWidth>

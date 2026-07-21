@@ -102,6 +102,50 @@ const theme = createTheme({
         },
       },
     },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+            borderColor: '#cbd5e1',
+            borderWidth: '1px',
+          },
+          '&:hover .MuiOutlinedInput-notchedOutline': {
+            borderColor: '#94a3b8',
+          },
+        },
+      },
+    },
+    MuiInputLabel: {
+      styleOverrides: {
+        root: {
+          '&.Mui-focused': {
+            color: '#475569',
+          },
+        },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        root: {
+          '&.Mui-focused': {
+            backgroundColor: 'transparent',
+          },
+        },
+      },
+    },
+    MuiMenuItem: {
+      styleOverrides: {
+        root: {
+          '&.Mui-selected': {
+            backgroundColor: '#f1f5f9', // light gray
+          },
+
+          '&.Mui-selected:hover': {
+            backgroundColor: '#e2e8f0',
+          },
+        },
+      },
+    },
     MuiButton: {
       styleOverrides: {
         root: {
@@ -111,7 +155,6 @@ const theme = createTheme({
           transition: 'all 0.2s ease-in-out',
           '&:hover': {
             transform: 'translateY(-1px)',
-            boxShadow: '0 4px 12px rgba(69, 151, 52, 0.25)', // Deloitte Green glow
           },
         },
       },
@@ -120,7 +163,6 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           backgroundImage: 'none',
-          border: '1px solid #ccc', // Pure Black Border
         },
       },
     },

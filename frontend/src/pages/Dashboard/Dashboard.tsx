@@ -896,12 +896,11 @@ export const Dashboard: React.FC = () => {
                                   <Button variant="outlined" size="small"
                                     disabled={sensorAdvisory.status === 'acknowledged'}
                                     sx={{
-                                      borderColor: '#00A3E0',
-                                      color: '#00A3E0',
-                                      // fontWeight: 500,
+                                      borderColor: '#93c5fd',
+                                      color: '#1e40af',
                                       '&:hover': {
-                                        backgroundColor: '#00a4e056',
-                                        // fontWeight: 600,
+                                        backgroundColor: '#bfdbfe',
+                                        borderColor: '#60a5fa',
                                       },
                                     }}
                                     onClick={async () => {
