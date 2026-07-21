@@ -8,7 +8,6 @@ import {
   Typography,
   Button,
   TextField,
-  Paper,
   Stack,
   FormControlLabel,
   Checkbox,
@@ -20,7 +19,7 @@ import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
 import { StatusChip } from '../../components/Forms/StatusChip';
 import { api } from '../../api/client';
-import { getSeverityLevelFull, getSeverityColor, getSeverityBgColor } from '../../constants/severity';
+import { getSeverityLevelFull } from '../../constants/severity';
 import type { Advisory } from '../../types/api_types';
 import { AdvisoryStatus } from '../../types/enums';
 import BreadCrumsBar from '../../components/BreadCrumsBar/BreadCrumsBar';
@@ -39,6 +38,7 @@ export const RootCause: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
   const [rcaStatus, setRcaStatus] = useState<AdvisoryStatus>(AdvisoryStatus.IN_PROGRESS);
   const [rootCauseDescription, setRootCauseDescription] = useState('');
   const [actionTaken, setActionTaken] = useState('');
@@ -59,6 +59,7 @@ export const RootCause: React.FC = () => {
   useEffect(() => {
     const advId = location.state?.advisoryId || searchParams.get('advisoryId');
     if (advId) {
+      setLoading(true)
       api.advisories.get(Number(advId))
         .then((res) => {
           setAdvisories([res]);
@@ -69,7 +70,8 @@ export const RootCause: React.FC = () => {
         })
         .catch((err) => {
           console.error('Failed to load single advisory for RCA:', err);
-        });
+        })
+        .finally(() => setLoading(false));
     } else {
       setAdvisories([]);
       setSelectedAdvisoryId('');
@@ -156,170 +158,155 @@ export const RootCause: React.FC = () => {
         url='/root-cause'
       />
 
-      <BreadCrumsBar breadcrumbsData={breadcrumbs}/>
+      <BreadCrumsBar breadcrumbsData={breadcrumbs} />
 
-      <Grid container spacing={3}>
-        <Grid size={{ xs: 12 }}>
-          <Card sx={{ border: '1px solid #ccc', backgroundColor: '#ffffff' }}>
-            <Box
-              sx={{
-                backgroundColor: '#1a1a1a',
-                p: 2,
-              }}
-            >
-              <Typography
-                variant="h6"
-                sx={{
-                  color: 'white',
-                  fontWeight: 700,
-                }}
-              >Root Cause Analysis</Typography>
-            </Box>
-            <CardContent sx={{ p: 2 }}>
-              <Stack spacing={3}>
-                {activeAdvisory ? (
-                  <Paper variant="outlined" sx={{ p: 2 }}>
-                    <Grid container spacing={3}>
-                      <Grid size={{ xs: 12, sm: 6 }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>Asset</Typography>
-                        <Typography variant="body1" sx={{ fontWeight: 600, mt: 0.5 }}>{activeAdvisory.asset}</Typography>
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 6 }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase', display: 'block', mb: 0.5 }}>Severity</Typography>
-                        <Chip
-                          label={getSeverityLevelFull(activeAdvisory.severity).toUpperCase()}
-                          size="small"
-                          className={`severity-badge severity-s${activeAdvisory.severity}`}
-                          sx={{
-                            fontWeight: 700,
-                          }}
-                        />
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 6 }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase', display: 'block', mb: 0.5 }}>Status</Typography>
-                        <StatusChip label={activeAdvisory.status.toUpperCase()} status={activeAdvisory.status} />
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 6 }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>First Detected</Typography>
-                        <Typography variant="body1" sx={{ mt: 0.5 }}>
-                          {new Date(activeAdvisory.detected_at).toLocaleString()}
-                        </Typography>
-                      </Grid>
-                      <Grid size={{ xs: 12 }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>Advisory Message</Typography>
-                        <Typography variant="body1" sx={{ mt: 0.5 }}>{activeAdvisory.description}</Typography>
-                      </Grid>
+
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
+            <CircularProgress color="secondary" />
+          </Box>
+        ) : (
+        <Card className='advisory-summary__grid-card'>
+          <CardContent >
+            <Stack spacing={3}>
+              {activeAdvisory ? (
+                  <Grid container spacing={2}>
+                    <Grid size={{ xs: 12, sm: 6 }} sx={{display: 'flex', alignItems: 'end', gap: 1}}>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>Asset</Typography>
+                      <Typography variant="body1">{activeAdvisory.asset}</Typography>
                     </Grid>
-                  </Paper>
-                ) : (
-                  <Paper variant="outlined" sx={{ p: 4, textAlign: 'center', borderRadius: 2 }}>
-                    <Typography variant="body1" color="text.secondary">
-                      No active advisory selected. Please navigate to the <strong>Advisories</strong> page and click <strong>Initiate RCA</strong> on an advisory.
-                    </Typography>
-                  </Paper>
-                )}
-
-                <Box
-                  onClick={() => activeAdvisory && fileInputRef.current?.click()}
-                  sx={{
-                    width: '100%',
-                    minHeight: 180,
-                    border: '1px dashed #7b7a7a',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    textAlign: 'center',
-                    p: 3,
-                    cursor: activeAdvisory ? 'pointer' : 'default',
-                    opacity: activeAdvisory ? 1 : 0.6,
-                    pointerEvents: activeAdvisory ? 'auto' : 'none',
-                    '&:hover': {
-                      borderColor: 'rgb(21, 137, 8)',
-                      backgroundColor: 'rgba(62, 248, 56, 0.04)',
-                    },
-                  }}
-                >
-                  <PhotoCameraOutlined sx={{ fontSize: 40, mb: 1, color: 'text.secondary' }} />
-                  <Typography variant="body1" sx={{ mb: 1 }}>
-                    Click to upload a photo of the fault
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    PNG, JPG or JPEG up to 5MB
-                  </Typography>
-                  {selectedFile && (
-                    <Typography variant="caption" sx={{ mt: 2, color: 'primary.main', fontWeight: 600 }}>
-                      Selected: {selectedFile.name}
-                    </Typography>
-                  )}
-                  {activeAdvisory?.image_path && !selectedFile && (
-                    <Typography variant="caption" sx={{ mt: 2, color: 'success.main', fontWeight: 600 }}>
-                      Current file: {activeAdvisory.image_path}
-                    </Typography>
-                  )}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/png, image/jpeg"
-                    onChange={handleFileChange}
-                    hidden
-                    disabled={!activeAdvisory}
-                  />
-                </Box>
-
-                <TextField
-                  label="Root cause description"
-                  placeholder="Describe the likely root cause here"
-                  multiline
-                  rows={5}
-                  fullWidth
-                  value={rootCauseDescription}
-                  onChange={(event) => setRootCauseDescription(event.target.value)}
-                  disabled={!activeAdvisory}
-                />
-
-                <TextField
-                  label="Action taken"
-                  placeholder="Enter action taken to resolve the issue"
-                  fullWidth
-                  multiline
-                  rows={3}
-                  value={actionTaken}
-                  onChange={(event) => setActionTaken(event.target.value)}
-                  disabled={!activeAdvisory}
-                />
-
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={rcaStatus === AdvisoryStatus.RESOLVED}
-                        onChange={(e) => setRcaStatus(e.target.checked ? AdvisoryStatus.RESOLVED : AdvisoryStatus.IN_PROGRESS)}
-                        color="primary"
-                        disabled={!activeAdvisory}
+                    <Grid size={{ xs: 12, sm: 6 }} sx={{display: 'flex', alignItems: 'end', gap: 1}}>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>Severity</Typography>
+                      <Chip
+                        label={getSeverityLevelFull(activeAdvisory.severity).toUpperCase()}
+                        size="small"
+                        className={`severity-badge severity-s${activeAdvisory.severity}`}
+                        sx={{
+                          fontWeight: 700,
+                        }}
                       />
-                    }
-                    label="Mark as Resolved"
-                  />
-                </Box>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }} sx={{display: 'flex', alignItems: 'end', gap: 1}}>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>Status</Typography>
+                      <StatusChip label={activeAdvisory.status.toUpperCase()} status={activeAdvisory.status} />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }} sx={{display: 'flex', alignItems: 'end', gap: 1}}>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>First Detected</Typography>
+                      <Typography variant="body1">
+                        {new Date(activeAdvisory.detected_at).toLocaleString()}
+                      </Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>Advisory Message</Typography>
+                      <Typography variant="body2">{activeAdvisory.description}</Typography>
+                    </Grid>
+                  </Grid>
+              ) : (
 
-                <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    size="large"
-                    onClick={handleUploadSubmit}
-                    sx={{ minWidth: 180 }}
-                    disabled={!activeAdvisory || submitting}
-                  >
-                    {submitting ? <CircularProgress size={24} color="inherit" /> : 'Submit & Close'}
-                  </Button>
-                </Box>
-              </Stack>
-            </CardContent>
+                  <Typography variant="body1" color="text.secondary">
+                    No active advisory selected. Please navigate to the <strong>Advisories</strong> page and click <strong>Initiate RCA</strong> on an advisory.
+                  </Typography>
+              )}
+
+              <Box
+                onClick={() => activeAdvisory && fileInputRef.current?.click()}
+                sx={{
+                  width: '100%',
+                  minHeight: 180,
+                  border: '1px dashed #7b7a7a',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  p: 3,
+                  cursor: activeAdvisory ? 'pointer' : 'default',
+                  opacity: activeAdvisory ? 1 : 0.6,
+                  pointerEvents: activeAdvisory ? 'auto' : 'none',
+                  '&:hover': {
+                    borderColor: 'rgb(21, 137, 8)',
+                    backgroundColor: 'rgba(62, 248, 56, 0.04)',
+                  },
+                }}
+              >
+                <PhotoCameraOutlined sx={{ fontSize: 40, mb: 1, color: 'text.secondary' }} />
+                <Typography variant="body1">
+                  Click to upload a photo of the fault
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  (PNG, JPG or JPEG up to 5MB)
+                </Typography>
+                {selectedFile && (
+                  <Typography variant="body2" sx={{ mt: 2, color: 'primary.main', fontWeight: 600 }}>
+                    Selected: {selectedFile.name}
+                  </Typography>
+                )}
+                {activeAdvisory?.image_path && !selectedFile && (
+                  <Typography variant="body2" sx={{ mt: 2, color: 'success.main', fontWeight: 600 }}>
+                    Current file: {activeAdvisory.image_path}
+                  </Typography>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png, image/jpeg"
+                  onChange={handleFileChange}
+                  hidden
+                  disabled={!activeAdvisory}
+                />
+              </Box>
+
+              <TextField
+                label="Root cause description"
+                placeholder="Describe the likely root cause here"
+                multiline
+                rows={5}
+                fullWidth
+                value={rootCauseDescription}
+                onChange={(event) => setRootCauseDescription(event.target.value)}
+                disabled={!activeAdvisory}
+              />
+
+              <TextField
+                label="Action taken"
+                placeholder="Enter action taken to resolve the issue"
+                fullWidth
+                multiline
+                rows={3}
+                value={actionTaken}
+                onChange={(event) => setActionTaken(event.target.value)}
+                disabled={!activeAdvisory}
+              />
+
+              <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={rcaStatus === AdvisoryStatus.RESOLVED}
+                      onChange={(e) => setRcaStatus(e.target.checked ? AdvisoryStatus.RESOLVED : AdvisoryStatus.IN_PROGRESS)}
+                      color="primary"
+                      disabled={!activeAdvisory}
+                    />
+                  }
+                  label="Mark as Resolved"
+                />
+
+              <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size="large"
+                  onClick={handleUploadSubmit}
+                  sx={{ minWidth: 180 }}
+                  disabled={!activeAdvisory || submitting}
+                >
+                  {submitting ? <CircularProgress size={24} color="inherit" /> : 'Submit & Close'}
+                </Button>
+              </Box>
+            </Stack>
+          </CardContent>
           </Card>
-        </Grid>
-      </Grid>
+        )}
+
     </PageContainer>
   );
 };
