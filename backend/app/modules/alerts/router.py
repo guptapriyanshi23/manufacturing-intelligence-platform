@@ -197,7 +197,7 @@ def get_alerts_count(
     payload: AlertCountRequest,
     db: Session = Depends(get_db)
 ):
-    total_count = service.get_alert_count(
+    total_count = service.get_alerts_count(
         db=db,
         node_ids=payload.node_ids
     )

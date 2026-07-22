@@ -67,30 +67,18 @@ const Header: React.FC<HeaderProps> = () => {
         ?.map(node => node?.id)
         ?.filter((id): id is number => id != null);
 
-      console.log("Node IDs:", nodeIds);
+      //Fetching active alerts
+      const alertCountResponse = await api.alerts.getCount(nodeIds);
+      if(alertCountResponse) setActiveAlerts(alertCountResponse?.total_alerts || 0)
 
-      const countResponse = await api.alerts.getCount(nodeIds);
-
-      console.log("Total Alerts:", countResponse.total_alerts);
+      //Fetching active advisories
+      const advisoryCountResponse = await api.advisories.getCount(nodeIds);
+      if(advisoryCountResponse) setActiveAdvisories(advisoryCountResponse?.total_advisories || 0)
     })
     .catch((err) => {
       console.error(err);
     });
 }, []);
-
-  useEffect(() => {
-    if (selectedNodeId) {
-      //Fetching active alerts
-      api.alerts.list({ node_id: selectedNodeId })
-        .then((res) => setActiveAlerts(res?.length))
-        .catch(() => setActiveAlerts(0))
-
-      //Fetching active advisories
-      api.advisories.list({ node_id: selectedNodeId })
-        .then((res) => setActiveAdvisories(res?.length))
-        .catch(() => setActiveAdvisories(0))
-    }
-  }, [selectedNodeId]);
 
   const handleLogout = () => {
     localStorage.removeItem('auth_token');

@@ -1,9 +1,8 @@
-from typing import List
+from typing import List, Optional
 from sqlalchemy.orm import Session
 from backend.app.models.alerts import Alert, AlertRule
 from backend.app.modules.alerts.schemas import AlertCreate, AlertRuleCreate
-
-from typing import List, Optional
+from sqlalchemy import func
 
 def get_alerts(
     db: Session,
@@ -139,7 +138,7 @@ def update_alert_status(db: Session, alert_id: int, status: str) -> Alert:
     db.refresh(db_alert)
     return db_alert
 
-def get_alert_count(
+def get_alerts_count(
     db: Session,
     node_ids: list[int]
 ) -> int:

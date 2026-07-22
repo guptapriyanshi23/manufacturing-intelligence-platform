@@ -58,6 +58,14 @@ export interface Advisory {
   updated_at: string;
 }
 
+export interface AdvisoryCountRequest {
+  node_ids: number[];
+}
+
+export interface AdvisoryCountResponse {
+  total_advisories: number;
+}
+
 export interface RCA {
   id: number;
   advisory_id: number;

@@ -4,6 +4,7 @@ import type {
   AlertCountResponse,
   AlertRule,
   Advisory,
+  AdvisoryCountResponse,
   User,
   DashboardSummaryResponse,
   TelemetryDataPoint,
@@ -180,6 +181,12 @@ export const api = {
         return res.json() as Promise<{ url: string }>;
       });
     },
+    getCount: (nodeIds: number[]) => request<AdvisoryCountResponse>('/advisories/count', {
+      method: 'POST',
+      body: JSON.stringify({
+        node_ids: nodeIds,
+      }),
+    }),
   },
   analytics: {
     list: () => request<{ id: number; name: string; report_type: string; status: string; created_at: string; download_url: string }[]>('/analytics'),
