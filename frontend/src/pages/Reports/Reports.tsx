@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useOutletContext } from 'react-router-dom';
 import {
   Box, Card, CardContent, Grid, Button, Typography, CircularProgress,
-  MenuItem, Select, FormControl, InputLabel, TextField, Paper,
+  MenuItem, Select, FormControl, InputLabel, TextField,
 } from '@mui/material';
 import { Download as DownloadIcon, } from '@mui/icons-material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
@@ -17,6 +17,9 @@ import '../Alerts/Alerts.scss';
 import './Reports.scss';
 import { TimeRange, TIME_RANGE_OPTIONS, AdvisoryStatus } from '../../types/enums';
 import BreadCrumsBar from '../../components/BreadCrumsBar/BreadCrumsBar';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import { fmtDate, fmtTime } from '../../constants/datetimefmt';
 
 const InboxIcon = () => (
   <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5v-3h3.56c.69 1.19 1.97 2 3.45 2s2.75-.81 3.45-2H19v3zm0-5h-4.99c0 1.1-.9 1.99-2 1.99S10 15.1 10 14H5V5h14v9z" /></svg>
@@ -56,7 +59,7 @@ const AcknowledgedIcon = () => (
   <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 5C5 5 1 12 1 12s4 7 11 7 11-7 11-7-4-7-11-7zm0 12c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-2.5A2.5 2.5 0 1012 9a2.5 2.5 0 000 5z" /></svg>
 );
 const InProgressIcon = () => (
-  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M22.7 19.3l-6.4-6.4c.5-1.4.2-3-.9-4.1-1.3-1.3-3.2-1.6-4.8-.8l2.8 2.8-2.1 2.1-2.8-2.8c-.8 1.6-.5 3.5.8 4.8 1.1 1.1 2.7 1.4 4.1.9l6.4 6.4 2.9-2.9z"/></svg>
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M22.7 19.3l-6.4-6.4c.5-1.4.2-3-.9-4.1-1.3-1.3-3.2-1.6-4.8-.8l2.8 2.8-2.1 2.1-2.8-2.8c-.8 1.6-.5 3.5.8 4.8 1.1 1.1 2.7 1.4 4.1.9l6.4 6.4 2.9-2.9z" /></svg>
 );
 const ResolvedIcon = () => (
   <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" /></svg>
@@ -81,6 +84,9 @@ export const Reports: React.FC = () => {
     status_counts: Record<string, number>;
     severity_counts: Record<number, number>;
   } | null>(null);
+
+  const severityChartRef = useRef(null);
+  const statusChartRef = useRef(null);
 
   const fetchStats = (nodeId: number | null, rangeVal: string, from?: string, to?: string) => {
     if (!nodeId) {
@@ -151,6 +157,192 @@ export const Reports: React.FC = () => {
   const handleGenerateClick = () => {
     if (appliedNode) {
       fetchStats(appliedNode.id, timeRange, fromDate, toDate);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+
+    if (!fromDate || !toDate || !appliedNode || !stats?.total) return;
+
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+
+      let y = 15;
+
+      // Header
+      pdf.setFontSize(22);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Analytics Report', 14, 20);
+
+      y += 16;
+
+      pdf.setFontSize(10);
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Node:', 14, y);
+
+      const labelWidth = pdf.getTextWidth('Node:');
+
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(` ${appliedNode?.display_name ?? ''}`, 14 + labelWidth + 1, y);
+
+      pdf.setFont('helvetica', 'normal');
+
+      y += 6;
+
+      pdf.text(
+        `Date Range: ${fmtDate(new Date(fromDate))} ${fmtTime(new Date(fromDate))} - ${fmtDate(new Date(toDate))} ${fmtTime(new Date(toDate))}`,
+        14,
+        y
+      );
+
+      y += 6;
+
+      pdf.text(
+        `Generated On: ${fmtDate(new Date())} ${fmtTime(new Date())}`,
+        14,
+        y
+      );
+
+      y += 8;
+
+      // Summary Cards
+      const cards = [
+        {
+          label: 'Total Advisory',
+          value: total,
+          fillColor: [220, 221, 222],      // #dcddde
+          borderColor: [145, 151, 152],    // #919798
+          textColor: [96, 125, 139]
+        },
+        {
+          label: 'Open',
+          value: `${openCount} (${pct(openCount)})`,
+          fillColor: [252, 235, 235],
+          borderColor: [229, 115, 115],
+          textColor: [211, 47, 47]
+        },
+        {
+          label: 'Acknowledged',
+          value: `${ackCount} (${pct(ackCount)})`,
+          fillColor: [230, 247, 253],      // #e6f7fd
+          borderColor: [125, 217, 245],    // #7dd9f5
+          textColor: [2, 136, 209]
+        },
+        {
+          label: 'In Progress',
+          value: `${inProgressCount} (${pct(inProgressCount)})`,
+          fillColor: [250, 247, 231],      // #faf7e7
+          borderColor: [240, 211, 79],     // #f0d34f
+          textColor: [245, 124, 0]
+        },
+        {
+          label: 'Resolved',
+          value: `${resolvedCount} (${pct(resolvedCount)})`,
+          fillColor: [237, 249, 234],      // #edf9ea
+          borderColor: [159, 209, 148],    // #9fd194
+          textColor: [56, 142, 60]
+        }
+      ];
+
+      const cardWidth = 36;
+      const cardHeight = 18;
+      let x = 14;
+
+      cards.forEach(card => {
+        pdf.setFillColor(
+          card.fillColor[0],
+          card.fillColor[1],
+          card.fillColor[2]
+        );
+
+        pdf.rect(x, y, cardWidth, cardHeight, 'F');
+
+        pdf.setDrawColor(
+          card.borderColor[0],
+          card.borderColor[1],
+          card.borderColor[2]
+        );
+
+        pdf.setLineWidth(0.2);
+
+        pdf.rect(x, y, cardWidth, cardHeight);
+
+        pdf.setTextColor(
+          card.textColor[0],
+          card.textColor[1],
+          card.textColor[2]
+        );
+
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(12);
+
+        pdf.text(String(card.value), x + 3, y + 7);
+
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8);
+
+        pdf.text(card.label, x + 3, y + 14);
+
+        x += 39;
+      });
+
+      y += 25;
+
+      const chartWidth = 180;
+      const chartHeight = 95;
+
+      // Severity Chart
+      if (severityChartRef.current) {
+        const canvas = await html2canvas(severityChartRef.current, {
+          scale: 2,
+          useCORS: true
+        });
+
+        const img = canvas.toDataURL('image/png');
+        pdf.addImage(
+          img,
+          'PNG',
+          14,
+          y,
+          chartWidth,
+          chartHeight
+        );
+
+        y += chartHeight + 2;
+      }
+
+      // Move to next page if required
+      if (y + chartHeight > 270) {
+        pdf.addPage();
+        y = 20;
+      }
+
+      // Status Chart
+      if (statusChartRef.current) {
+        const canvas = await html2canvas(statusChartRef.current, {
+          scale: 2,
+          useCORS: true
+        });
+
+        const img = canvas.toDataURL('image/png');
+        pdf.addImage(
+          img,
+          'PNG',
+          14,
+          y,
+          chartWidth,
+          chartHeight
+        );
+
+        y += chartHeight + 4;
+      }
+
+      pdf.save(
+        `Analytics_Report_${new Date().toISOString().split('T')[0]}.pdf`
+      );
+    } catch (error) {
+      console.error('Error generating PDF', error);
     }
   };
 
@@ -243,8 +435,8 @@ export const Reports: React.FC = () => {
           <Button
             variant="contained"
             startIcon={<DownloadIcon />}
-            disabled={!appliedNode}
-            onClick={() => console.log('Download PDF')}
+            disabled={!appliedNode || !stats?.total}
+            onClick={handleDownloadPdf}
             sx={{
               minWidth: 90, fontWeight: 600, height: 35,
               backgroundColor: 'var(--color-primary) !important',
@@ -303,7 +495,7 @@ export const Reports: React.FC = () => {
                   <span className="counter-card__label">Acknowledged</span>
                 </div>
               </div>
-              
+
               <div className="counter-card counter-card--in_progress">
                 <div className="counter-card__icon"><InProgressIcon /></div>
                 <div className="counter-card__body">
@@ -328,7 +520,7 @@ export const Reports: React.FC = () => {
             <Grid container spacing={3}>
               {/* Severity chart */}
               <Grid size={{ xs: 12, md: 6 }}>
-                <Card sx={{ height: '100%' }}>
+                <Card ref={severityChartRef} className="advisory-summary__grid-card">
                   <CardContent>
                     <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>Advisory Count by Severity</Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -342,7 +534,7 @@ export const Reports: React.FC = () => {
                         <Tooltip formatter={(v) => [`${v}`, 'Count']} />
                         <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={36}>
                           <LabelList dataKey="count" position="right" style={{ fontSize: 13, fontWeight: 600 }} />
-                          {severityChartData.map(entry => (
+                          {severityChartData?.map(entry => (
                             <Cell key={entry.severity} fill={getSeverityBarColor(entry.originalSeverity)} />
                           ))}
                         </Bar>
@@ -354,7 +546,7 @@ export const Reports: React.FC = () => {
 
               {/* Status chart */}
               <Grid size={{ xs: 12, md: 6 }}>
-                <Card sx={{ height: '100%' }}>
+                <Card ref={statusChartRef} className="advisory-summary__grid-card">
                   <CardContent>
                     <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>Advisory Count by Status</Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -368,7 +560,7 @@ export const Reports: React.FC = () => {
                         <Tooltip formatter={(v) => [`${v}`, 'Count']} />
                         <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={36}>
                           <LabelList dataKey="count" position="right" style={{ fontSize: 13, fontWeight: 600 }} />
-                          {statusChartData.map(entry => (
+                          {statusChartData?.map(entry => (
                             <Cell key={entry.key} fill={getStatusBarColor(entry.key)} />
                           ))}
                         </Bar>
