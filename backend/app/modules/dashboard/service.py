@@ -89,3 +89,53 @@ def get_dashboard_summary() -> DashboardSummaryResponse:
             PerformanceData(timestamp="Sun", oee=78.4, availability=84.2, performance=91.0, quality=98.1)
         ]
     )
+
+def get_shift_timings(db: Session, detected_at: datetime):
+    from backend.app.models.shifts import Shift
+    from datetime import timezone, timedelta, time
+    
+    IST = timezone(timedelta(hours=5, minutes=30))
+    
+    # Fetch all shifts from DB
+    shifts = db.query(Shift).all()
+    
+    if detected_at.tzinfo is not None:
+        detected_at_local = detected_at.astimezone(IST)
+    else:
+        detected_at_local = detected_at.replace(tzinfo=IST)
+    detected_time = detected_at_local.time()
+    
+    matched_shift = None
+    shift_start = None
+    shift_end = None
+    
+    for s in shifts:
+        if s.start_time <= s.end_time:
+            if s.start_time <= detected_time <= s.end_time:
+                matched_shift = s
+                shift_start = datetime.combine(detected_at_local.date(), s.start_time).replace(tzinfo=IST)
+                shift_end = datetime.combine(detected_at_local.date(), s.end_time).replace(tzinfo=IST)
+                break
+        else:
+            if detected_time >= s.start_time or detected_time <= s.end_time:
+                matched_shift = s
+                if detected_time >= s.start_time:
+                    shift_start = datetime.combine(detected_at_local.date(), s.start_time).replace(tzinfo=IST)
+                    shift_end = datetime.combine(detected_at_local.date() + timedelta(days=1), s.end_time).replace(tzinfo=IST)
+                else:
+                    shift_start = datetime.combine(detected_at_local.date() - timedelta(days=1), s.start_time).replace(tzinfo=IST)
+                    shift_end = datetime.combine(detected_at_local.date(), s.end_time).replace(tzinfo=IST)
+                break
+                
+    if not matched_shift:
+        # Fallback to daily view if no shift found
+        return None
+        
+    return {
+        "shift_name": matched_shift.shift_name,
+        "start_time": shift_start.isoformat(),
+        "end_time": shift_end.isoformat(),
+        "start_time_local": shift_start.strftime("%Y-%m-%dT%H:%M"),
+        "end_time_local": shift_end.strftime("%Y-%m-%dT%H:%M")
+    }
+

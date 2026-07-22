@@ -192,6 +192,30 @@ export const Dashboard: React.FC = () => {
   const [appliedToDate, setAppliedToDate] = useState(initRange.to);
   const [isTimeOverridden, setIsTimeOverridden] = useState(false);
 
+  useEffect(() => {
+    if (location.state?.detected_at) {
+      api.dashboard.getShiftTimings(location.state.detected_at)
+        .then((res) => {
+          if (res && res.start_time_local && res.end_time_local) {
+            setTimeRange(TimeRange.CUSTOM);
+            setFromDate(res.start_time_local);
+            setToDate(res.end_time_local);
+            setAppliedTimeRange(TimeRange.CUSTOM);
+            setAppliedFromDate(res.start_time_local);
+            setAppliedToDate(res.end_time_local);
+            setIsTimeOverridden(true);
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to fetch shift timings:", err);
+        });
+    }
+  }, [location.state?.detected_at]);
+
+  useEffect(() => {
+    setIsTimeOverridden(false);
+  }, [initialNodeId]);
+
   const handleTimeRangeChange = (val: string) => {
     setTimeRange(val);
     setIsTimeOverridden(true);
@@ -351,14 +375,13 @@ export const Dashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    if (activeAdvisory && activeAdvisory.status !== AdvisoryStatus.RESOLVED) {
+    if (activeAdvisory && activeAdvisory.status !== AdvisoryStatus.RESOLVED && !isTimeOverridden) {
       const window = getAdvisoryTimeWindow(activeAdvisory);
       setTimeRange(TimeRange.CUSTOM);
       setFromDate(window.fromLocal);
       setToDate(window.toLocal);
-      setIsTimeOverridden(false);
     }
-  }, [activeAdvisory]);
+  }, [activeAdvisory, isTimeOverridden]);
 
   const handleViewClick = () => {
     let activeNodeId = initialNodeId;

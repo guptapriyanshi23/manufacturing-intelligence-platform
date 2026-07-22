@@ -523,7 +523,7 @@ export const Alerts: React.FC = () => {
                       <TableRow
                         key={row.id}
                         onClick={() => {
-                          navigate('/dashboard', { state: { selectedNodeId: row.node_id, alertId: row.id } });
+                          navigate('/dashboard', { state: { selectedNodeId: row.node_id, alertId: row.id, detected_at: row.timestamp } });
                         }}
                         sx={{
                           cursor: 'pointer',

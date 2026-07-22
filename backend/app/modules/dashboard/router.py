@@ -32,3 +32,14 @@ def get_telemetry(
         db=db, sensor_ids=sensor_ids, hours=hours, granularity=granularity,
         start_time=start_time, end_time=end_time
     )
+
+@router.get("/shift-timings", dependencies=[Depends(check_permissions(["dashboard:view"]))])
+def get_shift_timings(
+    detected_at: datetime = Query(...),
+    db: Session = Depends(get_db)
+):
+    """
+    Get shift start and end times for a given timestamp.
+    """
+    return service.get_shift_timings(db=db, detected_at=detected_at)
+

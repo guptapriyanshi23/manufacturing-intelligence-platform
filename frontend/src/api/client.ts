@@ -102,6 +102,14 @@ export const api = {
   },
   dashboard: {
     getSummary: () => request<DashboardSummaryResponse>('/dashboard/summary'),
+    getShiftTimings: (detectedAt: string) =>
+      request<{
+        shift_name: string;
+        start_time: string;
+        end_time: string;
+        start_time_local: string;
+        end_time_local: string;
+      }>(`/dashboard/shift-timings?detected_at=${encodeURIComponent(detectedAt)}`),
     getTelemetry: (
       sensorIds: string[],
       hours: number = 24,
