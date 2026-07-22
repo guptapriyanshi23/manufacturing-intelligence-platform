@@ -60,16 +60,35 @@ const Header: React.FC<HeaderProps> = () => {
   }, [navigate]);
 
   useEffect(() => {
-    if(selectedNodeId){
+  api.hierarchy
+    .list(true)
+    .then(async (res) => {
+      const nodeIds = res
+        ?.map(node => node?.id)
+        ?.filter((id): id is number => id != null);
+
+      console.log("Node IDs:", nodeIds);
+
+      const countResponse = await api.alerts.getCount(nodeIds);
+
+      console.log("Total Alerts:", countResponse.total_alerts);
+    })
+    .catch((err) => {
+      console.error(err);
+    });
+}, []);
+
+  useEffect(() => {
+    if (selectedNodeId) {
       //Fetching active alerts
       api.alerts.list({ node_id: selectedNodeId })
-      .then((res) => setActiveAlerts(res?.length))
-      .catch(() => setActiveAlerts(0))
+        .then((res) => setActiveAlerts(res?.length))
+        .catch(() => setActiveAlerts(0))
 
       //Fetching active advisories
       api.advisories.list({ node_id: selectedNodeId })
-      .then((res) => setActiveAdvisories(res?.length))
-      .catch(() => setActiveAdvisories(0))
+        .then((res) => setActiveAdvisories(res?.length))
+        .catch(() => setActiveAdvisories(0))
     }
   }, [selectedNodeId]);
 

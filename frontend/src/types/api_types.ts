@@ -16,6 +16,14 @@ export interface Alert {
   sensor_name?: string | null;
 }
 
+export interface AlertCountRequest {
+  node_ids: number[];
+}
+
+export interface AlertCountResponse {
+  total_alerts: number;
+}
+
 export interface AlertRule {
   id: number;
   name: string;

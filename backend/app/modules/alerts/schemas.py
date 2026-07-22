@@ -53,3 +53,10 @@ class AlertRuleResponse(AlertRuleBase):
     class Config:
         from_attributes = True
 
+
+class AlertCountRequest(BaseModel):
+    node_ids: List[int]
+
+
+class AlertCountResponse(BaseModel):
+    total_alerts: int

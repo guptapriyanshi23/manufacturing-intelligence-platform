@@ -1,6 +1,7 @@
 import type { HierarchyNode, HierarchyNodeCreateInput } from '../types/hierarchy';
 import type {
   Alert,
+  AlertCountResponse,
   AlertRule,
   Advisory,
   User,
@@ -99,6 +100,13 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+    getCount: (nodeIds: number[]) => request<AlertCountResponse>('/alerts/count', {
+      method: 'POST',
+      body: JSON.stringify({
+        node_ids: nodeIds,
+      }),
+    }),
+
   },
   dashboard: {
     getSummary: () => request<DashboardSummaryResponse>('/dashboard/summary'),

@@ -138,3 +138,13 @@ def update_alert_status(db: Session, alert_id: int, status: str) -> Alert:
     db.commit()
     db.refresh(db_alert)
     return db_alert
+
+def get_alert_count(
+    db: Session,
+    node_ids: list[int]
+) -> int:
+    return (
+        db.query(func.count(Alert.id))
+        .filter(Alert.node_id.in_(node_ids))
+        .scalar()
+    )

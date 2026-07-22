@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from backend.app.core.database import get_db
 from backend.app.core.security import get_current_user, check_permissions
-from backend.app.modules.alerts.schemas import AlertResponse, AlertCreate, AlertRuleResponse, AlertRuleCreate
+from backend.app.modules.alerts.schemas import AlertResponse, AlertCreate, AlertRuleResponse, AlertRuleCreate, AlertCountRequest, AlertCountResponse
 from backend.app.modules.alerts import service
 from backend.app.models.hierarchy import HierarchyNode
 
@@ -187,3 +187,21 @@ def update_alert(id: int, status_in: dict, db: Session = Depends(get_db)):
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
     return resolve_alert_details(db, alert)
+
+@router.post(
+    "/count",
+    response_model=AlertCountResponse,
+    dependencies=[Depends(check_permissions(["alerts:view"]))]
+)
+def get_alerts_count(
+    payload: AlertCountRequest,
+    db: Session = Depends(get_db)
+):
+    total_count = service.get_alert_count(
+        db=db,
+        node_ids=payload.node_ids
+    )
+
+    return {
+        "total_alerts": total_count
+    }
