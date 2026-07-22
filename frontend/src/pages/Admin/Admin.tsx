@@ -863,9 +863,9 @@ export const Admin: React.FC = () => {
                 <div className="chart-subtitle">Severity one is the highest priority, 5 is the lowest - defined on deviation between twin (reference) and actual value.</div>
 
               </Box>
-              <Button variant="outlined" color="primary" startIcon={<AddIcon />} onClick={openDrawer}>
+              {/* <Button variant="outlined" color="primary" startIcon={<AddIcon />} onClick={openDrawer}>
                 Create
-              </Button>
+              </Button> */}
             </Box>
 
             {alertSaved && (

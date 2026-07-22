@@ -290,10 +290,12 @@
 .alerts-table__status {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   padding: 2px 7px;
   font-size: 0.65rem;
   font-weight: 600;
   white-space: nowrap;
+  min-width: 55px;
 
   &--act {
     background: #fee2e2;
@@ -371,11 +373,13 @@
 .severity-badge {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   padding: 2px 7px;
   border-radius: 20px;
   font-size: 0.65rem;
   font-weight: 600;
   white-space: nowrap;
+  min-width: 80px;
 
   &.severity-s1 { background: #fecdd3; color: #7f1d1d; }
   &.severity-s2 { background: #ffe4e6; color: #9f1239; }

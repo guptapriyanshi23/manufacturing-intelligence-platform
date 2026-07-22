@@ -63,7 +63,7 @@ export const Alerts: React.FC = () => {
   const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
   const [hierarchyLoading, setHierarchyLoading] = useState(true);
   const [selectedSiteId, setSelectedSiteId] = useState<number | ''>('');
-  
+
   useEffect(() => {
     if (flatNodes.length > 0 && !selectedSiteId) {
       const sitesList = flatNodes.filter(n => n.node_type === NodeType.SITE);
@@ -158,24 +158,63 @@ export const Alerts: React.FC = () => {
     return getDescendantNodes(selectedNodeId);
   }, [selectedNodeId, flatNodes, getDescendantNodes]);
 
+  const selectedNode = useMemo(
+    () => flatNodes.find(n => n.id === selectedNodeId),
+    [selectedNodeId, flatNodes]
+  );
+
+  const isLineSelected = selectedNode?.node_type === NodeType.LINE;
+  const isAssetSelected = selectedNode?.node_type === NodeType.ASSET;
+
+  useEffect(() => {
+  setSelectedAssetId('');
+  setSelectedSensorId('');
+}, [selectedNodeId]);
+
   // Sensor/Tag dropdown options
   const availableAssets = useMemo(() => {
-    return descendantsOfSidePanel.filter(n => n.node_type === NodeType.ASSET);
-  }, [descendantsOfSidePanel]);
+  if (isAssetSelected) {
+    return [selectedNode];
+  }
+
+  return descendantsOfSidePanel.filter(
+    n => n.node_type === NodeType.ASSET
+  );
+}, [descendantsOfSidePanel, isAssetSelected, selectedNode]);
 
   // Sensor/Tag dropdown options
   const availableSensors = useMemo(() => {
-    return descendantsOfSidePanel.filter(n => n.node_type === NodeType.SENSOR);
-  }, [descendantsOfSidePanel]);
+  // Sidebar Asset selected
+  if (isAssetSelected) {
+    return getDescendantNodes(Number(selectedNodeId)).filter(
+      n => n.node_type === NodeType.SENSOR
+    );
+  }
 
-  const isLineSelected = useMemo(() => {
-    setSelectedSensorId('')
-    return flatNodes.find(n => n.id === selectedNodeId)?.node_type === NodeType.LINE;
-  }, [selectedNodeId, flatNodes]);
+  // Line selected + specific asset chosen
+  if (
+    isLineSelected &&
+    selectedAssetId &&
+    Number(selectedAssetId)
+  ) {
+    return getDescendantNodes(Number(selectedAssetId)).filter(
+      n => n.node_type === NodeType.SENSOR
+    );
+  }
 
-  const isAssetSelected = useMemo(() => {
-    return flatNodes.find(n => n.id === selectedNodeId)?.node_type === NodeType.ASSET;
-  }, [selectedNodeId, flatNodes]);
+  // Line selected + Asset = All
+  return descendantsOfSidePanel.filter(
+    n => n.node_type === NodeType.SENSOR
+  );
+}, [
+  isAssetSelected,
+  isLineSelected,
+  selectedAssetId,
+  selectedNodeId,
+  descendantsOfSidePanel,
+  getDescendantNodes,
+]);
+
 
   // Autopopulate and sync dropdown selections based on the side panel hierarchy node selection
   useEffect(() => {
@@ -421,7 +460,7 @@ export const Alerts: React.FC = () => {
           </FormControl>
 
           <FormControl size="small" className="alerts-table-filters__field"
-            disabled={!isAssetSelected}
+            disabled={!(isLineSelected || isAssetSelected)}
           >
             <InputLabel id="alerts-tag-filter-label">Sensor/Tag</InputLabel>
             <Select

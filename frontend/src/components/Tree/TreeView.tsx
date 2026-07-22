@@ -41,11 +41,15 @@ const iconMap: Record<NodeType, React.ReactNode> = {
   enterprise: <BusinessIcon fontSize="inherit" />,
   site: <FactoryIcon fontSize="inherit" />,
   area: <DashboardIcon fontSize="inherit" />,
+  block: <DashboardIcon fontSize="inherit" />,
   line: <RouteIcon fontSize="inherit" />,
   station: <PrecisionManufacturingIcon fontSize="inherit" />,
+  system: <PrecisionManufacturingIcon fontSize="inherit" />,
   asset: <MachineIcon />,
+  equipment: <MachineIcon />,
   component: <SettingsInputComponentIcon fontSize="inherit" />,
   sensor: <SensorsIcon fontSize="inherit" />,
+  parameter: <SensorsIcon fontSize="inherit" />,
 };
 
 const TreeNode: React.FC<{

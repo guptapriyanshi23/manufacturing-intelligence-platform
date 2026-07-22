@@ -73,11 +73,11 @@
 	background: #ebe06257;
 	border-color: #e6d736;
 	font-weight: 700;
-	color: #f0c400;
+	color: #b45309;
 
 	.deviation-chip__count {
 		background: #ebe0627e;
-		color: #f0c400;
+		color: #b45309;
 	}
 
 	&:hover {
@@ -198,16 +198,15 @@
   	}
 
 	&--xlsx {
-		background: #dcfce7;
-		border-color: #86efac;
-		color: #166534;
+		background: #26890D;
+		color: #ffff;
 
 		&:hover {
-			background: #bbf7d0;
-			border-color: #4ade80;
+			background: #1f700a;
 		}
 
 		&:disabled {
+			background: #e0e0e0;
     		cursor: not-allowed;
     		opacity: 0.6;
   		}
@@ -252,7 +251,7 @@
 	/* Status badges */
 	&--open { background: #fee2e2 !important; color: #991b1b !important; border-color: #fca5a5; }
 	&--acknowledged { background: #dbeafe !important; color: #1e40af !important; border-color: #93c5fd; }
-	&--in_progress { background: #ebe06257 !important; color: #f0c400 !important; border-color: #f0d34f; }
+	&--in_progress { background: #ebe06257 !important; color: #b45309 !important; border-color: #f0d34f; }
 	&--resolved { background: #dcfce7 !important; color: #166534 !important; border-color: #86efac; }
 }
 
