@@ -8,17 +8,17 @@ export const SeverityLevel = {
 export type SeverityLevel = typeof SeverityLevel[keyof typeof SeverityLevel];
 
 export const AlertStatus = {
-  ACTIVE: 'active',
-  ACKNOWLEDGED: 'acknowledged',
-  RESOLVED: 'resolved',
+  ACTIVE: 1,
+  ACKNOWLEDGED: 2,
+  CLOSED: 3,
 } as const;
 export type AlertStatus = typeof AlertStatus[keyof typeof AlertStatus];
 
 export const AdvisoryStatus = {
-  OPEN: 'open',
-  ACKNOWLEDGED: 'acknowledged',
-  IN_PROGRESS: 'in_progress',
-  RESOLVED: 'resolved',
+  OPEN: 1,
+  ACKNOWLEDGED: 2,
+  IN_PROGRESS: 3,
+  RESOLVED: 4,
 } as const;
 export type AdvisoryStatus = typeof AdvisoryStatus[keyof typeof AdvisoryStatus];
 

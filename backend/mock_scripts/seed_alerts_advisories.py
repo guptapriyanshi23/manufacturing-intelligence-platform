@@ -38,6 +38,7 @@ def seed_alerts_advisories():
         db.commit()
 
         # 3. Create matching alerts and advisories pairs
+        from backend.app.core.enums import AdvisoryStatus, AlertStatus, RcaStatus
         pairs_seed = [
             {
                 "name": "Temperature Limit Overstep",
@@ -45,7 +46,7 @@ def seed_alerts_advisories():
                 "condition": "temperature > 80",
                 "threshold": 80.0,
                 "severity": 1, # critical
-                "status": "open",
+                "status": AdvisoryStatus.OPEN,
                 "advisory_desc": "Bearing temperature on sensor has trended 44% above the twin baseline over the last 6 hours — consistent with advancing bearing wear. Severity has escalated S4 → S3 → S2 → S1 as the deviation sustained. The legacy 85°C alarm is only now starting to fire — the twin flagged this a full 6 hours earlier, well ahead of the 95°C trip limit."
             },
             {
@@ -54,7 +55,7 @@ def seed_alerts_advisories():
                 "condition": "vibration > 2.5",
                 "threshold": 2.5,
                 "severity": 3, # warning
-                "status": "in_progress",
+                "status": AdvisoryStatus.IN_PROGRESS,
                 "advisory_desc": "Vibration profile indicates a minor alignment issue. Spindle mechanical variance has increased by 15% over the baseline. We recommend scheduled greasing and spindle mounting inspection within the next 48 production hours to avoid coupling wear."
             },
             {
@@ -63,7 +64,7 @@ def seed_alerts_advisories():
                 "condition": "voltage < 18",
                 "threshold": 18.0,
                 "severity": 5, # info
-                "status": "acknowledged",
+                "status": AdvisoryStatus.ACKNOWLEDGED,
                 "advisory_desc": "Supply voltage dropped below 18V threshold. Voltage sag detected during welding operation. Risk of low-weld quality. Verify electrical transformer connection lines."
             },
             {
@@ -72,7 +73,7 @@ def seed_alerts_advisories():
                 "condition": "flow_rate < 5.0",
                 "threshold": 5.0,
                 "severity": 3, # warning
-                "status": "resolved",
+                "status": AdvisoryStatus.RESOLVED,
                 "advisory_desc": "Coolant flow rate sagged below safety baseline threshold. Spindle cooling efficiency has degraded. System resolved after backup coolant pump cycle initiated."
             }
         ]
@@ -94,16 +95,22 @@ def seed_alerts_advisories():
             db.flush() # Populates db_advisory.id
 
             # Seed RCA if resolved/in_progress
-            if seed_data["status"] in ("resolved", "in_progress"):
+            if seed_data["status"] in (AdvisoryStatus.RESOLVED, AdvisoryStatus.IN_PROGRESS):
                 db_rca = RCA(
                     advisory_id=db_advisory.id,
                     root_cause_description="Lube decay or loose bolts",
-                    action_taken="Re-tightened mounts and re-lubricated bearings" if seed_data["status"] == "resolved" else None,
-                    status="completed" if seed_data["status"] == "resolved" else "initiated"
+                    action_taken="Re-tightened mounts and re-lubricated bearings" if seed_data["status"] == AdvisoryStatus.RESOLVED else None,
+                    status=RcaStatus.COMPLETED if seed_data["status"] == AdvisoryStatus.RESOLVED else RcaStatus.INITIATED
                 )
                 db.add(db_rca)
 
             # Seed matching Alert
+            alert_status = AlertStatus.ACTIVE
+            if seed_data["status"] == AdvisoryStatus.ACKNOWLEDGED:
+                alert_status = AlertStatus.ACKNOWLEDGED
+            elif seed_data["status"] == AdvisoryStatus.RESOLVED:
+                alert_status = AlertStatus.CLOSED
+
             db_alert = Alert(
                 node_id=sensor.id,
                 name=seed_data["name"],
@@ -112,7 +119,7 @@ def seed_alerts_advisories():
                 threshold=seed_data["threshold"],
                 severity=seed_data["severity"],
                 message=seed_data["desc"],
-                status="active" if seed_data["status"] in ("open", "in_progress") else ("acknowledged" if seed_data["status"] == "acknowledged" else "resolved"),
+                status=alert_status,
                 timestamp=db_advisory.detected_at
             )
             db.add(db_alert)

@@ -7,17 +7,17 @@ class SeverityLevel(IntEnum):
     LOW = 4
     INFO = 5
 
-class AlertStatus(str, Enum):
-    ACTIVE = "active"
-    ACKNOWLEDGED = "acknowledged"
-    RESOLVED = "resolved"
+class AlertStatus(IntEnum):
+    ACTIVE = 1
+    ACKNOWLEDGED = 2
+    CLOSED = 3
 
-class AdvisoryStatus(str, Enum):
-    OPEN = "open"
-    ACKNOWLEDGED = "acknowledged"
-    IN_PROGRESS = "in_progress"
-    RESOLVED = "resolved"
+class AdvisoryStatus(IntEnum):
+    OPEN = 1
+    ACKNOWLEDGED = 2
+    IN_PROGRESS = 3
+    RESOLVED = 4
 
 class RcaStatus(str, Enum):
-    INITIATED = "initiated"
-    COMPLETED = "completed"
+    INITIATED = 'initiated'
+    COMPLETED = 'completed'

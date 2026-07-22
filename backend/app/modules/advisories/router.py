@@ -206,10 +206,11 @@ def update_advisory(
     """
     Update advisory status, action taken, root cause description, etc.
     """
+    from backend.app.core.enums import AdvisoryStatus
     user_perms = {p.name for p in current_user.permissions}
-    if advisory_in.status == 'acknowledged' and 'advisories:acknowledge' not in user_perms:
+    if advisory_in.status == AdvisoryStatus.ACKNOWLEDGED and 'advisories:acknowledge' not in user_perms:
         raise HTTPException(status_code=403, detail="Not authorized to acknowledge advisories")
-    if advisory_in.status == 'resolved' and 'advisories:rca' not in user_perms:
+    if advisory_in.status == AdvisoryStatus.RESOLVED and 'advisories:rca' not in user_perms:
         raise HTTPException(status_code=403, detail="Not authorized to resolve advisories")
     if 'advisories:view' not in user_perms:
         raise HTTPException(status_code=403, detail="Not authorized to view advisories")

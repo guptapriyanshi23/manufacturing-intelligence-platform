@@ -9,7 +9,9 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+% if context.get('imports', None):
 ${imports}
+% endif
 
 # revision identifiers, used by Alembic.
 revision: str = ${repr(up_revision)}

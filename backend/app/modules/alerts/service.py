@@ -14,7 +14,19 @@ def get_alerts(
     query = db.query(Alert)
     
     if status:
-        query = query.filter(Alert.status == status)
+        from backend.app.core.enums import AlertStatus
+        status_map = {
+            "active": AlertStatus.ACTIVE,
+            "acknowledged": AlertStatus.ACKNOWLEDGED,
+            "resolved": AlertStatus.CLOSED,
+            "closed": AlertStatus.CLOSED,
+            "1": AlertStatus.ACTIVE,
+            "2": AlertStatus.ACKNOWLEDGED,
+            "3": AlertStatus.CLOSED,
+        }
+        mapped_status = status_map.get(str(status).lower(), status)
+        query = query.filter(Alert.status == mapped_status)
+
     if severity:
         severity_map = {"critical": 1, "high": 2, "warning": 3, "medium": 3, "low": 4, "info": 5, "informational": 5}
         severity_int = severity_map.get(severity.lower()) or (int(severity) if severity.isdigit() else None)
@@ -130,11 +142,24 @@ def delete_alert_rule(db: Session, rule_id: int) -> bool:
     db.commit()
     return True
 
-def update_alert_status(db: Session, alert_id: int, status: str) -> Alert:
+def update_alert_status(db: Session, alert_id: int, status) -> Optional[Alert]:
     db_alert = db.query(Alert).filter(Alert.id == alert_id).first()
     if not db_alert:
         return None
-    db_alert.status = status
+    from backend.app.core.enums import AlertStatus
+    status_map = {
+        "active": AlertStatus.ACTIVE,
+        "acknowledged": AlertStatus.ACKNOWLEDGED,
+        "resolved": AlertStatus.CLOSED,
+        "closed": AlertStatus.CLOSED,
+        "1": AlertStatus.ACTIVE,
+        "2": AlertStatus.ACKNOWLEDGED,
+        "3": AlertStatus.CLOSED,
+        1: AlertStatus.ACTIVE,
+        2: AlertStatus.ACKNOWLEDGED,
+        3: AlertStatus.CLOSED,
+    }
+    db_alert.status = status_map.get(status, status)
     db.commit()
     db.refresh(db_alert)
     return db_alert

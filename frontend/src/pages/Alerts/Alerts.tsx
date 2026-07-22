@@ -31,12 +31,12 @@ import './Alerts.scss';
 const InboxIcon = () => (
   <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5v-3h3.56c.69 1.19 1.97 2 3.45 2s2.75-.81 3.45-2H19v3zm0-5h-4.99c0 1.1-.9 1.99-2 1.99S10 15.1 10 14H5V5h14v9z" /></svg>
 );
-
-const getStatusTextFromStatus = (status: string): string => {
-  if (status === 'active') return 'Act now';
-  if (status === 'resolved') return 'Watch';
+const getStatusTextFromStatus = (status: any): string => {
+  if (status === AlertStatus.ACTIVE) return 'Act now';
+  if (status === AlertStatus.CLOSED) return 'Watch';
   return 'Monitor';
 };
+
 const tableStatusClass = (status: string): string => {
   if (status === 'Act now') return 'alerts-table__status alerts-table__status--act';
   if (status === 'Monitor') return 'alerts-table__status alerts-table__status--monitor';
@@ -167,53 +167,53 @@ export const Alerts: React.FC = () => {
   const isAssetSelected = selectedNode?.node_type === NodeType.ASSET;
 
   useEffect(() => {
-  setSelectedAssetId('');
-  setSelectedSensorId('');
-}, [selectedNodeId]);
+    setSelectedAssetId('');
+    setSelectedSensorId('');
+  }, [selectedNodeId]);
 
   // Sensor/Tag dropdown options
   const availableAssets = useMemo(() => {
-  if (isAssetSelected) {
-    return [selectedNode];
-  }
+    if (isAssetSelected) {
+      return [selectedNode];
+    }
 
-  return descendantsOfSidePanel.filter(
-    n => n.node_type === NodeType.ASSET
-  );
-}, [descendantsOfSidePanel, isAssetSelected, selectedNode]);
+    return descendantsOfSidePanel.filter(
+      n => n.node_type === NodeType.ASSET
+    );
+  }, [descendantsOfSidePanel, isAssetSelected, selectedNode]);
 
   // Sensor/Tag dropdown options
   const availableSensors = useMemo(() => {
-  // Sidebar Asset selected
-  if (isAssetSelected) {
-    return getDescendantNodes(Number(selectedNodeId)).filter(
+    // Sidebar Asset selected
+    if (isAssetSelected) {
+      return getDescendantNodes(Number(selectedNodeId)).filter(
+        n => n.node_type === NodeType.SENSOR
+      );
+    }
+
+    // Line selected + specific asset chosen
+    if (
+      isLineSelected &&
+      selectedAssetId &&
+      Number(selectedAssetId)
+    ) {
+      return getDescendantNodes(Number(selectedAssetId)).filter(
+        n => n.node_type === NodeType.SENSOR
+      );
+    }
+
+    // Line selected + Asset = All
+    return descendantsOfSidePanel.filter(
       n => n.node_type === NodeType.SENSOR
     );
-  }
-
-  // Line selected + specific asset chosen
-  if (
-    isLineSelected &&
-    selectedAssetId &&
-    Number(selectedAssetId)
-  ) {
-    return getDescendantNodes(Number(selectedAssetId)).filter(
-      n => n.node_type === NodeType.SENSOR
-    );
-  }
-
-  // Line selected + Asset = All
-  return descendantsOfSidePanel.filter(
-    n => n.node_type === NodeType.SENSOR
-  );
-}, [
-  isAssetSelected,
-  isLineSelected,
-  selectedAssetId,
-  selectedNodeId,
-  descendantsOfSidePanel,
-  getDescendantNodes,
-]);
+  }, [
+    isAssetSelected,
+    isLineSelected,
+    selectedAssetId,
+    selectedNodeId,
+    descendantsOfSidePanel,
+    getDescendantNodes,
+  ]);
 
 
   // Autopopulate and sync dropdown selections based on the side panel hierarchy node selection

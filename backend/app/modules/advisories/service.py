@@ -75,7 +75,7 @@ def update_advisory(db: Session, advisory_id: int, advisory_in: AdvisoryUpdate) 
                 
                 # Align RCA status with advisory status
                 current_status = update_data.get("status") or advisory.status
-                if current_status in (AdvisoryStatus.RESOLVED, "resolved"):
+                if current_status == AdvisoryStatus.RESOLVED:
                     rca.status = RcaStatus.COMPLETED
                 else:
                     rca.status = RcaStatus.INITIATED
@@ -114,15 +114,26 @@ def get_advisory_stats(
     advisories = query.all()
     if allowed_node_ids is not None:
         advisories = [a for a in advisories if a.node_id in allowed_node_ids]
-        
+
     from backend.app.core.enums import AdvisoryStatus, SeverityLevel
-    status_counts = {status.value: 0 for status in AdvisoryStatus}
+    status_counts = {
+        "open": 0,
+        "acknowledged": 0,
+        "in_progress": 0,
+        "resolved": 0
+    }
     severity_counts = {sev.value: 0 for sev in SeverityLevel}
     
     for adv in advisories:
-        status_str = adv.status.value if hasattr(adv.status, 'value') else str(adv.status)
-        if status_str in status_counts:
-            status_counts[status_str] += 1
+        status_val = adv.status.value if hasattr(adv.status, 'value') else adv.status
+        if status_val == AdvisoryStatus.OPEN:
+            status_counts["open"] += 1
+        elif status_val == AdvisoryStatus.ACKNOWLEDGED:
+            status_counts["acknowledged"] += 1
+        elif status_val == AdvisoryStatus.IN_PROGRESS:
+            status_counts["in_progress"] += 1
+        elif status_val == AdvisoryStatus.RESOLVED:
+            status_counts["resolved"] += 1
             
         adv_sev = adv.severity.value if hasattr(adv.severity, 'value') else adv.severity
         if adv_sev in severity_counts:
@@ -133,4 +144,3 @@ def get_advisory_stats(
         "status_counts": status_counts,
         "severity_counts": severity_counts
     }
-

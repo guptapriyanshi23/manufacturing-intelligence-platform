@@ -183,7 +183,11 @@ def update_alert(id: int, status_in: dict, db: Session = Depends(get_db)):
     Update status of an alert (e.g. acknowledge).
     """
     from fastapi import HTTPException
-    alert = service.update_alert_status(db, id, status_in.get("status", "acknowledged"))
+    from backend.app.core.enums import AlertStatus
+    status_val = status_in.get("status")
+    if status_val is None:
+        status_val = AlertStatus.ACKNOWLEDGED
+    alert = service.update_alert_status(db, id, status_val)
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
     return resolve_alert_details(db, alert)

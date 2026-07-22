@@ -264,12 +264,13 @@ def seed_advisories(db, sensors):
                 severity = 5
                 description = f"Measurement anomaly detected on sensor {sensor_id} ({sensor_name}). The signal variance has increased by 15% over the baseline. Monitor for further deviation."
                 
+            from backend.app.core.enums import AdvisoryStatus
             mock_advisories.append({
                 "node_id": node_id,
                 "severity": severity,
                 "description": description,
                 "first_detected": now - timedelta(hours=6),
-                "status": "open",
+                "status": AdvisoryStatus.OPEN.value,
                 "image_path": None,
                 "created_at": now - timedelta(hours=6),
                 "updated_at": now - timedelta(hours=6)

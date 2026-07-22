@@ -23,7 +23,7 @@ class Alert(Base):
     threshold = Column(Float, nullable=True)
     severity = Column(Integer, nullable=False)  # 1 = critical, 2 = high, 3 = warning, 4 = low, 5 = info
     message = Column(String, nullable=False)
-    status = Column(Enum(AlertStatus, native_enum=False, values_callable=lambda x: [item.value for item in x]), nullable=False, default=AlertStatus.ACTIVE)
+    status = Column(Integer, nullable=False, default=AlertStatus.ACTIVE)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
@@ -44,7 +44,7 @@ class AlertRule(Base):
     pending_period = Column(String, nullable=True)
     keep_firing = Column(String, nullable=True)
     notify_email = Column(String, nullable=True)
-    status = Column(Enum(AlertStatus, native_enum=False, values_callable=lambda x: [item.value for item in x]), nullable=False, default=AlertStatus.ACTIVE)
+    status = Column(Integer, nullable=False, default=AlertStatus.ACTIVE)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
