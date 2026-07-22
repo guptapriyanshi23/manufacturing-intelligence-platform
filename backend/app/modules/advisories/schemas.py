@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel
 from backend.app.core.enums import AdvisoryStatus, RcaStatus, SeverityLevel
@@ -51,4 +51,9 @@ class RCAResponse(RCABase):
     class Config:
         from_attributes = True
 
+class AdvisoryCountRequest(BaseModel):
+    node_ids: List[int]
 
+
+class AdvisoryCountResponse(BaseModel):
+    total_advisories: int

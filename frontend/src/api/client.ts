@@ -1,8 +1,10 @@
 import type { HierarchyNode, HierarchyNodeCreateInput } from '../types/hierarchy';
 import type {
   Alert,
+  AlertCountResponse,
   AlertRule,
   Advisory,
+  AdvisoryCountResponse,
   User,
   DashboardSummaryResponse,
   TelemetryDataPoint,
@@ -99,6 +101,13 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+    getCount: (nodeIds: number[]) => request<AlertCountResponse>('/alerts/count', {
+      method: 'POST',
+      body: JSON.stringify({
+        node_ids: nodeIds,
+      }),
+    }),
+
   },
   dashboard: {
     getSummary: () => request<DashboardSummaryResponse>('/dashboard/summary'),
@@ -180,6 +189,12 @@ export const api = {
         return res.json() as Promise<{ url: string }>;
       });
     },
+    getCount: (nodeIds: number[]) => request<AdvisoryCountResponse>('/advisories/count', {
+      method: 'POST',
+      body: JSON.stringify({
+        node_ids: nodeIds,
+      }),
+    }),
   },
   analytics: {
     list: () => request<{ id: number; name: string; report_type: string; status: string; created_at: string; download_url: string }[]>('/analytics'),

@@ -60,18 +60,25 @@ const Header: React.FC<HeaderProps> = () => {
   }, [navigate]);
 
   useEffect(() => {
-    if(selectedNodeId){
+  api.hierarchy
+    .list(true)
+    .then(async (res) => {
+      const nodeIds = res
+        ?.map(node => node?.id)
+        ?.filter((id): id is number => id != null);
+
       //Fetching active alerts
-      api.alerts.list({ node_id: selectedNodeId })
-      .then((res) => setActiveAlerts(res?.length))
-      .catch(() => setActiveAlerts(0))
+      const alertCountResponse = await api.alerts.getCount(nodeIds);
+      if(alertCountResponse) setActiveAlerts(alertCountResponse?.total_alerts || 0)
 
       //Fetching active advisories
-      api.advisories.list({ node_id: selectedNodeId })
-      .then((res) => setActiveAdvisories(res?.length))
-      .catch(() => setActiveAdvisories(0))
-    }
-  }, [selectedNodeId]);
+      const advisoryCountResponse = await api.advisories.getCount(nodeIds);
+      if(advisoryCountResponse) setActiveAdvisories(advisoryCountResponse?.total_advisories || 0)
+    })
+    .catch((err) => {
+      console.error(err);
+    });
+}, []);
 
   const handleLogout = () => {
     localStorage.removeItem('auth_token');

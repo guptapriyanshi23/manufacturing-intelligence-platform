@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from backend.app.core.database import get_db
 from backend.app.core.security import get_current_user, check_permissions
-from backend.app.modules.advisories.schemas import AdvisoryResponse, AdvisoryUpdate
+from backend.app.modules.advisories.schemas import AdvisoryResponse, AdvisoryUpdate, AdvisoryCountRequest, AdvisoryCountResponse
 from backend.app.modules.advisories import service
 import os
 import shutil
@@ -239,3 +239,21 @@ def upload_advisory_image(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     return {"url": f"/static/uploads/{file.filename}"}
+
+@router.post(
+    "/count",
+    response_model=AdvisoryCountResponse,
+    dependencies=[Depends(check_permissions(["advisories:view"]))]
+)
+def get_advisories_count(
+    payload: AdvisoryCountRequest,
+    db: Session = Depends(get_db)
+):
+    total_count = service.get_advisories_count(
+        db=db,
+        node_ids=payload.node_ids
+    )
+
+    return {
+        "total_advisories": total_count
+    }
