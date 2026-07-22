@@ -591,7 +591,7 @@ export const Alerts: React.FC = () => {
                         <TableCell>
                           <span className={statusClsName}>{statusText}</span>
                         </TableCell>
-                        <TableCell>{row.description}</TableCell>
+                        <TableCell>{row?.description ? row?.description : '-'}</TableCell>
                         <TableCell sx={{ whiteSpace: 'nowrap' }}>
                           {`${fmtDate(new Date(row?.timestamp))} ${fmtTime(new Date(row?.timestamp))}`}
                         </TableCell>

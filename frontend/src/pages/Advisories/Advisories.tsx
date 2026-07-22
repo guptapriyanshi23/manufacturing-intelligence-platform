@@ -660,7 +660,7 @@ export const Advisories: React.FC = () => {
                           <span className={statusClsName}>{getStatusText(row?.status)}</span>
                         </TableCell>
                         <TableCell>Engineer Name</TableCell>
-                        <TableCell>{row?.action_taken}</TableCell>
+                        <TableCell>{row?.action_taken ? row?.action_taken : '-'}</TableCell>
                         <TableCell sx={{ whiteSpace: 'nowrap' }}>
                           {`${fmtDate(new Date(row?.detected_at))} ${fmtTime(new Date(row?.detected_at))}`}
                         </TableCell>
@@ -722,7 +722,7 @@ export const Advisories: React.FC = () => {
                 </Box>
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>Anomaly Description</Typography>
-                  <Typography variant="body1" sx={{ lineHeight: 1.6 }}>{selectedAdvisory.description}</Typography>
+                  <Typography variant="body1" sx={{ lineHeight: 1.6 }}>{selectedAdvisory?.description}</Typography>
                 </Box>
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>First Detected</Typography>
