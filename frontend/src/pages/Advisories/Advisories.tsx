@@ -340,7 +340,7 @@ export const Advisories: React.FC = () => {
         severity: getSeverityLevelFull(row.severity),
         status: getStatusText(row.status),
         engineer: 'Engineer Name',
-        actionTaken: row.action_taken,
+        actionTaken: row?.action_taken?.trim() || '-',
         timestamp: `${fmtDate(new Date(row.detected_at))} ${fmtTime(
           new Date(row.detected_at)
         )}`,
