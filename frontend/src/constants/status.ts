@@ -48,11 +48,23 @@ export const getStatusColor = (status: string | number): string => {
   return STATUS_COLORS[status?.toLowerCase()] ?? '#00A3E0';
 };
 
+
 export const getStatusBgColor = (status: string | number): string => {
   if (typeof status === 'number') {
     return STATUS_BG_COLORS[status] ?? 'rgba(6, 119, 217, 0.12)';
   }
   return STATUS_BG_COLORS[status?.toLowerCase()] ?? 'rgba(6, 119, 217, 0.12)';
+};
+
+export const getStatusBarColor = (status: string | number): string => {
+  if (typeof status === 'number') {
+    const text = getStatusText(status)?.toLowerCase();
+    if (text === 'in progress') return STATUS_BAR_COLORS['in_progress'] ?? '#00A3E0';
+    return STATUS_BAR_COLORS[text] ?? '#00A3E0';
+  }
+  const statusStr = String(status).toLowerCase();
+  if (statusStr === 'in_progress' || statusStr === 'in progress') return STATUS_BAR_COLORS['in_progress'] ?? '#00A3E0';
+  return STATUS_BAR_COLORS[statusStr] ?? '#00A3E0';
 };
 
 export const statusOptions = ['open', 'acknowledged', 'in_progress', 'resolved', '1', '2', '3', '4'];
