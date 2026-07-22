@@ -1,29 +1,36 @@
 import { AdvisoryStatus, AlertStatus } from '../types/enums';
 
 export const STATUS_COLORS: Record<string | number, string> = {
-  open:         '#e53a27', // red
+  open: '#e53a27', // red
   acknowledged: '#14a6db', // blue
-  in_progress:  '#b45309', // yellow 
-  resolved:     '#357a23', // green
-  [AdvisoryStatus.OPEN]:         '#e53a27',
+  in_progress: '#b45309', // yellow 
+  resolved: '#357a23', // green
+  [AdvisoryStatus.OPEN]: '#e53a27',
   [AdvisoryStatus.ACKNOWLEDGED]: '#14a6db',
-  [AdvisoryStatus.IN_PROGRESS]:  '#b45309',
-  [AdvisoryStatus.RESOLVED]:     '#357a23',
-  [AlertStatus.ACTIVE]:          '#e53a27',
-  [AlertStatus.CLOSED]:          '#357a23',
+  [AdvisoryStatus.IN_PROGRESS]: '#b45309',
+  [AdvisoryStatus.RESOLVED]: '#357a23',
+  [AlertStatus.ACTIVE]: '#e53a27',
+  [AlertStatus.CLOSED]: '#357a23',
 };
 
 export const STATUS_BG_COLORS: Record<string | number, string> = {
-  open:         'rgba(235, 86, 37, 0.12)',
+  open: 'rgba(235, 86, 37, 0.12)',
   acknowledged: 'rgba(6, 119, 217, 0.12)',
-  in_progress:  'rgba(239, 223, 53, 0.12)',
-  resolved:     'rgba(22,163,74,0.12)',
-  [AdvisoryStatus.OPEN]:         'rgba(235, 86, 37, 0.12)',
+  in_progress: 'rgba(239, 223, 53, 0.12)',
+  resolved: 'rgba(22,163,74,0.12)',
+  [AdvisoryStatus.OPEN]: 'rgba(235, 86, 37, 0.12)',
   [AdvisoryStatus.ACKNOWLEDGED]: 'rgba(6, 119, 217, 0.12)',
-  [AdvisoryStatus.IN_PROGRESS]:  'rgba(239, 223, 53, 0.12)',
-  [AdvisoryStatus.RESOLVED]:     'rgba(22,163,74,0.12)',
-  [AlertStatus.ACTIVE]:          'rgba(235, 86, 37, 0.12)',
-  [AlertStatus.CLOSED]:          'rgba(22,163,74,0.12)',
+  [AdvisoryStatus.IN_PROGRESS]: 'rgba(239, 223, 53, 0.12)',
+  [AdvisoryStatus.RESOLVED]: 'rgba(22,163,74,0.12)',
+  [AlertStatus.ACTIVE]: 'rgba(235, 86, 37, 0.12)',
+  [AlertStatus.CLOSED]: 'rgba(22,163,74,0.12)',
+};
+
+export const STATUS_BAR_COLORS: Record<string, string> = {
+  open: '#d65252', // red
+  acknowledged: '#75d1f6', // blue
+  in_progress: '#f3dc74', // yellow 
+  resolved: '#92db7e', // green
 };
 
 export const statusClassMap: Record<string, string> = {

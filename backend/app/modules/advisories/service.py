@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session, aliased
 from backend.app.models.advisories import Advisory, RCA
 from backend.app.modules.advisories.schemas import AdvisoryUpdate
+from sqlalchemy import func
 
 def get_advisories(
     db: Session,
@@ -144,3 +145,13 @@ def get_advisory_stats(
         "status_counts": status_counts,
         "severity_counts": severity_counts
     }
+
+def get_advisories_count(
+    db: Session,
+    node_ids: list[int]
+) -> int:
+    return (
+        db.query(func.count(Advisory.id))
+        .filter(Advisory.node_id.in_(node_ids))
+        .scalar()
+    )

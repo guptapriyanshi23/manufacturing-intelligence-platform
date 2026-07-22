@@ -10,9 +10,9 @@ import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
 // import { MetricCard } from '../../components/Cards/MetricCard';
 import { api } from '../../api/client';
-import { getSeverityColor, getSeverityLevel } from '../../constants/severity';
+import { getSeverityBarColor, getSeverityLevel } from '../../constants/severity';
 import type { HierarchyNode } from '../../types/hierarchy';
-import { getStatusColor } from '../../constants/status';
+import { getStatusBarColor } from '../../constants/status';
 import '../Alerts/Alerts.scss';
 import './Reports.scss';
 import { TimeRange, TIME_RANGE_OPTIONS, AdvisoryStatus } from '../../types/enums';
@@ -343,7 +343,7 @@ export const Reports: React.FC = () => {
                         <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={36}>
                           <LabelList dataKey="count" position="right" style={{ fontSize: 13, fontWeight: 600 }} />
                           {severityChartData.map(entry => (
-                            <Cell key={entry.severity} fill={getSeverityColor(entry.originalSeverity)} />
+                            <Cell key={entry.severity} fill={getSeverityBarColor(entry.originalSeverity)} />
                           ))}
                         </Bar>
                       </BarChart>
@@ -369,7 +369,7 @@ export const Reports: React.FC = () => {
                         <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={36}>
                           <LabelList dataKey="count" position="right" style={{ fontSize: 13, fontWeight: 600 }} />
                           {statusChartData.map(entry => (
-                            <Cell key={entry.key} fill={getStatusColor(entry.key)} />
+                            <Cell key={entry.key} fill={getStatusBarColor(entry.key)} />
                           ))}
                         </Bar>
                       </BarChart>

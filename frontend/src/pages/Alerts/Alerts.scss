@@ -218,28 +218,28 @@
     background: #f8fafc; border-color: #e2e8f0; color: #64748b;
     .deviation-chip__count { background: #ffffff; border-color: #cbd5e1; }
     &:hover                  { background: #f1f5f9; border-color: #94a3b8; color: #1e293b; }
-    &.deviation-chip--active { background: #f1f5f9; border-color: #64748b; color: #1e293b; font-weight: 600; }
+    &.deviation-chip--active { background: #f1f5f9; border-color: #64748b; color: #1e293b; font-weight: 600; border-width: 1.75px;}
   }
 
   &--high {
     background: #fff5f5; border-color: #fca5a5; color: #7f1d1d;
     .deviation-chip__count { background: #fee2e2; border-color: #fca5a5; }
     &:hover                  { background: #fecdd3; }
-    &.deviation-chip--active { background: #fecdd3; border-color: #991b1b; font-weight: 600; }
+    &.deviation-chip--active { background: #fecdd3; border-color: #991b1b; font-weight: 600; border-width: 1.75px;}
   }
 
   &--moderate {
     background: #fffbf0; border-color: #fed7aa; color: #b45309;
     .deviation-chip__count { background: #fef3c7; border-color: #fcd34d; }
     &:hover                  { background: #fef3c7; }
-    &.deviation-chip--active { background: #fef3c7; border-color: #f59e0b; font-weight: 600; }
+    &.deviation-chip--active { background: #fef3c7; border-color: #f59e0b; font-weight: 600; border-width: 1.75px;}
   }
 
   &--low {
     background: #f8fafc; border-color: #e2e8f0; color: #64748b;
     .deviation-chip__count { background: #ffffff; border-color: #cbd5e1; }
     &:hover                  { background: #f1f5f9; }
-    &.deviation-chip--active { background: #f1f5f9; border-color: #94a3b8; font-weight: 600; }
+    &.deviation-chip--active { background: #f1f5f9; border-color: #94a3b8; font-weight: 600; border-width: 1.75px;}
   }
 }
 
