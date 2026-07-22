@@ -422,6 +422,7 @@ export const Advisories: React.FC = () => {
 
         cell.alignment = {
           vertical: 'middle',
+          horizontal: 'center',
         };
       });
     });

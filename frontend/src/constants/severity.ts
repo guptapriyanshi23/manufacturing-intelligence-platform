@@ -28,6 +28,14 @@ export const SEVERITY_BG_COLORS: Record<string, string> = {
   S5: 'rgba(38,172,225,0.12)',
 };
 
+export const SEVERITY_BAR_COLORS: Record<string, string> = {
+  S1: '#f05252',
+  S2: '#e9878d',
+  S3: '#f0d66b',
+  S4: '#ebe491',
+  S5: '#c0d4ed',
+};
+
 export const SEVERITY_LEVEL_MAP: Record<string | number, string> = {
   1: 'S1',
   2: 'S2',
@@ -67,14 +75,6 @@ export const severityClassMap: Record<string, string> = {
   S5: 'low',
 };
 
-// const SEVERITY_META: Array<{ key: Severity; label: string; color: string }> = [
-//   { key: 'S1', label: 'S1 - Critical', color: '#fecaca' },
-//   { key: 'S2', label: 'S2 - High', color: '#ffe4e6' },
-//   { key: 'S3', label: 'S3 - Medium', color: '#fde68a' },
-//   { key: 'S4', label: 'S4 - Low', color: '#fef9c3' },
-//   { key: 'S5', label: 'S5 - Informational', color: '#e2e8f0' },
-// ];
-
 export const getSeverityLevel = (severity: string | number): string => {
   if (severity === undefined || severity === null) return 'S5';
   const key = typeof severity === 'string' ? severity.toLowerCase() : severity;
@@ -107,6 +107,9 @@ export const getSeverityColor = (severity: string | number): string =>
 
 export const getSeverityBgColor = (severity: string | number): string =>
   SEVERITY_BG_COLORS[getSeverityLevel(severity)];
+
+export const getSeverityBarColor = (severity: string | number): string =>
+  SEVERITY_BAR_COLORS[getSeverityLevel(severity)];
 
 export const severityOptions = ['critical', 'high', 'medium', 'low', 'info'];
 

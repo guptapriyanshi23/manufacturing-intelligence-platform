@@ -12,6 +12,13 @@ export const STATUS_BG_COLORS: Record<string, string> = {
   resolved:     'rgba(22,163,74,0.12)',
 };
 
+export const STATUS_BAR_COLORS: Record<string, string> = {
+  open:         '#d65252', // red
+  acknowledged: '#75d1f6', // blue
+  in_progress:  '#f3dc74', // yellow 
+  resolved:     '#92db7e', // green
+};
+
 export const statusClassMap: Record<string, string> = {
   All: 'all',
   Open: 'high',
@@ -21,10 +28,13 @@ export const statusClassMap: Record<string, string> = {
 };
 
 export const getStatusColor = (status: string): string =>
-  STATUS_COLORS[status?.toLowerCase()] ?? '#00A3E0';
+  STATUS_COLORS[status?.toLowerCase()] ?? '#cfeffc';
 
 export const getStatusBgColor = (status: string): string =>
   STATUS_BG_COLORS[status?.toLowerCase()] ?? 'rgba(6, 119, 217, 0.12)';
+
+export const getStatusBarColor = (status: string): string =>
+  STATUS_BAR_COLORS[status?.toLowerCase()] ?? '#dbeafe';
 
 export const statusOptions = Object.keys(STATUS_COLORS) as string[];
 
