@@ -46,17 +46,20 @@ const getBreadcrumbsPath = (nodeId: number, flatNodes: HierarchyNode[]): string[
   }
   return path;
 };
-const ReportIcon = () => (
+const TotalAdvIcon = () => (
   <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H7v-2h5v2zm5-4H7v-2h10v2zm0-4H7V7h10v2z" /></svg>
 );
-const BellIcon = () => (
-  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" /></svg>
-);
-const CheckCircleIcon = () => (
-  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" /></svg>
-);
-const WarningIcon = () => (
+const OpenIcon = () => (
   <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" /></svg>
+);
+const AcknowledgedIcon = () => (
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 5C5 5 1 12 1 12s4 7 11 7 11-7 11-7-4-7-11-7zm0 12c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-2.5A2.5 2.5 0 1012 9a2.5 2.5 0 000 5z" /></svg>
+);
+const InProgressIcon = () => (
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M22.7 19.3l-6.4-6.4c.5-1.4.2-3-.9-4.1-1.3-1.3-3.2-1.6-4.8-.8l2.8 2.8-2.1 2.1-2.8-2.8c-.8 1.6-.5 3.5.8 4.8 1.1 1.1 2.7 1.4 4.1.9l6.4 6.4 2.9-2.9z"/></svg>
+);
+const ResolvedIcon = () => (
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" /></svg>
 );
 
 export const Reports: React.FC = () => {
@@ -274,7 +277,7 @@ export const Reports: React.FC = () => {
             <div className="advisory-counters reporting-analysis__counters">
 
               <div className="counter-card counter-card--total">
-                <div className="counter-card__icon"><ReportIcon /></div>
+                <div className="counter-card__icon"><TotalAdvIcon /></div>
                 <div className="counter-card__body">
                   <span className="counter-card__value">{total}</span>
                   <span className="counter-card__label">Total Advisory</span>
@@ -282,7 +285,7 @@ export const Reports: React.FC = () => {
               </div>
 
               <div className="counter-card counter-card--unresolved">
-                <div className="counter-card__icon"><WarningIcon /></div>
+                <div className="counter-card__icon"><OpenIcon /></div>
                 <div className="counter-card__body">
                   <span className="counter-card__value">{openCount}
                     <span style={{ fontSize: '0.8rem', paddingLeft: '0.2rem' }}>{`(${pct(openCount)})`}</span>
@@ -292,7 +295,7 @@ export const Reports: React.FC = () => {
               </div>
 
               <div className="counter-card counter-card--acknowledged">
-                <div className="counter-card__icon"><BellIcon /></div>
+                <div className="counter-card__icon"><AcknowledgedIcon /></div>
                 <div className="counter-card__body">
                   <span className="counter-card__value">{ackCount}
                     <span style={{ fontSize: '0.8rem', paddingLeft: '0.2rem' }}>{`(${pct(ackCount)})`}</span>
@@ -300,9 +303,19 @@ export const Reports: React.FC = () => {
                   <span className="counter-card__label">Acknowledged</span>
                 </div>
               </div>
+              
+              <div className="counter-card counter-card--in_progress">
+                <div className="counter-card__icon"><InProgressIcon /></div>
+                <div className="counter-card__body">
+                  <span className="counter-card__value">{inProgressCount}
+                    <span style={{ fontSize: '0.8rem', paddingLeft: '0.2rem' }}>{`(${pct(inProgressCount)})`}</span>
+                  </span>
+                  <span className="counter-card__label">In Progress</span>
+                </div>
+              </div>
 
               <div className="counter-card counter-card--resolved">
-                <div className="counter-card__icon"><CheckCircleIcon /></div>
+                <div className="counter-card__icon"><ResolvedIcon /></div>
                 <div className="counter-card__body">
                   <span className="counter-card__value">{resolvedCount}
                     <span style={{ fontSize: '0.8rem', paddingLeft: '0.2rem' }}>{`(${pct(resolvedCount)})`}</span>

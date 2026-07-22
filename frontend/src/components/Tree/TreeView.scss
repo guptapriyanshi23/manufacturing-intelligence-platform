@@ -112,6 +112,10 @@
     background: #ede9fe;
     color: #7c3aed;
   }
+  &--block {
+    background: #ede9fe;
+    color: #7c3aed;
+  }
 
   &--line {
     background: #dbeafe;
@@ -122,8 +126,18 @@
     background: #fce7f3;
     color: #db2777;
   }
+  
+  &--system {
+    background: #fce7f3;
+    color: #db2777;
+  }
 
   &--asset {
+    background: #ececec;
+    color: #5d6560;
+  }
+
+  &--equipment {
     background: #ececec;
     color: #5d6560;
   }
@@ -134,6 +148,11 @@
   }
 
   &--sensor {
+    background: #fef3c7;
+    color: #92400e;
+  }
+  
+  &--parameter {
     background: #fef3c7;
     color: #92400e;
   }

@@ -1,4 +1,4 @@
-export type NodeType = 'enterprise' | 'site' | 'area' | 'line' | 'station' | 'asset' | 'component' | 'sensor';
+export type NodeType = 'enterprise' | 'site' | 'area' | 'block' | 'line' | 'station' | 'system' | 'asset' | 'equipment' | 'component' | 'sensor' | 'parameter';
 
 export interface PlantMetadata {
   use_case?: string;

@@ -4,6 +4,7 @@
 	 --color-primary-dark: #1f700a;
 	 --color-secondary: #00A3E0;
 	 --color-ternary: #595d5e;
+	 --color-fourth: #b45309;
  }
 
 html,
@@ -216,12 +217,27 @@ button,
 }
 
 .counter-card--acknowledged .counter-card__icon {
-	background: #d7f2fd !important;
+	background: #ceecf7 !important;
 	color: var(--color-secondary) !important;
 }
 
 .counter-card--acknowledged .counter-card__value {
 	color: var(--color-secondary) !important;
+}
+
+/* Fourth color usage for yellow-themed cards */
+.counter-card--in_progress {
+	background: linear-gradient(135deg, #faf7e7 0%, #f4e28e 100%) !important;
+	border-color: #f0d34f !important;
+}
+
+.counter-card--in_progress .counter-card__icon {
+	background: #ebe06257 !important;
+	color: var(--color-fourth) !important;
+}
+
+.counter-card--in_progress .counter-card__value {
+	color: var(--color-fourth) !important;
 }
 
 /* Primary color usage for green-themed cards */

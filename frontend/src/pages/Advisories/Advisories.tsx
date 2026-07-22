@@ -311,13 +311,13 @@ export const Advisories: React.FC = () => {
     headerRow.eachCell((cell) => {
       cell.font = {
         bold: true,
-        color: { argb: 'FFFFFFFF' },
+        color: { argb: '1A1A1A' },
       };
 
       cell.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: '1A1A1A' },
+        fgColor: { argb: 'BCC9D2' },
       };
 
       cell.alignment = {
@@ -610,11 +610,11 @@ export const Advisories: React.FC = () => {
       ) : (<>
         <Card className="advisory-summary__grid-card">
           <Box className="advisory-summary__export-actions">
-            <button type="button" className="advisory-export-btn"
+            {/* <button type="button" className="advisory-export-btn"
               disabled={paginatedRows?.length === 0}>
               <DownloadOutlinedIcon className="advisory-export-btn__icon" />
               <span> PDF</span>
-            </button>
+            </button> */}
             <button type="button" className="advisory-export-btn advisory-export-btn--xlsx"
               onClick={exportToXlsx} disabled={paginatedRows?.length === 0}>
               <DownloadOutlinedIcon className="advisory-export-btn__icon" />
