@@ -432,7 +432,7 @@ export const Reports: React.FC = () => {
             className="reporting-analysis__generate-btn"
             onClick={handleGenerateClick}
             sx={{
-              minWidth: 90, fontWeight: 600, height: 35,
+              minWidth: 90, fontWeight: 600,
               backgroundColor: '#1a1a1a',
             }}
           >
@@ -444,7 +444,7 @@ export const Reports: React.FC = () => {
             disabled={!appliedNode || !stats?.total}
             onClick={handleDownloadPdf}
             sx={{
-              minWidth: 90, fontWeight: 600, height: 35,
+              minWidth: 90, fontWeight: 600, 
               backgroundColor: 'var(--color-primary) !important',
               '&:hover': {
                 backgroundColor: 'var(--color-primary-dark) !important'

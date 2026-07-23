@@ -153,7 +153,8 @@ const theme = createTheme({
     MuiButton: {
       styleOverrides: {
         root: {
-          maxHeight: 34,
+          minHeight: 36,
+          maxHeight: 36,
           textTransform: 'none',
           fontWeight: 500,
           borderRadius: 6,
