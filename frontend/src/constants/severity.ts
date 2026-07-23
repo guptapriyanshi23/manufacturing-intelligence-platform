@@ -60,7 +60,6 @@ export const SEVERITY_LEVEL_FULL_MAP: Record<string | number, string> = {
   critical: 'S1 - Critical',
   high: 'S2 - High',
   medium: 'S3 - Medium',
-  // medium: 'S3 - Medium',
   low: 'S4 - Low',
   info: 'S5 - Informational',
   informational: 'S5 - Informational',

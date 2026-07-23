@@ -9,13 +9,6 @@ from backend.app.modules.dashboard import service
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
-@router.get("/summary", response_model=DashboardSummaryResponse, dependencies=[Depends(check_permissions(["dashboard:view"]))])
-def get_summary():
-    """
-    Get factory OEE and KPI summary analytics.
-    """
-    return service.get_dashboard_summary()
-
 @router.get("/telemetry", dependencies=[Depends(check_permissions(["dashboard:view"]))])
 def get_telemetry(
     sensor_ids: List[str] = Query(None),

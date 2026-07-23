@@ -15,6 +15,8 @@ import { AlertStatus } from '../types/enums';
 const BASE_URL =
   `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'}/api/v1`; 
 
+let isLoggingOut = false;
+
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const url = `${BASE_URL}${endpoint}`;
   
@@ -31,6 +33,16 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      if (!isLoggingOut) {
+        isLoggingOut = true;
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user_profile');
+        alert('Your session has expired. Please log in again.');
+        window.location.href = '/login';
+      }
+      return {} as T;
+    }
     let errorMessage = `HTTP error! status: ${response.status}`;
     try {
       const errorData = await response.json();

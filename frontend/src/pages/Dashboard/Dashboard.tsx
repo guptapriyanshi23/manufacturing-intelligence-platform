@@ -514,17 +514,20 @@ export const Dashboard: React.FC = () => {
     }
   }, [initialNodeId, flatNodes, activeAdvisory, isTimeOverridden, advisoriesFetched, location.state?.originalSensorNodeId]);
 
+
+
   const getBucketedDataPoints = (
-    points: TelemetryPoint[],
+    points: any[],
     sensor: HierarchyNode,
     start: Date,
     end: Date,
     granularityStr?: string
   ) => {
     const sensorId = sensor.sensor_metadata?.sensor_id || '';
-    const sensorPoints = points.filter(p => p.sensor_id === sensorId);
-
-
+    const sensorGroup = (points || []).find((p: any) => p.sensor_id === sensorId);
+    const sensorPoints = sensorGroup ? sensorGroup.data : [];
+    const safe_limit = sensorGroup?.safe_limit;
+    const threshold = sensorGroup?.threshold;
 
     let intervalMs = 10 * 60 * 1000; // default 10m
     const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
@@ -556,7 +559,7 @@ export const Dashboard: React.FC = () => {
     }
 
     const timePointsMap = new Map<number, any>();
-    sensorPoints.forEach(p => {
+    sensorPoints.forEach((p: any) => {
       const pTime = new Date(p.timestamp || '').getTime();
       const bucketTime = Math.floor(pTime / intervalMs) * intervalMs;
       timePointsMap.set(bucketTime, p);
@@ -576,18 +579,18 @@ export const Dashboard: React.FC = () => {
           timestamp: timestampStr,
           timestampMs: t,
           value: existing.value,
-          name: existing.sensor_name,
-          alarmLimit: 80,
-          tripLimit: 95,
+          name: sensorGroup?.sensor_name || sensor.display_name,
+          safe_limit: safe_limit,
+          threshold: threshold,
         });
       } else {
         bucketedPoints.push({
           timestamp: timestampStr,
           timestampMs: t,
           value: 0, // Plot at 0 if no telemetry data is present
-          name: sensorPoints[0]?.sensor_name || sensor.display_name,
-          alarmLimit: 80,
-          tripLimit: 95,
+          name: sensorGroup?.sensor_name || sensor.display_name,
+          safe_limit: safe_limit,
+          threshold: threshold,
         });
       }
     }
@@ -654,8 +657,8 @@ export const Dashboard: React.FC = () => {
           <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #ccc', borderRadius: 6, fontSize: 12 }} />
           <Legend verticalAlign="top" height={36} />
           <Line name={`${sensor.display_name} (${unit})`} type="monotone" dataKey="value" stroke="#2563EB" strokeWidth={2} dot={false} />
-          <Line name="Safe Limit" type="monotone" dataKey="alarmLimit" stroke="#16A34A" strokeWidth={2} strokeDasharray="5 5" dot={false} />
-          <Line name="Threshold" type="monotone" dataKey="tripLimit" stroke="#DC2626" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+          <Line name="Safe Limit" type="monotone" dataKey="safe_limit" stroke="#16A34A" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+          <Line name="Threshold" type="monotone" dataKey="threshold" stroke="#DC2626" strokeWidth={2} strokeDasharray="5 5" dot={false} />
           {advPoint && (
             <ReferenceDot
               x={advPoint.timestamp}
@@ -874,7 +877,7 @@ export const Dashboard: React.FC = () => {
                         <Grid container spacing={3} sx={{ alignItems: 'stretch' }}>
                           {/* Chart Area */}
                           <Grid size={8}>
-                            <Card className="process-analysis__chart-card" sx={{ p: 2,  height: '100%', display: 'flex', flexDirection: 'column' }}>
+                            <Card className="process-analysis__chart-card" sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                 <Typography variant="h6" sx={{ fontWeight: 700 }}>{sensor.display_name}</Typography>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -893,7 +896,7 @@ export const Dashboard: React.FC = () => {
                           </Grid>
                           {/* Detailed Advisory Panel for this sensor */}
                           {hasActiveAdvisory ? (
-                            <Card className="process-analysis__chart-card process-analysis__advisory-card" 
+                            <Card className="process-analysis__chart-card process-analysis__advisory-card"
                               sx={{ flex: '0 0 30%', display: 'flex', flexDirection: 'column' }}>
                               <Box className="process-analysis__chart-header" sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <Typography className="process-analysis__chart-title">Advisory</Typography>
@@ -901,7 +904,7 @@ export const Dashboard: React.FC = () => {
                                   label={getSeverityLevelFull(sensorAdvisory.severity)}
                                   size="small"
                                   className={`severity-badge severity-s${sensorAdvisory.severity}`}
-                                  />
+                                />
                               </Box>
 
                               <Box className="process-analysis__advisory-content">
