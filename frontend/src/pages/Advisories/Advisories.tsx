@@ -543,7 +543,7 @@ export const Advisories: React.FC = () => {
         <Button
           variant="contained"
           onClick={handleView}
-          sx={{ minWidth: 90, fontWeight: 600, height: 35, backgroundColor: '#1a1a1a', }}
+          sx={{ maxWidth: 90, fontWeight: 600, backgroundColor: '#1a1a1a', }}
         >
           View
         </Button>

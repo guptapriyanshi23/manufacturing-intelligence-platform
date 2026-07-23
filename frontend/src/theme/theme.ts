@@ -105,6 +105,9 @@ const theme = createTheme({
     MuiOutlinedInput: {
       styleOverrides: {
         root: {
+          '&:not(.MuiInputBase-multiline)': {
+            height: 34,
+          },
           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
             borderColor: '#cbd5e1',
             borderWidth: '1px',
@@ -127,6 +130,7 @@ const theme = createTheme({
     MuiSelect: {
       styleOverrides: {
         root: {
+          height: 34,
           '&.Mui-focused': {
             backgroundColor: 'transparent',
           },
@@ -149,6 +153,8 @@ const theme = createTheme({
     MuiButton: {
       styleOverrides: {
         root: {
+          minHeight: 36,
+          maxHeight: 36,
           textTransform: 'none',
           fontWeight: 500,
           borderRadius: 6,
