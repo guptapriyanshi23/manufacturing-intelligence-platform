@@ -819,14 +819,14 @@ export const Dashboard: React.FC = () => {
               {appliedSensors.length === 0 && telemetryPoints.length === 0 && !telemetryLoading ? (
                 <Grid size={12}>
 
-                  <Paper sx={{ p: 6, textAlign: 'center', border: '1px solid #ccc', borderRadius: 2 }}>
+                  <Card className="process-analysis__chart-card" sx={{ p: 6, textAlign: 'center' }}>
                     <Typography variant="h6" color="text.secondary" gutterBottom sx={{ fontWeight: 600 }}>
                       No Telemetry Data Loaded
                     </Typography>
                     <Typography color="text.secondary" variant="body2">
                       Please customize your hierarchy level, time range, asset, or tag filters and click the <strong>View</strong> button to load charts.
                     </Typography>
-                  </Paper>
+                  </Card>
                 </Grid>
               ) : telemetryLoading ? (
                 <Grid size={12}>
@@ -836,11 +836,11 @@ export const Dashboard: React.FC = () => {
                 </Grid>
               ) : appliedSensors.length === 0 ? (
                 <Grid size={12}>
-                  <Paper sx={{ p: 4, textAlign: 'center', border: '1px solid #ccc' }}>
+                  <Card className="process-analysis__chart-card" sx={{ p: 4, textAlign: 'center' }}>
                     <Typography color="text.secondary">
                       No sensors defined under the selected hierarchy level. Select a level with configured sensor metadata.
                     </Typography>
-                  </Paper>
+                  </Card>
                 </Grid>
               ) : (
                 appliedSensors
@@ -923,7 +923,11 @@ export const Dashboard: React.FC = () => {
                                     disabled={sensorAdvisory.status === 'acknowledged'}
                                     sx={{
                                       borderColor: '#93c5fd',
+                                      backgroundColor: '#dbeafe',
                                       color: '#1e40af',
+                                      '&:disabled': {
+                                        backgroundColor: '#ffff',
+                                      },
                                       '&:hover': {
                                         backgroundColor: '#bfdbfe',
                                         borderColor: '#60a5fa',

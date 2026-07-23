@@ -123,12 +123,8 @@ export const Advisories: React.FC = () => {
     return descendantsOfSidePanel.filter(n => n.node_type === NodeType.ASSET);
   }, [descendantsOfSidePanel]);
 
-  const availableSensors = useMemo(() => {
-    return descendantsOfSidePanel.filter(n => n.node_type === NodeType.SENSOR);
-  }, [descendantsOfSidePanel]);
-
-  const isLineSelected = useMemo(() => {
-    return flatNodes.find(n => n.id === treeNodeId)?.node_type === NodeType.LINE;
+  const isAssetSelected = useMemo(() => {
+    return flatNodes.find(n => n.id === treeNodeId)?.node_type === NodeType.ASSET;
   }, [treeNodeId, flatNodes]);
 
   const [breadcrumbs, setBreadcrumbs] = useState<string[]>([]);
@@ -167,12 +163,22 @@ export const Advisories: React.FC = () => {
     const matchingNode = treeNodeId ? flatNodes.find(n => n.id === treeNodeId) : null;
     setAppliedNode(matchingNode || null);
 
-    if (treeNodeId) {
+    if (matchingNode?.node_type === NodeType.ASSET) {
+      setSelectedAssetId(matchingNode?.id);
+      setAppliedAssetId(matchingNode?.id);
+    } else {
       setSelectedSensorId('');
       setSelectedAssetId('');
       setAppliedSensorId('');
       setAppliedAssetId('');
     }
+
+    // if (treeNodeId) {
+    //   setSelectedSensorId('');
+    //   setSelectedAssetId('');
+    //   setAppliedSensorId('');
+    //   setAppliedAssetId('');
+    // }
   }, [treeNodeId, flatNodes]);
 
   const [selectedAdvisory, setSelectedAdvisory] = useState<any | null>(null);
@@ -193,9 +199,11 @@ export const Advisories: React.FC = () => {
   const canRca = profile?.permissions.includes('advisories:rca') ?? false;
 
   useEffect(() => {
+    setLoading(true)
     api.hierarchy.list(true)
       .then(setFlatNodes)
-      .catch(() => setFlatNodes([]));
+      .catch(() => setFlatNodes([]))
+      .finally(() => setLoading(false));
   }, []);
 
   // Reactive effect to fetch advisories from server whenever applied filters change
@@ -517,15 +525,15 @@ export const Advisories: React.FC = () => {
           fullWidth
         />
 
-        <FormControl size="small" disabled={!isLineSelected}>
+        <FormControl size="small" disabled={(availableAssets?.length === 0) || isAssetSelected}>
           <InputLabel id="alerts-asset-filter-label">Asset</InputLabel>
           <Select
             labelId="alerts-asset-filter-label"
             label="Asset"
-            value={selectedAssetId}
+            value={selectedAssetId == '' ? 'all' : selectedAssetId}
             onChange={(e) => setSelectedAssetId(e.target.value as number | '')}
           >
-            <MenuItem value="all">All</MenuItem>
+            <MenuItem value="all">{availableAssets?.length ? 'All' : 'No Assets'}</MenuItem>
             {availableAssets.map(s => (
               <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
             ))}

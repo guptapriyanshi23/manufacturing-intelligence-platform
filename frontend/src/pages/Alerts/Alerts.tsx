@@ -61,7 +61,6 @@ export const Alerts: React.FC = () => {
   const context = useOutletContext<{ selectedNodeId?: number | null }>();
   const selectedNodeId = context?.selectedNodeId ?? (location.state?.selectedNodeId ? Number(location.state.selectedNodeId) : (searchParams.get('selectedNodeId') ? Number(searchParams.get('selectedNodeId')) : null));
   const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
-  const [hierarchyLoading, setHierarchyLoading] = useState(true);
   const [selectedSiteId, setSelectedSiteId] = useState<number | ''>('');
 
   useEffect(() => {
@@ -87,10 +86,11 @@ export const Alerts: React.FC = () => {
   const [appliedSensorId, setAppliedSensorId] = useState<number | ''>('');
 
   useEffect(() => {
+    setLoading(true)
     api.hierarchy.list(true)
       .then(setFlatNodes)
       .catch(() => setFlatNodes([]))
-      .finally(() => setHierarchyLoading(false));
+      .finally(() => setLoading(false));
   }, []);
 
   const [breadcrumbs, setBreadcrumbs] = useState<string[]>([]);
@@ -164,7 +164,6 @@ export const Alerts: React.FC = () => {
     [selectedNodeId, flatNodes]
   );
 
-  const isLineSelected = selectedNode?.node_type === NodeType.LINE;
   const isAssetSelected = selectedNode?.node_type === NodeType.ASSET;
 
   useEffect(() => {
@@ -185,37 +184,29 @@ export const Alerts: React.FC = () => {
 
   // Sensor/Tag dropdown options
   const availableSensors = useMemo(() => {
-    // Sidebar Asset selected
-    if (isAssetSelected) {
-      return getDescendantNodes(Number(selectedNodeId)).filter(
-        n => n.node_type === NodeType.SENSOR
-      );
-    }
+  // Asset selected in sidebar
+  if (isAssetSelected) {
+    return getDescendantNodes(Number(selectedNodeId))
+      .filter(n => n.node_type === NodeType.SENSOR);
+  }
 
-    // Line selected + specific asset chosen
-    if (
-      isLineSelected &&
-      selectedAssetId &&
-      Number(selectedAssetId)
-    ) {
-      return getDescendantNodes(Number(selectedAssetId)).filter(
-        n => n.node_type === NodeType.SENSOR
-      );
-    }
+  // Specific Asset selected in dropdown
+  if (Number(selectedAssetId)) {
+    return getDescendantNodes(Number(selectedAssetId))
+      .filter(n => n.node_type === NodeType.SENSOR);
+  }
 
-    // Line selected + Asset = All
-    return descendantsOfSidePanel.filter(
-      n => n.node_type === NodeType.SENSOR
-    );
-  }, [
-    isAssetSelected,
-    isLineSelected,
-    selectedAssetId,
-    selectedNodeId,
-    descendantsOfSidePanel,
-    getDescendantNodes,
-  ]);
-
+  // All sensors under current hierarchy
+  return descendantsOfSidePanel.filter(
+    n => n.node_type === NodeType.SENSOR
+  );
+}, [
+  isAssetSelected,
+  selectedAssetId,
+  selectedNodeId,
+  descendantsOfSidePanel,
+  getDescendantNodes,
+]);
 
   // Autopopulate and sync dropdown selections based on the side panel hierarchy node selection
   useEffect(() => {
@@ -454,15 +445,16 @@ export const Alerts: React.FC = () => {
         </div>
 
         <div className="alerts-table-filters">
-          <FormControl size="small" className="alerts-table-filters__field" disabled={!isLineSelected}>
+          <FormControl size="small" className="alerts-table-filters__field" 
+            disabled={(availableAssets?.length === 0) || isAssetSelected}>
             <InputLabel id="alerts-asset-filter-label">Asset</InputLabel>
             <Select
               labelId="alerts-asset-filter-label"
               label="Asset"
-              value={selectedAssetId}
+              value={selectedAssetId == '' ? 'all': selectedAssetId}
               onChange={(e) => setSelectedAssetId(e.target.value as number | '')}
             >
-              <MenuItem value="all">All</MenuItem>
+              <MenuItem value="all">{availableAssets?.length ? 'All': 'No Assets'}</MenuItem>
               {availableAssets.map(s => (
                 <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
               ))}
@@ -470,16 +462,16 @@ export const Alerts: React.FC = () => {
           </FormControl>
 
           <FormControl size="small" className="alerts-table-filters__field"
-            disabled={!(isLineSelected || isAssetSelected)}
+            disabled={availableSensors?.length === 0}
           >
             <InputLabel id="alerts-tag-filter-label">Sensor/Tag</InputLabel>
             <Select
               labelId="alerts-tag-filter-label"
               label="Sensor/Tag"
-              value={selectedSensorId}
+              value={selectedSensorId == ''? 'all' : selectedSensorId}
               onChange={(e) => setSelectedSensorId(e.target.value as number | '')}
             >
-              <MenuItem value="all">All</MenuItem>
+              <MenuItem value="all">{availableSensors?.length ? 'All': 'No Sensors/Tags'}</MenuItem>
               {availableSensors.map(s => (
                 <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
               ))}
@@ -590,8 +582,8 @@ export const Alerts: React.FC = () => {
                         }}
                       >
                         <TableCell padding="checkbox" >
-                          {(row?.status == 1) &&
-                            <Checkbox checked={selectedIds.includes(row.id)} onClick={(e) => e.stopPropagation()}
+                            <Checkbox disabled={row?.status !== 1} checked={selectedIds.includes(row.id)} 
+                              onClick={(e) => e.stopPropagation()}
                               onChange={() => handleSelectRow(row.id)}
                               sx={{
                                 '&.Mui-checked': {
@@ -601,7 +593,6 @@ export const Alerts: React.FC = () => {
                                   fontSize: 18,
                                 },
                               }} />
-                          }
                         </TableCell>
                         <TableCell>
                           <span className={badgeClsName}>{getSeverityLevelFull(row.severity)}</span>

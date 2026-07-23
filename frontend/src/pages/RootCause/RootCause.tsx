@@ -51,9 +51,11 @@ export const RootCause: React.FC = () => {
   const searchParams = new URLSearchParams(location.search);
 
   useEffect(() => {
+    setLoading(true)
     api.hierarchy.list(true)
       .then(setFlatNodes)
-      .catch(() => { });
+      .catch(() => { })
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {

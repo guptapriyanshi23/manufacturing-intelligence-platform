@@ -16,6 +16,8 @@ export interface SensorMetadata {
   sensor_id: string;
   unit?: string;
   sampling_rate?: number;
+  thresholds?: number;
+  safe_limit?: number;
 }
 
 export interface HierarchyNode {

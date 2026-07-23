@@ -89,7 +89,7 @@ const schema = z.object({
   sort_order: z.number().default(0),
   plant_metadata: z.object({ use_case: z.string().optional(), location: z.string().optional(), description: z.string().optional() }).optional(),
   asset_metadata: z.object({ asset_id: z.string().optional(), manufacturer: z.string().optional(), model: z.string().optional() }).optional(),
-  sensor_metadata: z.object({ sensor_id: z.string().optional(), unit: z.string().optional(), sampling_rate: z.number().optional() }).optional(),
+  sensor_metadata: z.object({ sensor_id: z.string().optional(), unit: z.string().optional(), sampling_rate: z.number().optional(), safe_limit: z.number().default(0), threshold: z.number().default(0), }).optional(),
 });
 type FormValues = z.infer<typeof schema>;
 
@@ -270,7 +270,7 @@ export const Admin: React.FC = () => {
       parent_id: null, node_type: NodeTypeEnum.SITE, name: '', display_name: '', description: '', sort_order: 0,
       plant_metadata: { use_case: '', location: '', description: '' },
       asset_metadata: { asset_id: '', manufacturer: '', model: '' },
-      sensor_metadata: { sensor_id: '', unit: '', sampling_rate: 1 },
+      sensor_metadata: { sensor_id: '', unit: '', sampling_rate: 1, safe_limit: 0, threshold: 0 },
     },
   });
   const nodeType = watch('node_type');
@@ -298,7 +298,7 @@ export const Admin: React.FC = () => {
           sort_order: node.sort_order,
           plant_metadata: node.plant_metadata || { use_case: '', location: '', description: '' },
           asset_metadata: node.asset_metadata || { asset_id: '', manufacturer: '', model: '' },
-          sensor_metadata: node.sensor_metadata || { sensor_id: '', unit: '', sampling_rate: 1 },
+          sensor_metadata: node.sensor_metadata || { sensor_id: '', unit: '', sampling_rate: 1, safe_limit: 0, threshold: 0 },
         });
         const initialSelections: Record<string, number | ''> = {};
         LEVELS.forEach(lvl => { initialSelections[lvl] = ''; });
@@ -378,7 +378,7 @@ export const Admin: React.FC = () => {
       parent_id: null, node_type: NodeTypeEnum.SITE, name: '', display_name: '', description: '', sort_order: 0,
       plant_metadata: { use_case: '', location: '', description: '' },
       asset_metadata: { asset_id: '', manufacturer: '', model: '' },
-      sensor_metadata: { sensor_id: '', unit: '', sampling_rate: 1 },
+      sensor_metadata: { sensor_id: '', unit: '', sampling_rate: 1, safe_limit: 0, threshold: 0, },
     });
     setParentSelections({}); setSaveSuccess(false); setDeleteSuccess(false); setApiError(null);
   };
@@ -786,10 +786,10 @@ export const Admin: React.FC = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
               <Box>
                 <Typography className="admin-card__title">
-                  {selectedNodeId ? `Edit Node: ${selectedNodeName || selectedNodeId}` : 'Create New Hierarchy Node'}
+                  {selectedNodeId ? `Edit: ${selectedNodeName || selectedNodeId}` : 'Create New Hierarchy'}
                 </Typography>
                 {!selectedNodeId &&
-                  <div className="chart-subtitle">Onboard new equipment into the ISA-95 structure</div>
+                  <div className="chart-subtitle">Onboard new equipment into the hierarchy structure</div>
                 }
               </Box>
               {selectedNodeId && (
@@ -807,46 +807,77 @@ export const Admin: React.FC = () => {
             {loading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress size={30} /></Box>
             ) : (
-              <form onSubmit={handleSubmit(onSubmit as any)}>
-                <Grid container spacing={2}>
-                  <Grid size={{ xs: 12, sm: 6 }}>
+              <form onSubmit={handleSubmit(onSubmit as any)} >
+
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2 }}>
+
+                  <Box sx={{ width: '50%', display: 'flex', flexDirection: 'column', gap: 2 }}>
+
                     <Controller name="node_type" control={control} render={({ field }) => (
                       <TextField {...field} select fullWidth label="Level" size="small" error={!!errors.node_type} helperText={errors.node_type?.message}>
                         {LEVELS.map(l => <MenuItem key={l} value={l}>{LEVEL_LABELS[l]}</MenuItem>)}
                       </TextField>
                     )} />
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <Controller name="sort_order" control={control} render={({ field }) => (
+
+                    {/* <Controller name="sort_order" control={control} render={({ field }) => (
                       <TextField {...field} type="number" fullWidth label="Sort Order" size="small"
                         value={field.value} onChange={(e) => field.onChange(Number(e.target.value))}
                         error={!!errors.sort_order} helperText={errors.sort_order?.message} />
-                    )} />
-                  </Grid>
+                    )} /> */}
 
-                  {renderParentDropdowns()}
+                    {nodeType === NodeTypeEnum.SENSOR && (
+                      <>
+                        <Controller name="name" control={control} render={({ field }) => (
+                          <TextField {...field} fullWidth label="Tag Name" size="small" error={!!errors.name} helperText={errors.name?.message} />
+                        )} />
 
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <Controller name="name" control={control} render={({ field }) => (
-                      <TextField {...field} fullWidth label="Name (snake_case)" size="small" error={!!errors.name} helperText={errors.name?.message} />
-                    )} />
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 12 }}>
+                        <Controller name="sensor_metadata.safe_limit" control={control} render={({ field }) => (
+                          <TextField {...field} type="number" fullWidth label="Safe Limit" size="small"
+                            slotProps={{ htmlInput: { step: 'any' } }}
+                            value={field.value} onChange={(e) => field.onChange(Number(e.target.value))}
+                          // error={!!errors.sensor_metadata.safe_limit} helperText={errors.sensor_metadata.safe_limit?.message} 
+                          />
+                        )} />
+
+                        <Controller name="sensor_metadata.threshold" control={control} render={({ field }) => (
+                          <TextField {...field} type="number" fullWidth label="Threshold" size="small"
+                            slotProps={{ htmlInput: { step: 'any' } }}
+                            value={field.value} onChange={(e) => field.onChange(Number(e.target.value))}
+                          // error={!!errors.sensor_metadata.threshold} helperText={errors.sensor_metadata.threshold?.message} 
+                          />
+                        )} />
+
+                      </>
+                    )}
+
                     <Controller name="display_name" control={control} render={({ field }) => (
-                      <TextField {...field} fullWidth label="Display Name" size="small" error={!!errors.display_name} helperText={errors.display_name?.message} />
+                      <TextField {...field} fullWidth label="Name" size="small" error={!!errors.display_name} helperText={errors.display_name?.message} />
                     )} />
-                  </Grid>
-                  <Grid size={12}>
+
                     <Controller name="description" control={control} render={({ field }) => (
                       <TextField {...field} fullWidth multiline rows={2} label="Description" size="small" />
                     )} />
-                  </Grid>
-                  <Grid size={12}>
-                    <Button type="submit" variant="contained" color="primary" startIcon={<SaveIcon />}>
-                      Save Node Configuration
-                    </Button>
-                  </Grid>
-                </Grid>
+
+                  </Box>
+
+                  <Box sx={{
+                    width: '50%', minHeight: '45vh', display: 'flex', flexDirection: 'column', gap: 2,
+                    borderLeft: '1px solid #e0e0e0', pl: 2, textAlign: 'center'
+                  }}>
+                    {nodeType === NodeTypeEnum?.SITE ?
+                      <Typography className="chart-subtitle">
+                        Site is a top-level node. No parent selection is required.</Typography>
+                      : <>
+                        {renderParentDropdowns()}
+                      </>}
+                  </Box>
+                </Box>
+
+                <Box sx={{ mt: 2 }}>
+                  <Button type="submit" variant="contained" color="primary" startIcon={<SaveIcon />}>
+                    Save Configuration
+                  </Button>
+                </Box>
               </form>
             )}
           </CardContent>
@@ -886,19 +917,19 @@ export const Admin: React.FC = () => {
                 </TableHead>
 
                 <TableBody>
-                {SEVERITY_THRESHOLDS.map((row) => (
-                  <TableRow key={row.severity}>
-                    <TableCell>
-                      <span className={`severity-badge severity-s${row.severity}`}>S{row.severity}</span>
-                    </TableCell>
-                    <TableCell sx={{fontWeight: 600}}>
-                      <span className={`severity-s${row.severity}`}>{row.label}</span>
-                    </TableCell>
-                    <TableCell >{row.minDeviation}</TableCell>
-                    <TableCell >{row.maxDeviation !== null ? `${row.maxDeviation}` : '-'}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
+                  {SEVERITY_THRESHOLDS.map((row) => (
+                    <TableRow key={row.severity}>
+                      <TableCell>
+                        <span className={`severity-badge severity-s${row.severity}`}>S{row.severity}</span>
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>
+                        <span className={`severity-s${row.severity}`}>{row.label}</span>
+                      </TableCell>
+                      <TableCell >{row.minDeviation}</TableCell>
+                      <TableCell >{row.maxDeviation !== null ? `${row.maxDeviation}` : '-'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
 
                 {/* <TableBody>
                   {alertRules.map(rule => {
@@ -946,12 +977,12 @@ export const Admin: React.FC = () => {
         {/* ── Tab 2: Users & Permissions ── */}
         {activeTab === 2 && (
           <CardContent>
-            <Box sx={{mb: 1}}>
-                <Typography className="admin-card__title">
-                  Manage User Permissions
-                </Typography>
-                <div className="chart-subtitle">Select a user to review and update their access permissions.</div>
-              </Box>
+            <Box sx={{ mb: 1 }}>
+              <Typography className="admin-card__title">
+                Manage User Permissions
+              </Typography>
+              <div className="chart-subtitle">Select a user to review and update their access permissions.</div>
+            </Box>
 
             <Box className="admin-table-wrap">
               <Table size="small">
@@ -968,8 +999,8 @@ export const Admin: React.FC = () => {
                   {users.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell >{user.id}</TableCell>
-                      <TableCell sx={{whiteSpace: 'nowrap'}}>{user.email}</TableCell>
-                      <TableCell className={`${user.is_active ? 'active-user-cell' : 'inactive-user-cell' }`}>
+                      <TableCell sx={{ whiteSpace: 'nowrap' }}>{user.email}</TableCell>
+                      <TableCell className={`${user.is_active ? 'active-user-cell' : 'inactive-user-cell'}`}>
                         {user.is_active ? 'Active' : 'Inactive'}
                       </TableCell>
                       <TableCell>
