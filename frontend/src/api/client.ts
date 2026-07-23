@@ -137,23 +137,17 @@ export const api = {
       granularity?: string,
       startTime?: string,
       endTime?: string
-    ) => {
-      const params = new URLSearchParams();
-      sensorIds.forEach(id => params.append('sensor_ids', id));
-      if (!startTime && !endTime) {
-        params.append('hours', hours.toString());
-      }
-      if (granularity) {
-        params.append('granularity', granularity);
-      }
-      if (startTime) {
-        params.append('start_time', startTime);
-      }
-      if (endTime) {
-        params.append('end_time', endTime);
-      }
-      return request<TelemetryDataPoint[]>(`/dashboard/telemetry?${params.toString()}`);
-    },
+    ) =>
+      request<any[]>('/dashboard/telemetry', {
+        method: 'POST',
+        body: JSON.stringify({
+          sensor_ids: sensorIds,
+          hours: !startTime && !endTime ? hours : undefined,
+          granularity: granularity || undefined,
+          start_time: startTime || undefined,
+          end_time: endTime || undefined,
+        }),
+      }),
   },
   rootCause: {
     get: (eventId: string) => request<RootCauseAnalysisResponse>(`/root-cause/${eventId}`),
