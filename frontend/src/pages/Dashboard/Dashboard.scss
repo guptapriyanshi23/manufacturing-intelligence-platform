@@ -23,8 +23,9 @@
   &__card {
     flex: 1;
     padding: 1rem 1.2rem;
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
     background: linear-gradient(135deg, #f8fbff 0%, #eef6ff 100%);
+    border: 1px solid #e2e8f0 !important;
+	  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06) !important;
   }
 
   &__card-label {
@@ -45,7 +46,8 @@
   &__chart-card {
     padding: 1rem 1.2rem;
     border-radius: 14px;
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    border: 1px solid #e2e8f0 !important;
+	  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06) !important;
   }
 
   &__chart-header {
@@ -85,7 +87,9 @@
 
   &__advisory-card {
     width: 30%;
-    min-width: 220px;
+    min-width: 220px;    
+	  border: 1px solid #e2e8f0 !important;
+	  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06) !important;
 
     @media (max-width: 1024px) {
       width: 100%;

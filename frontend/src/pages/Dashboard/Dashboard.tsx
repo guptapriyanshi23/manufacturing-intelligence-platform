@@ -816,14 +816,14 @@ export const Dashboard: React.FC = () => {
               {appliedSensors.length === 0 && telemetryPoints.length === 0 && !telemetryLoading ? (
                 <Grid size={12}>
 
-                  <Paper sx={{ p: 6, textAlign: 'center', border: '1px solid #ccc', borderRadius: 2 }}>
+                  <Card className="process-analysis__chart-card" sx={{ p: 6, textAlign: 'center' }}>
                     <Typography variant="h6" color="text.secondary" gutterBottom sx={{ fontWeight: 600 }}>
                       No Telemetry Data Loaded
                     </Typography>
                     <Typography color="text.secondary" variant="body2">
                       Please customize your hierarchy level, time range, asset, or tag filters and click the <strong>View</strong> button to load charts.
                     </Typography>
-                  </Paper>
+                  </Card>
                 </Grid>
               ) : telemetryLoading ? (
                 <Grid size={12}>
@@ -833,11 +833,11 @@ export const Dashboard: React.FC = () => {
                 </Grid>
               ) : appliedSensors.length === 0 ? (
                 <Grid size={12}>
-                  <Paper sx={{ p: 4, textAlign: 'center', border: '1px solid #ccc' }}>
+                  <Card className="process-analysis__chart-card" sx={{ p: 4, textAlign: 'center' }}>
                     <Typography color="text.secondary">
                       No sensors defined under the selected hierarchy level. Select a level with configured sensor metadata.
                     </Typography>
-                  </Paper>
+                  </Card>
                 </Grid>
               ) : (
                 appliedSensors
@@ -874,7 +874,7 @@ export const Dashboard: React.FC = () => {
                         <Grid container spacing={3} sx={{ alignItems: 'stretch' }}>
                           {/* Chart Area */}
                           <Grid size={8}>
-                            <Card className="process-analysis__chart-card" sx={{ p: 2,  height: '100%', display: 'flex', flexDirection: 'column' }}>
+                            <Card className="process-analysis__chart-card" sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                 <Typography variant="h6" sx={{ fontWeight: 700 }}>{sensor.display_name}</Typography>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -893,7 +893,7 @@ export const Dashboard: React.FC = () => {
                           </Grid>
                           {/* Detailed Advisory Panel for this sensor */}
                           {hasActiveAdvisory ? (
-                            <Card className="process-analysis__chart-card process-analysis__advisory-card" 
+                            <Card className="process-analysis__chart-card process-analysis__advisory-card"
                               sx={{ flex: '0 0 30%', display: 'flex', flexDirection: 'column' }}>
                               <Box className="process-analysis__chart-header" sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <Typography className="process-analysis__chart-title">Advisory</Typography>
@@ -901,7 +901,7 @@ export const Dashboard: React.FC = () => {
                                   label={getSeverityLevelFull(sensorAdvisory.severity)}
                                   size="small"
                                   className={`severity-badge severity-s${sensorAdvisory.severity}`}
-                                  />
+                                />
                               </Box>
 
                               <Box className="process-analysis__advisory-content">
@@ -920,7 +920,11 @@ export const Dashboard: React.FC = () => {
                                     disabled={sensorAdvisory.status === 'acknowledged'}
                                     sx={{
                                       borderColor: '#93c5fd',
+                                      backgroundColor: '#dbeafe',
                                       color: '#1e40af',
+                                      '&:disabled': {
+                                        backgroundColor: '#ffff',
+                                      },
                                       '&:hover': {
                                         backgroundColor: '#bfdbfe',
                                         borderColor: '#60a5fa',
