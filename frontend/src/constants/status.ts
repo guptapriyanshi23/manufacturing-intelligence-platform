@@ -9,8 +9,8 @@ export const STATUS_COLORS: Record<string | number, string> = {
   [AdvisoryStatus.ACKNOWLEDGED]: '#14a6db',
   [AdvisoryStatus.IN_PROGRESS]: '#b45309',
   [AdvisoryStatus.RESOLVED]: '#357a23',
-  [AlertStatus.ACTIVE]: '#e53a27',
-  [AlertStatus.CLOSED]: '#357a23',
+  // [AlertStatus.ACTIVE]: '#e53a27',
+  // [AlertStatus.CLOSED]: '#357a23',
 };
 
 export const STATUS_BG_COLORS: Record<string | number, string> = {
@@ -22,8 +22,8 @@ export const STATUS_BG_COLORS: Record<string | number, string> = {
   [AdvisoryStatus.ACKNOWLEDGED]: 'rgba(6, 119, 217, 0.12)',
   [AdvisoryStatus.IN_PROGRESS]: 'rgba(239, 223, 53, 0.12)',
   [AdvisoryStatus.RESOLVED]: 'rgba(22,163,74,0.12)',
-  [AlertStatus.ACTIVE]: 'rgba(235, 86, 37, 0.12)',
-  [AlertStatus.CLOSED]: 'rgba(22,163,74,0.12)',
+  // [AlertStatus.ACTIVE]: 'rgba(235, 86, 37, 0.12)',
+  // [AlertStatus.CLOSED]: 'rgba(22,163,74,0.12)',
 };
 
 export const STATUS_BAR_COLORS: Record<string, string> = {

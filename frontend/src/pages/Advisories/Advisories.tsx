@@ -707,7 +707,7 @@ export const Advisories: React.FC = () => {
                     borderRadius: '4px',
                   }}
                 />
-                <StatusChip label={selectedAdvisory?.status} status={selectedAdvisory.status} />
+                <StatusChip status={selectedAdvisory.status} />
               </Box>
             </DialogTitle>
 

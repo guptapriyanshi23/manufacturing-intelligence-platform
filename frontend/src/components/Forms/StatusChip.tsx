@@ -1,19 +1,14 @@
 import React from 'react';
 import { Chip } from '@mui/material';
-import { getStatusColor, getStatusBgColor } from '../../constants/status';
+import { getStatusColor, getStatusBgColor, getStatusText } from '../../constants/status';
 
 interface StatusChipProps {
-  label: string | number;
   status: string | number;
 }
 
-export const StatusChip: React.FC<StatusChipProps> = ({ label, status }) => {
-  console.log('status', status);
-  console.log(label);
-
-  return (
+export const StatusChip: React.FC<StatusChipProps> = ({ status }) => (
   <Chip
-    label={label}
+    label={getStatusText(status)}
     size="small"
     sx={{
       backgroundColor: getStatusBgColor(status),
@@ -25,4 +20,3 @@ export const StatusChip: React.FC<StatusChipProps> = ({ label, status }) => {
     }}
   />
 );
-}
