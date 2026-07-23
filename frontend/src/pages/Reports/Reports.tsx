@@ -162,14 +162,7 @@ export const Reports: React.FC = () => {
       // Black strip
       pdf.setFillColor(22, 22, 22);
       pdf.rect(0, 0, pageWidth, 12, 'F');
-      pdf.addImage(
-        deloitteLogo,
-        'PNG',
-        4,
-        1.5,
-        18,
-        6
-      );
+      pdf.addImage(deloitteLogo, 'PNG', 4, 3, 18.5, 4.2);
       pdf.setDrawColor(90, 90, 90);
       pdf.setLineWidth(0.2);
       pdf.line(25, 2, 25, 8);
@@ -195,7 +188,7 @@ export const Reports: React.FC = () => {
       pdf.text(breadcrumbText, 14, 15);
       const dateWidth = pdf.getTextWidth(currentDateTime);
 
-      pdf.text(currentDateTime, pageWidth - dateWidth - 10, 15);
+      pdf.text(currentDateTime, pageWidth - dateWidth - 15, 15);
 
       // Header
       let y = 28;

@@ -174,11 +174,11 @@ export const RootCause: React.FC = () => {
               {activeAdvisory ? (
                   <Grid container spacing={2}>
                     <Grid size={{ xs: 12, sm: 6 }} sx={{display: 'flex', alignItems: 'end', gap: 1}}>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>Asset</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>Asset</Typography>
                       <Typography variant="body1">{activeAdvisory.asset}</Typography>
                     </Grid>
                     <Grid size={{ xs: 12, sm: 6 }} sx={{display: 'flex', alignItems: 'end', gap: 1}}>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>Severity</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>Severity</Typography>
                       <Chip
                         label={getSeverityLevelFull(activeAdvisory.severity).toUpperCase()}
                         size="small"
@@ -189,17 +189,17 @@ export const RootCause: React.FC = () => {
                       />
                     </Grid>
                     <Grid size={{ xs: 12, sm: 6 }} sx={{display: 'flex', alignItems: 'end', gap: 1}}>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>Status</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>Status</Typography>
                       <StatusChip status={activeAdvisory.status} />
                     </Grid>
                     <Grid size={{ xs: 12, sm: 6 }} sx={{display: 'flex', alignItems: 'end', gap: 1}}>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>First Detected</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>First Detected</Typography>
                       <Typography variant="body1">
                         {new Date(activeAdvisory.detected_at).toLocaleString()}
                       </Typography>
                     </Grid>
                     <Grid size={{ xs: 12 }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>Advisory Message</Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>Advisory Message</Typography>
                       <Typography variant="body2">{activeAdvisory.description}</Typography>
                     </Grid>
                   </Grid>
@@ -262,7 +262,7 @@ export const RootCause: React.FC = () => {
                 label="Root cause description"
                 placeholder="Describe the likely root cause here"
                 multiline
-                rows={5}
+                rows={3}
                 fullWidth
                 value={rootCauseDescription}
                 onChange={(event) => setRootCauseDescription(event.target.value)}

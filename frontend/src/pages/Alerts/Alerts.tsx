@@ -481,7 +481,7 @@ export const Alerts: React.FC = () => {
           <Button
             variant="contained"
             onClick={handleViewClick}
-            sx={{ minWidth: 90, fontWeight: 600, height: 35, backgroundColor: '#1a1a1a' }}
+            sx={{ maxWidth: 90, fontWeight: 600, height: 35, backgroundColor: '#1a1a1a' }}
           >
             View
           </Button>
