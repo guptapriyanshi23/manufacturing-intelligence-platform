@@ -188,7 +188,7 @@ export const RootCause: React.FC = () => {
                     </Grid>
                     <Grid size={{ xs: 12, sm: 6 }} sx={{display: 'flex', alignItems: 'end', gap: 1}}>
                       <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>Status</Typography>
-                      <StatusChip label={activeAdvisory.status.toUpperCase()} status={activeAdvisory.status} />
+                      <StatusChip label={activeAdvisory.status} status={activeAdvisory.status} />
                     </Grid>
                     <Grid size={{ xs: 12, sm: 6 }} sx={{display: 'flex', alignItems: 'end', gap: 1}}>
                       <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>First Detected</Typography>

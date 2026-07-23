@@ -290,8 +290,8 @@ export const Advisories: React.FC = () => {
   };
 
   const exportToXlsx = async () => {
-    if(paginatedRows?.length === 0) return;
-    
+    if (paginatedRows?.length === 0) return;
+
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Advisories');
 
@@ -377,7 +377,7 @@ export const Advisories: React.FC = () => {
 
       const statusText = getStatusText(row.status);
 
-      const statusStyles : Record<string, { bg: string; font: string }>= {
+      const statusStyles: Record<string, { bg: string; font: string }> = {
         Open: {
           bg: 'FDE2E2',
           font: 'B91C1C',
@@ -604,24 +604,20 @@ export const Advisories: React.FC = () => {
         </div>
       </div>
 
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
-          <CircularProgress color="secondary" />
+      <Card className="advisory-summary__grid-card">
+        <Box className="advisory-summary__export-actions">
+          <button type="button" className="advisory-export-btn advisory-export-btn--xlsx"
+            onClick={exportToXlsx} disabled={(paginatedRows?.length === 0) || loading}>
+            <DownloadOutlinedIcon className="advisory-export-btn__icon" />
+            <span>XLSX</span>
+          </button>
         </Box>
-      ) : (<>
-        <Card className="advisory-summary__grid-card">
-          <Box className="advisory-summary__export-actions">
-            {/* <button type="button" className="advisory-export-btn"
-              disabled={paginatedRows?.length === 0}>
-              <DownloadOutlinedIcon className="advisory-export-btn__icon" />
-              <span> PDF</span>
-            </button> */}
-            <button type="button" className="advisory-export-btn advisory-export-btn--xlsx"
-              onClick={exportToXlsx} disabled={paginatedRows?.length === 0}>
-              <DownloadOutlinedIcon className="advisory-export-btn__icon" />
-              <span>XLSX</span>
-            </button>
+
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 8, minHeight: '55vh' }}>
+            <CircularProgress color="secondary" />
           </Box>
+        ) : (<>
           <Box className="advisory-summary__grid-wrap">
             {paginatedRows?.length === 0 ? (
               <div className="empty-state">
@@ -684,9 +680,9 @@ export const Advisories: React.FC = () => {
             rowsPerPageOptions={[5, 10, 25]}
           />}
 
-        </Card>
-      </>
-      )}
+        </>)}
+
+      </Card>
 
       {/* Advisory Details Modal */}
       <Dialog
@@ -711,7 +707,7 @@ export const Advisories: React.FC = () => {
                     borderRadius: '4px',
                   }}
                 />
-                <StatusChip label={selectedAdvisory.status.toUpperCase()} status={selectedAdvisory.status} />
+                <StatusChip label={selectedAdvisory?.status} status={selectedAdvisory.status} />
               </Box>
             </DialogTitle>
 

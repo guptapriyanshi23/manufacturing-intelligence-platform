@@ -252,10 +252,10 @@
 	&--s5 { background: #e2e8f0 !important; color: #334155 !important; border-color: #cbd5e1; }
 
 	/* Status badges */
-	&--open { background: #fee2e2 !important; color: #991b1b !important; border-color: #fca5a5; }
-	&--acknowledged { background: #dbeafe !important; color: #1e40af !important; border-color: #93c5fd; }
-	&--in_progress { background: #ebe06257 !important; color: #b45309 !important; border-color: #f0d34f; }
-	&--resolved { background: #dcfce7 !important; color: #166534 !important; border-color: #86efac; }
+	&--open { background: #fee2e2 !important; color: #991b1b !important;  }
+	&--acknowledged { background: #dbeafe !important; color: #1e40af !important;  }
+	&--in_progress { background: #ebe06257 !important; color: #b45309 !important; }
+	&--resolved { background: #dcfce7 !important; color: #166534 !important; }
 }
 
 @media (max-width: 1200px) {

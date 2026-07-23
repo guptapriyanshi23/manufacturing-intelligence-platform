@@ -110,6 +110,7 @@ export const Alerts: React.FC = () => {
       setAlerts([]);
       return;
     }
+    setSelectedIds([])
     const node = flatNodes.find(n => n.id === selectedNodeId);
     if (!node || node.node_type === NodeType.SITE) {
       setAlerts([]);
@@ -355,17 +356,26 @@ export const Alerts: React.FC = () => {
 
   const handleChangePage = (_: any, newPage: number) => {
     setPage(newPage);
+    setSelectedIds([]);
   };
 
   const handleChangeRowsPerPage = (event: any) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
+    setSelectedIds([]);
   };
 
-  const allSelected = filteredAlerts.length > 0 && selectedIds.length === filteredAlerts.length;
-  const someSelected = selectedIds.length > 0 && !allSelected;
+  const selectableAlerts = paginatedRows?.filter(alert => alert.status === 1);
 
-  const handleSelectAll = () => setSelectedIds(allSelected ? [] : filteredAlerts.map(a => a.id));
+  const allSelected =
+    selectableAlerts?.length > 0 &&
+    selectableAlerts?.every(alert => selectedIds.includes(alert.id));
+
+  const someSelected =
+    selectableAlerts?.some(alert => selectedIds.includes(alert.id)) &&
+    !allSelected;
+
+  const handleSelectAll = () => setSelectedIds(allSelected ? [] : selectableAlerts?.map(a => a.id));
 
   const handleSelectRow = (id: number) =>
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -487,22 +497,18 @@ export const Alerts: React.FC = () => {
 
       </div>
 
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
-          <CircularProgress color="secondary" />
-        </Box>
-      ) : (<>
-        <Card className="advisory-summary__grid-card">
-          <Box sx={{
-            mb: 1,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}>
-            <Typography sx={{ fontSize: '0.9rem' }}>
-              Total Selected : {selectedIds?.length}
-            </Typography>
+      <Card className="advisory-summary__grid-card">
+        <Box sx={{
+          mb: 1,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+          <Typography sx={{ fontSize: '0.9rem' }}>
+            Total Selected : {selectedIds?.length}
+          </Typography>
 
+          {(selectableAlerts?.length !== 0) &&
             <Button
               variant="outlined"
               size="small"
@@ -511,7 +517,11 @@ export const Alerts: React.FC = () => {
               sx={{
                 my: 0.5,
                 borderColor: '#93c5fd',
+                backgroundColor: '#dbeafe',
                 color: '#1e40af',
+                '&:disabled': {
+                  backgroundColor: '#ffff',
+                },
                 '&:hover': {
                   backgroundColor: '#bfdbfe',
                   borderColor: '#60a5fa',
@@ -520,8 +530,14 @@ export const Alerts: React.FC = () => {
             >
               Acknowledge
             </Button>
-          </Box>
+          }
+        </Box>
 
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 8, minHeight: '55vh' }}>
+            <CircularProgress color="secondary" />
+          </Box>
+        ) : (<>
           <Box className="advisory-summary__grid-wrap">
             {paginatedRows?.length === 0 ? (
               <div className="empty-state">
@@ -533,19 +549,21 @@ export const Alerts: React.FC = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell padding="checkbox" >
-                      <Checkbox indeterminate={someSelected} checked={allSelected} onChange={handleSelectAll}
-                        sx={{
-                          '&.Mui-checked': {
-                            color: '#60a5fa',
-                          },
-                          '&.MuiCheckbox-indeterminate': {
-                            color: '#60a5fa',
-                          },
-                          '& .MuiSvgIcon-root': {
-                            fontSize: 18,
-                          },
-                        }}
-                      />
+                      {(selectableAlerts?.length !== 0) &&
+                        <Checkbox indeterminate={someSelected} checked={allSelected} onChange={handleSelectAll}
+                          sx={{
+                            '&.Mui-checked': {
+                              color: '#60a5fa',
+                            },
+                            '&.MuiCheckbox-indeterminate': {
+                              color: '#60a5fa',
+                            },
+                            '& .MuiSvgIcon-root': {
+                              fontSize: 18,
+                            },
+                          }}
+                        />
+                      }
                     </TableCell>
                     {['Severity', 'Asset', 'Tag', 'Status', 'Advisory message', 'Timestamp'].map(col => (
                       <TableCell key={col}>{col}</TableCell>
@@ -572,16 +590,18 @@ export const Alerts: React.FC = () => {
                         }}
                       >
                         <TableCell padding="checkbox" >
-                          <Checkbox checked={selectedIds.includes(row.id)} onClick={(e) => e.stopPropagation()}
-                            onChange={() => handleSelectRow(row.id)}
-                            sx={{
-                              '&.Mui-checked': {
-                                color: '#60a5fa',
-                              },
-                              '& .MuiSvgIcon-root': {
-                                fontSize: 18,
-                              },
-                            }} />
+                          {(row?.status == 1) &&
+                            <Checkbox checked={selectedIds.includes(row.id)} onClick={(e) => e.stopPropagation()}
+                              onChange={() => handleSelectRow(row.id)}
+                              sx={{
+                                '&.Mui-checked': {
+                                  color: '#60a5fa',
+                                },
+                                '& .MuiSvgIcon-root': {
+                                  fontSize: 18,
+                                },
+                              }} />
+                          }
                         </TableCell>
                         <TableCell>
                           <span className={badgeClsName}>{getSeverityLevelFull(row.severity)}</span>
@@ -614,9 +634,9 @@ export const Alerts: React.FC = () => {
             rowsPerPageOptions={[5, 10, 25]}
           />}
 
-        </Card>
-      </>
-      )}
+        </>)}
+      </Card>
+
     </PageContainer>
   );
 };
