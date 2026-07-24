@@ -141,27 +141,6 @@ export const Advisories: React.FC = () => {
   }, [treeNodeId, flatNodes]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('advisories_applied_filters');
-    if (saved) {
-      try {
-        const filters = JSON.parse(saved);
-        if (filters.timeRange) {
-          setTimeRange(filters.timeRange);
-          setAppliedTimeRange(filters.timeRange);
-        }
-        if (filters.fromDate) {
-          setFromDate(filters.fromDate);
-          setAppliedFromDate(filters.fromDate);
-        }
-        if (filters.toDate) {
-          setToDate(filters.toDate);
-          setAppliedToDate(filters.toDate);
-        }
-      } catch (e) { }
-    }
-  }, [location.state]);
-
-  useEffect(() => {
     if (flatNodes.length === 0) return;
     const matchingNode = treeNodeId ? flatNodes.find(n => n.id === treeNodeId) : null;
     setAppliedNode(matchingNode || null);
@@ -286,6 +265,7 @@ export const Advisories: React.FC = () => {
   };
 
   const handleView = () => {
+    setLoading(true);
 
     setAppliedSensorId(selectedSensorId);
     setAppliedAssetId(selectedAssetId);
@@ -293,11 +273,30 @@ export const Advisories: React.FC = () => {
     setAppliedFromDate(fromDate);
     setAppliedToDate(toDate);
 
-    localStorage.setItem('advisories_applied_filters', JSON.stringify({
-      timeRange: timeRange,
-      fromDate: fromDate,
-      toDate: toDate,
-    }));
+    const targetNodeId = Number(selectedAssetId) ? Number(selectedAssetId) : appliedNode?.id;
+
+    let startIso: string | undefined = undefined;
+    let endIso: string | undefined = undefined;
+
+    if (timeRange === TimeRange.CUSTOM) {
+      if (fromDate) startIso = new Date(fromDate).toISOString();
+      if (toDate) endIso = new Date(toDate).toISOString();
+    } else {
+      const range = getDateRange(timeRange);
+      startIso = new Date(range.from).toISOString();
+      endIso = new Date(range.to).toISOString();
+    }
+
+    api.advisories.list({
+      node_id: targetNodeId,
+      start_time: startIso,
+      end_time: endIso,
+    })
+      .then((res) => {
+        setAdvisories(res);
+        setLoading(false);
+      })
+      .catch((err) => { console.error('Failed to fetch advisories:', err); setLoading(false); });
   };
 
   const exportToXlsx = async () => {
