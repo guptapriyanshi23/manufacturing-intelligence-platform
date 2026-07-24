@@ -72,7 +72,7 @@ export const Alerts: React.FC = () => {
 
   const [alerts, setAlerts] = useState<any[]>([]);
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
@@ -112,7 +112,7 @@ export const Alerts: React.FC = () => {
     }
     setSelectedIds([])
     const node = flatNodes.find(n => n.id === selectedNodeId);
-    if (!node || node.node_type === NodeType.SITE) {
+    if (!node) {
       setAlerts([]);
       return;
     }

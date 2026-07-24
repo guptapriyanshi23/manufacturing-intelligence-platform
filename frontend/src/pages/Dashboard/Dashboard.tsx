@@ -258,7 +258,7 @@ export const Dashboard: React.FC = () => {
         setFromDate(shiftData.start_time_local);
         setToDate(shiftData.end_time_local);
         setIsTimeOverridden(true);
-        
+
         let activeNodeId = initialNodeId;
         if (selectedSensorId) {
           activeNodeId = Number(selectedSensorId);
@@ -1050,8 +1050,63 @@ export const Dashboard: React.FC = () => {
                               onClick={() => handleAdvisoryTimeFilterUpdate(sensorAdvisory.detected_at)}
                             >
                               <Box className="process-analysis__chart-header" sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                  <Typography className="process-analysis__chart-title">Advisory</Typography>
+                                <Typography className="process-analysis__chart-title">Advisory</Typography>
+                                <Chip
+                                  label={getSeverityLevelFull(sensorAdvisory.severity)}
+                                  size="small"
+                                  className={`severity-badge severity-s${sensorAdvisory.severity}`}
+                                />
+                              </Box>
+
+                              <Box className="process-analysis__advisory-content">
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                  <Typography className="process-analysis__advisory-alert-title">{sensorAdvisory.asset || 'Equipment Advisory'}</Typography>
+                                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, textAlign: 'right' }}>
+                                    {new Date(sensorAdvisory.detected_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                  </Typography>
+                                </Box>
+                                <Typography className="process-analysis__advisory-description">
+                                  {sensorAdvisory.description}
+                                </Typography>
+
+                                <Box className="process-analysis__advisory-actions"
+                                  sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                  <Box className="process-analysis__advisory-actions" onClick={(e) => e.stopPropagation()}>
+                                    <Button variant="outlined" size="small"
+                                      disabled={sensorAdvisory.status === 'acknowledged'}
+                                      sx={{
+                                        borderColor: '#93c5fd',
+                                        backgroundColor: '#dbeafe',
+                                        color: '#1e40af',
+                                        '&:disabled': {
+                                          backgroundColor: '#ffff',
+                                        },
+                                        '&:hover': {
+                                          backgroundColor: '#bfdbfe',
+                                          borderColor: '#60a5fa',
+                                        },
+                                      }}
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        try {
+                                          await api.advisories.update(sensorAdvisory.id, { status: AdvisoryStatus.ACKNOWLEDGED });
+                                          setAdvisories(prev => prev.map(a => a.id === sensorAdvisory.id ? { ...a, status: AdvisoryStatus.ACKNOWLEDGED } : a));
+                                        } catch (err) {
+                                          console.error("Failed to acknowledge advisory:", err);
+                                        }
+                                      }}
+                                    >{sensorAdvisory.status === 'acknowledged' ? 'Acknowledged' : 'Acknowledge'}
+                                    </Button>
+
+                                    <Button variant="contained" size="small"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate('/root-cause', { state: { advisoryId: sensorAdvisory.id, selectedNodeName: sensorAdvisory.asset || '' } });
+                                      }}>
+                                      Initiate RCA
+                                    </Button>
+                                  </Box>
+
                                   {sensorAdvisories.length > 1 && (
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }} onClick={(e) => e.stopPropagation()}>
                                       <IconButton
@@ -1079,59 +1134,7 @@ export const Dashboard: React.FC = () => {
                                       </IconButton>
                                     </Box>
                                   )}
-                                </Box>
-                                <Chip
-                                  label={getSeverityLevelFull(sensorAdvisory.severity)}
-                                  size="small"
-                                  className={`severity-badge severity-s${sensorAdvisory.severity}`}
-                                />
-                              </Box>
 
-                              <Box className="process-analysis__advisory-content">
-                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                  <Typography className="process-analysis__advisory-alert-title">{sensorAdvisory.asset || 'Equipment Advisory'}</Typography>
-                                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, textAlign: 'right' }}>
-                                    {new Date(sensorAdvisory.detected_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                  </Typography>
-                                </Box>
-                                <Typography className="process-analysis__advisory-description">
-                                  {sensorAdvisory.description}
-                                </Typography>
-
-                                <Box className="process-analysis__advisory-actions" onClick={(e) => e.stopPropagation()}>
-                                  <Button variant="outlined" size="small"
-                                    disabled={sensorAdvisory.status === 'acknowledged'}
-                                    sx={{
-                                      borderColor: '#93c5fd',
-                                      backgroundColor: '#dbeafe',
-                                      color: '#1e40af',
-                                      '&:disabled': {
-                                        backgroundColor: '#ffff',
-                                      },
-                                      '&:hover': {
-                                        backgroundColor: '#bfdbfe',
-                                        borderColor: '#60a5fa',
-                                      },
-                                    }}
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      try {
-                                        await api.advisories.update(sensorAdvisory.id, { status: AdvisoryStatus.ACKNOWLEDGED });
-                                        setAdvisories(prev => prev.map(a => a.id === sensorAdvisory.id ? { ...a, status: AdvisoryStatus.ACKNOWLEDGED } : a));
-                                      } catch (err) {
-                                        console.error("Failed to acknowledge advisory:", err);
-                                      }
-                                    }}
-                                  >{sensorAdvisory.status === 'acknowledged' ? 'Acknowledged' : 'Acknowledge'}
-                                  </Button>
-
-                                  <Button variant="contained" size="small"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      navigate('/root-cause', { state: { advisoryId: sensorAdvisory.id, selectedNodeName: sensorAdvisory.asset || '' } });
-                                    }}>
-                                    Initiate RCA
-                                  </Button>
                                 </Box>
                               </Box>
                             </Card>
@@ -1195,9 +1198,9 @@ export const Dashboard: React.FC = () => {
                   sensorExpTimeRange, handleSensorExpTimeRangeChange,
                   sensorExpFrom, setSensorExpFrom,
                   sensorExpTo, setSensorExpTo,
-                   expandedGranularity, setExpandedGranularity,
-                   () => setExpandedSensor(null),
-                   () => fetchExpandedTelemetry(),
+                  expandedGranularity, setExpandedGranularity,
+                  () => setExpandedSensor(null),
+                  () => fetchExpandedTelemetry(),
                   data.length > 0 ? <Chip label={`Current: ${data[data.length - 1].value} ${unit}`} color="secondary" size="small" sx={{ fontWeight: 600 }} /> : undefined,
                 )}
                 <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>{expandedSensor.display_name}</Typography>

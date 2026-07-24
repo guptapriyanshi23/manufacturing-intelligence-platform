@@ -830,23 +830,6 @@ export const Admin: React.FC = () => {
                         <Controller name="name" control={control} render={({ field }) => (
                           <TextField {...field} fullWidth label="Tag Name" size="small" error={!!errors.name} helperText={errors.name?.message} />
                         )} />
-
-                        <Controller name="sensor_metadata.safe_limit" control={control} render={({ field }) => (
-                          <TextField {...field} type="number" fullWidth label="Safe Limit" size="small"
-                            slotProps={{ htmlInput: { step: 'any' } }}
-                            value={field.value} onChange={(e) => field.onChange(Number(e.target.value))}
-                          // error={!!errors.sensor_metadata.safe_limit} helperText={errors.sensor_metadata.safe_limit?.message} 
-                          />
-                        )} />
-
-                        <Controller name="sensor_metadata.threshold" control={control} render={({ field }) => (
-                          <TextField {...field} type="number" fullWidth label="Threshold" size="small"
-                            slotProps={{ htmlInput: { step: 'any' } }}
-                            value={field.value} onChange={(e) => field.onChange(Number(e.target.value))}
-                          // error={!!errors.sensor_metadata.threshold} helperText={errors.sensor_metadata.threshold?.message} 
-                          />
-                        )} />
-
                       </>
                     )}
 
@@ -857,6 +840,25 @@ export const Admin: React.FC = () => {
                     <Controller name="description" control={control} render={({ field }) => (
                       <TextField {...field} fullWidth multiline rows={2} label="Description" size="small" />
                     )} />
+
+                    {nodeType === NodeTypeEnum.SENSOR && (<>
+                      <Controller name="sensor_metadata.safe_limit" control={control} render={({ field }) => (
+                        <TextField {...field} type="number" fullWidth label="Safe Limit" size="small"
+                          slotProps={{ htmlInput: { step: 'any' } }}
+                          value={field.value} onChange={(e) => field.onChange(Number(e.target.value))}
+                        // error={!!errors.sensor_metadata.safe_limit} helperText={errors.sensor_metadata.safe_limit?.message} 
+                        />
+                      )} />
+
+                      <Controller name="sensor_metadata.threshold" control={control} render={({ field }) => (
+                        <TextField {...field} type="number" fullWidth label="Threshold" size="small"
+                          slotProps={{ htmlInput: { step: 'any' } }}
+                          value={field.value} onChange={(e) => field.onChange(Number(e.target.value))}
+                        // error={!!errors.sensor_metadata.threshold} helperText={errors.sensor_metadata.threshold?.message} 
+                        />
+                      )} />
+
+                    </>)}
 
                   </Box>
 

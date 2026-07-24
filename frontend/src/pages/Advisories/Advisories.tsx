@@ -245,9 +245,9 @@ export const Advisories: React.FC = () => {
   }, [appliedNode, appliedSensorId, appliedAssetId, appliedTimeRange, appliedFromDate, appliedToDate]);
 
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const filteredRows = advisories.filter((adv) => {
+  const filteredRows = advisories?.filter((adv) => {
     const severityMatch =
       selectedSeverity === 'All' ||
       `S${adv.severity}` === selectedSeverity;
@@ -298,7 +298,7 @@ export const Advisories: React.FC = () => {
   };
 
   const exportToXlsx = async () => {
-    if (paginatedRows?.length === 0) return;
+    if (filteredRows?.length === 0) return;
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Advisories');
@@ -342,7 +342,7 @@ export const Advisories: React.FC = () => {
     });
 
     // Visible data only (same as table)
-    paginatedRows.forEach((row) => {
+    filteredRows?.forEach((row) => {
       const excelRow = worksheet.addRow({
         asset: getAssetName(row),
         severity: getSeverityLevelFull(row.severity),
