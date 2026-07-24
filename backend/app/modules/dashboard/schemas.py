@@ -20,3 +20,14 @@ class DashboardSummaryResponse(BaseModel):
     performance: MetricItem
     quality: MetricItem
     weekly_chart: List[PerformanceData]
+
+
+from datetime import datetime
+from typing import Optional
+
+class TelemetryRequest(BaseModel):
+    sensor_ids: List[str]
+    hours: Optional[int] = 24
+    granularity: Optional[str] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None

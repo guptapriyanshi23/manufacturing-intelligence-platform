@@ -248,28 +248,84 @@ export const Dashboard: React.FC = () => {
   const [expandedTelemetry, setExpandedTelemetry] = useState<TelemetryPoint[]>([]);
   const [expandedTelemetryLoading, setExpandedTelemetryLoading] = useState(false);
   const [expandedGranularity, setExpandedGranularity] = useState<string>('auto');
+  const [selectedAdvisoryIndices, setSelectedAdvisoryIndices] = useState<Record<number, number>>({});
+
+  const handleAdvisoryTimeFilterUpdate = async (detectedAt: string) => {
+    try {
+      const shiftData = await api.dashboard.getShiftTimings(detectedAt);
+      if (shiftData) {
+        setTimeRange(TimeRange.CUSTOM);
+        setFromDate(shiftData.start_time_local);
+        setToDate(shiftData.end_time_local);
+        setIsTimeOverridden(true);
+        
+        let activeNodeId = initialNodeId;
+        if (selectedSensorId) {
+          activeNodeId = Number(selectedSensorId);
+        }
+        if (!activeNodeId) return;
+
+        const sensorsList: HierarchyNode[] = [];
+        const queue = [activeNodeId];
+        const visited = new Set<number>();
+        while (queue.length > 0) {
+          const currentId = queue.shift()!;
+          if (visited.has(currentId)) continue;
+          visited.add(currentId);
+          const node = flatNodes.find(n => n.id === currentId);
+          if (node) {
+            if (node.node_type === NodeType.SENSOR) sensorsList.push(node);
+            flatNodes.filter(n => n.parent_id === currentId).forEach(child => queue.push(child.id));
+          }
+        }
+        const sensorIds = sensorsList.map(s => s.sensor_metadata?.sensor_id).filter(Boolean) as string[];
+        if (sensorIds.length > 0) {
+          setTelemetryLoading(true);
+          try {
+            const res = await api.dashboard.getTelemetry(sensorIds, 24, undefined, shiftData.start_time, shiftData.end_time);
+            setTelemetryPoints(res);
+            setAppliedSensors(sensorsList);
+            setAppliedTimeRange(TimeRange.CUSTOM);
+            setAppliedFromDate(shiftData.start_time_local);
+            setAppliedToDate(shiftData.end_time_local);
+          } finally {
+            setTelemetryLoading(false);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to update time filter from advisory:", err);
+    }
+  };
 
   const handleSensorExpTimeRangeChange = (val: string) => {
     setSensorExpTimeRange(val);
-    const { from, to } = getDateRange(val);
-    setSensorExpFrom(from); setSensorExpTo(to);
+    if (val !== TimeRange.CUSTOM) {
+      const { from, to } = getDateRange(val);
+      setSensorExpFrom(from); setSensorExpTo(to);
+    }
   };
 
   const openSensorExpanded = (sensor: HierarchyNode) => {
     setExpandedSensor(sensor);
-    const { from, to } = getDateRange(timeRange);
-    setSensorExpTimeRange(timeRange); setSensorExpFrom(from); setSensorExpTo(to);
+    setSensorExpTimeRange(timeRange);
+    setSensorExpFrom(fromDate);
+    setSensorExpTo(toDate);
     setExpandedGranularity('auto');
   };
-
-  useEffect(() => {
-    if (!expandedSensor) {
-      setExpandedTelemetry([]);
-      return;
-    }
+  const fetchExpandedTelemetry = (
+    overrideTimeRange?: string,
+    overrideFrom?: string,
+    overrideTo?: string,
+    overrideGranularity?: string
+  ) => {
+    if (!expandedSensor) return;
     const sid = expandedSensor.sensor_metadata?.sensor_id;
     if (!sid) return;
-
+    const tr = typeof overrideTimeRange === 'string' ? overrideTimeRange : sensorExpTimeRange;
+    const from = typeof overrideFrom === 'string' ? overrideFrom : sensorExpFrom;
+    const to = typeof overrideTo === 'string' ? overrideTo : sensorExpTo;
+    const gran = typeof overrideGranularity === 'string' ? overrideGranularity : expandedGranularity;
     setExpandedTelemetryLoading(true);
     const getExpHours = () => {
       const map: Record<string, number> = {
@@ -279,24 +335,31 @@ export const Dashboard: React.FC = () => {
         [TimeRange.LAST_7D]: 168,
         [TimeRange.LAST_30D]: 720,
       };
-      return map[sensorExpTimeRange] ?? 24;
+      return map[tr] ?? 24;
     };
 
-    const customStart = sensorExpTimeRange === TimeRange.CUSTOM ? new Date(sensorExpFrom).toISOString() : undefined;
-    const customEnd = sensorExpTimeRange === TimeRange.CUSTOM ? new Date(sensorExpTo).toISOString() : undefined;
+    const customStart = tr === TimeRange.CUSTOM ? new Date(from).toISOString() : undefined;
+    const customEnd = tr === TimeRange.CUSTOM ? new Date(to).toISOString() : undefined;
 
     api.dashboard.getTelemetry(
       [sid],
       getExpHours(),
-      expandedGranularity === 'auto' ? undefined : expandedGranularity,
+      gran === 'auto' ? undefined : gran,
       customStart,
       customEnd
     )
       .then(setExpandedTelemetry)
       .catch(() => setExpandedTelemetry([]))
       .finally(() => setExpandedTelemetryLoading(false));
-  }, [expandedSensor, sensorExpTimeRange, expandedGranularity, sensorExpFrom, sensorExpTo]);
+  };
 
+  useEffect(() => {
+    if (!expandedSensor) {
+      setExpandedTelemetry([]);
+      return;
+    }
+    fetchExpandedTelemetry(timeRange, fromDate, toDate, 'auto');
+  }, [expandedSensor]);
 
 
 
@@ -316,10 +379,15 @@ export const Dashboard: React.FC = () => {
         setAdvisoriesFetched(true);
       });
   };
-
   useEffect(() => {
     fetchAdvisories(targetNodeForAdvisory);
   }, [targetNodeForAdvisory]);
+
+  useEffect(() => {
+    setTelemetryPoints([]);
+    setAppliedSensors([]);
+    setSelectedSensorId('');
+  }, [initialNodeId]);
 
   useEffect(() => {
     api.hierarchy.list(true)
@@ -641,43 +709,114 @@ export const Dashboard: React.FC = () => {
     return closestPt;
   };
 
-  const renderLineChart = (data: any[], sensor: HierarchyNode, height: number, sensorAdvisory?: any) => {
+  const renderLineChart = (data: any[], sensor: HierarchyNode, height: number, sensorAdvisory?: any, allSensorAdvisories?: any[]) => {
     const unit = sensor.sensor_metadata?.unit || '';
-    const resolvedAdvisory = sensorAdvisory !== undefined
+    const resolvedAdvisories = allSensorAdvisories || advisories.filter(a => a.node_id === sensor.id || a.sensor_id === sensor.sensor_metadata?.sensor_id);
+    const activeAdv = sensorAdvisory !== undefined
       ? sensorAdvisory
-      : advisories.find(a => a.node_id === sensor.id || a.sensor_id === sensor.sensor_metadata?.sensor_id);
-    const advPoint = resolvedAdvisory ? getAdvisoryMatchingPoint(data, resolvedAdvisory) : null;
+      : resolvedAdvisories[selectedAdvisoryIndices[sensor.id] ?? 0];
+
+    const chartData = data.map(pt => {
+      const matchingAdvisory = resolvedAdvisories.find(adv => {
+        const advPoint = getAdvisoryMatchingPoint(data, adv);
+        return advPoint && advPoint.timestampMs === pt.timestampMs;
+      });
+      if (matchingAdvisory) {
+        return {
+          ...pt,
+          hasAdvisory: true,
+          isActiveAdvisory: activeAdv && matchingAdvisory.id === activeAdv.id,
+          advisoryId: matchingAdvisory.id,
+          advisoryDesc: matchingAdvisory.description,
+          advisorySeverity: matchingAdvisory.severity
+        };
+      }
+      return pt;
+    });
+
+    const RenderCustomDot = (props: any) => {
+      const { cx, cy, payload } = props;
+      if (!payload || !payload.hasAdvisory) return null;
+      const isActive = payload.isActiveAdvisory;
+      return (
+        <g>
+          <circle
+            cx={cx}
+            cy={cy}
+            r={isActive ? 8 : 5}
+            fill={isActive ? "#FF1744" : "#F43F5E"}
+            stroke="#FFFFFF"
+            strokeWidth={isActive ? 2 : 1}
+            style={{ cursor: 'pointer' }}
+          />
+          {isActive && (
+            <text
+              x={cx}
+              y={cy - 12}
+              textAnchor="middle"
+              fill="#FF1744"
+              fontSize={10}
+              fontWeight={700}
+            >
+              S{payload.advisorySeverity}
+            </text>
+          )}
+        </g>
+      );
+    };
+
+    const CustomTooltip = ({ active, payload, label }: any) => {
+      if (active && payload && payload.length) {
+        const dataPt = payload[0].payload;
+        const isAdvisory = dataPt.hasAdvisory;
+        return (
+          <Box sx={{ bgcolor: '#ffffff', p: 1.5, border: '1px solid #ccc', borderRadius: 2, fontSize: 12, boxShadow: 2 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>{label}</Typography>
+            <Typography variant="body2" sx={{ fontWeight: 700, mt: 0.5 }}>Value: {dataPt.value} {unit}</Typography>
+            {isAdvisory && (
+              <Box sx={{ mt: 1, borderTop: '1px solid #eee', pt: 1, color: '#FF1744' }}>
+                <Typography variant="caption" sx={{ fontWeight: 700, display: 'block' }}>
+                  ⚠ Advisory Triggered ({dataPt.isActiveAdvisory ? 'Active' : 'Related'})
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        );
+      }
+      return null;
+    };
 
     return (
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={data} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+        <LineChart data={chartData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.1)" />
           <XAxis dataKey="timestamp" stroke={theme.palette.text.secondary} style={{ fontSize: 10 }} />
           <YAxis stroke={theme.palette.text.secondary} style={{ fontSize: 10 }} />
-          <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #ccc', borderRadius: 6, fontSize: 12 }} />
+          <Tooltip content={<CustomTooltip />} />
           <Legend verticalAlign="top" height={36} />
-          <Line name={`${sensor.display_name} (${unit})`} type="monotone" dataKey="value" stroke="#2563EB" strokeWidth={2} dot={false} />
+          <Line
+            name={`${sensor.display_name} (${unit})`}
+            type="monotone"
+            dataKey="value"
+            stroke="#2563EB"
+            strokeWidth={2}
+            dot={<RenderCustomDot />}
+            activeDot={{ r: 9 }}
+            onClick={(props: any) => {
+              if (props && props.payload && props.payload.hasAdvisory) {
+                const idx = resolvedAdvisories.findIndex(a => a.id === props.payload.advisoryId);
+                if (idx !== -1) {
+                  setSelectedAdvisoryIndices(prev => ({ ...prev, [sensor.id]: idx }));
+                }
+              }
+            }}
+          />
           <Line name="Safe Limit" type="monotone" dataKey="safe_limit" stroke="#16A34A" strokeWidth={2} strokeDasharray="5 5" dot={false} />
           <Line name="Threshold" type="monotone" dataKey="threshold" stroke="#DC2626" strokeWidth={2} strokeDasharray="5 5" dot={false} />
-          {advPoint && (
-            <ReferenceDot
-              x={advPoint.timestamp}
-              y={advPoint.value}
-              r={7}
-              fill="#FF1744"
-              stroke="#FFFFFF"
-              strokeWidth={3}
-              label={{ value: '⚠ Advisory Triggered', position: 'top', fill: '#FF1744', fontSize: 11, fontWeight: 700 }}
-            />
-          )}
         </LineChart>
       </ResponsiveContainer>
     );
   };
-
-
-
-
 
   // Expand dialog filter bar helper
   const renderExpandFilters = (
@@ -686,6 +825,7 @@ export const Dashboard: React.FC = () => {
     to: string, onToChange: (v: string) => void,
     granularity: string, onGranularityChange: (v: string) => void,
     onClose: () => void,
+    onViewClick: () => void,
     extraRight?: React.ReactNode,
   ) => (
     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -726,11 +866,19 @@ export const Dashboard: React.FC = () => {
         </FormControl>
 
         <TextField label="From" type="datetime-local" size="small" value={from}
-          onChange={(e) => onFromChange(e.target.value)} disabled={sensorExpTimeRange !== TimeRange.CUSTOM}
+          onChange={(e) => onFromChange(e.target.value)} disabled={tr !== TimeRange.CUSTOM}
           slotProps={{ inputLabel: { shrink: true } }} sx={{ minWidth: 200 }} />
         <TextField label="To" type="datetime-local" size="small" value={to}
-          onChange={(e) => onToChange(e.target.value)} disabled={sensorExpTimeRange !== TimeRange.CUSTOM}
+          onChange={(e) => onToChange(e.target.value)} disabled={tr !== TimeRange.CUSTOM}
           slotProps={{ inputLabel: { shrink: true } }} sx={{ minWidth: 200 }} />
+
+        <Button
+          variant="contained"
+          onClick={onViewClick}
+          sx={{ minWidth: 90, fontWeight: 600, height: 35, backgroundColor: '#1a1a1a', }}
+        >
+          View
+        </Button>
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         {extraRight}
@@ -861,15 +1009,16 @@ export const Dashboard: React.FC = () => {
                     const aVal = aAdvisory ? aAdvisory.severity : noAdvisoryPriority;
                     const bVal = bAdvisory ? bAdvisory.severity : noAdvisoryPriority;
 
-                    return aVal - bVal;
                   })
                   .map(sensor => {
                     const data = getSensorDataPoints(sensor);
                     const unit = sensor.sensor_metadata?.unit || '';
-                    const sensorAdvisory = advisories.find(a =>
+                    const sensorAdvisories = advisories.filter(a =>
                       a.node_id === sensor.id ||
                       a.sensor_id === sensor.sensor_metadata?.sensor_id
                     );
+                    const selectedIdx = selectedAdvisoryIndices[sensor.id] ?? 0;
+                    const sensorAdvisory = sensorAdvisories[selectedIdx] || null;
                     const hasActiveAdvisory = sensorAdvisory && sensorAdvisory.status !== AdvisoryStatus.RESOLVED;
 
                     return (
@@ -890,16 +1039,47 @@ export const Dashboard: React.FC = () => {
                                 </Box>
                               </Box>
                               <Box sx={{ width: '100%', height: 270 }}>
-                                {renderLineChart(data, sensor, 270, hasActiveAdvisory ? sensorAdvisory : null)}
+                                {renderLineChart(data, sensor, 270, hasActiveAdvisory ? sensorAdvisory : null, sensorAdvisories)}
                               </Box>
                             </Card>
                           </Grid>
                           {/* Detailed Advisory Panel for this sensor */}
                           {hasActiveAdvisory ? (
                             <Card className="process-analysis__chart-card process-analysis__advisory-card"
-                              sx={{ flex: '0 0 30%', display: 'flex', flexDirection: 'column' }}>
+                              sx={{ flex: '0 0 30%', display: 'flex', flexDirection: 'column', cursor: 'pointer' }}
+                              onClick={() => handleAdvisoryTimeFilterUpdate(sensorAdvisory.detected_at)}
+                            >
                               <Box className="process-analysis__chart-header" sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Typography className="process-analysis__chart-title">Advisory</Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Typography className="process-analysis__chart-title">Advisory</Typography>
+                                  {sensorAdvisories.length > 1 && (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }} onClick={(e) => e.stopPropagation()}>
+                                      <IconButton
+                                        size="small"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const prevIdx = (selectedIdx - 1 + sensorAdvisories.length) % sensorAdvisories.length;
+                                          setSelectedAdvisoryIndices(prev => ({ ...prev, [sensor.id]: prevIdx }));
+                                        }}
+                                      >
+                                        &lt;
+                                      </IconButton>
+                                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                        {selectedIdx + 1}/{sensorAdvisories.length}
+                                      </Typography>
+                                      <IconButton
+                                        size="small"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const nextIdx = (selectedIdx + 1) % sensorAdvisories.length;
+                                          setSelectedAdvisoryIndices(prev => ({ ...prev, [sensor.id]: nextIdx }));
+                                        }}
+                                      >
+                                        &gt;
+                                      </IconButton>
+                                    </Box>
+                                  )}
+                                </Box>
                                 <Chip
                                   label={getSeverityLevelFull(sensorAdvisory.severity)}
                                   size="small"
@@ -918,7 +1098,7 @@ export const Dashboard: React.FC = () => {
                                   {sensorAdvisory.description}
                                 </Typography>
 
-                                <Box className="process-analysis__advisory-actions">
+                                <Box className="process-analysis__advisory-actions" onClick={(e) => e.stopPropagation()}>
                                   <Button variant="outlined" size="small"
                                     disabled={sensorAdvisory.status === 'acknowledged'}
                                     sx={{
@@ -933,7 +1113,8 @@ export const Dashboard: React.FC = () => {
                                         borderColor: '#60a5fa',
                                       },
                                     }}
-                                    onClick={async () => {
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
                                       try {
                                         await api.advisories.update(sensorAdvisory.id, { status: AdvisoryStatus.ACKNOWLEDGED });
                                         setAdvisories(prev => prev.map(a => a.id === sensorAdvisory.id ? { ...a, status: AdvisoryStatus.ACKNOWLEDGED } : a));
@@ -945,7 +1126,8 @@ export const Dashboard: React.FC = () => {
                                   </Button>
 
                                   <Button variant="contained" size="small"
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       navigate('/root-cause', { state: { advisoryId: sensorAdvisory.id, selectedNodeName: sensorAdvisory.asset || '' } });
                                     }}>
                                     Initiate RCA
@@ -1013,8 +1195,9 @@ export const Dashboard: React.FC = () => {
                   sensorExpTimeRange, handleSensorExpTimeRangeChange,
                   sensorExpFrom, setSensorExpFrom,
                   sensorExpTo, setSensorExpTo,
-                  expandedGranularity, setExpandedGranularity,
-                  () => setExpandedSensor(null),
+                   expandedGranularity, setExpandedGranularity,
+                   () => setExpandedSensor(null),
+                   () => fetchExpandedTelemetry(),
                   data.length > 0 ? <Chip label={`Current: ${data[data.length - 1].value} ${unit}`} color="secondary" size="small" sx={{ fontWeight: 600 }} /> : undefined,
                 )}
                 <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>{expandedSensor.display_name}</Typography>

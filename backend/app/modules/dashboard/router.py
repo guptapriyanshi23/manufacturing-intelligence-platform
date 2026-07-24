@@ -4,26 +4,25 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from backend.app.core.database import get_db
 from backend.app.core.security import check_permissions
-from backend.app.modules.dashboard.schemas import DashboardSummaryResponse
+from backend.app.modules.dashboard.schemas import DashboardSummaryResponse, TelemetryRequest
 from backend.app.modules.dashboard import service
-
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
-@router.get("/telemetry", dependencies=[Depends(check_permissions(["dashboard:view"]))])
+@router.post("/telemetry", dependencies=[Depends(check_permissions(["dashboard:view"]))])
 def get_telemetry(
-    sensor_ids: List[str] = Query(None),
-    hours: int = 24,
-    granularity: str = Query(None),
-    start_time: datetime = Query(None),
-    end_time: datetime = Query(None),
+    payload: TelemetryRequest,
     db: Session = Depends(get_db)
 ):
     """
     Get telemetry history data for a list of sensor IDs.
     """
     return service.get_sensor_telemetry(
-        db=db, sensor_ids=sensor_ids, hours=hours, granularity=granularity,
-        start_time=start_time, end_time=end_time
+        db=db,
+        sensor_ids=payload.sensor_ids,
+        hours=payload.hours,
+        granularity=payload.granularity,
+        start_time=payload.start_time,
+        end_time=payload.end_time
     )
 
 @router.get("/shift-timings", dependencies=[Depends(check_permissions(["dashboard:view"]))])
