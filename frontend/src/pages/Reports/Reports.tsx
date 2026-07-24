@@ -170,7 +170,7 @@ export const Reports: React.FC = () => {
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(10);
       pdf.setTextColor(255, 255, 255);
-      pdf.text('AssetWize', 28, 6.5);
+      pdf.text('FactoryWize Asset Digital Twin', 28, 6.5);
 
       //Breadcrum strip
       pdf.setFillColor(250, 250, 250);

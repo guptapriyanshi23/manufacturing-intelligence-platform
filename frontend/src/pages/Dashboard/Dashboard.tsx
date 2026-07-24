@@ -793,7 +793,18 @@ export const Dashboard: React.FC = () => {
           <XAxis dataKey="timestamp" stroke={theme.palette.text.secondary} style={{ fontSize: 10 }} />
           <YAxis stroke={theme.palette.text.secondary} style={{ fontSize: 10 }} />
           <Tooltip content={<CustomTooltip />} />
-          <Legend verticalAlign="top" height={36} />
+
+          <Legend
+            verticalAlign="top"
+            height={36}
+            itemSorter={(item) => {
+              if (item.dataKey === "value") return 0;
+              if (item.dataKey === "safe_limit") return 1;
+              if (item.dataKey === "threshold") return 2;
+              return 3;
+            }}
+          />
+
           <Line
             name={`${sensor.display_name} (${unit})`}
             type="monotone"
@@ -811,8 +822,8 @@ export const Dashboard: React.FC = () => {
               }
             }}
           />
-          <Line name="Safe Limit" type="monotone" dataKey="safe_limit" stroke="#16A34A" strokeWidth={2} strokeDasharray="5 5" dot={false} />
-          <Line name="Threshold" type="monotone" dataKey="threshold" stroke="#DC2626" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+          <Line name="Alarm Limit" type="monotone" dataKey="safe_limit" stroke="#16A34A" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+          <Line name="Trip Limit" type="monotone" dataKey="threshold" stroke="#DC2626" strokeWidth={2} strokeDasharray="5 5" dot={false} />
         </LineChart>
       </ResponsiveContainer>
     );

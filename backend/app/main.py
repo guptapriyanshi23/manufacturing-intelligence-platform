@@ -71,7 +71,7 @@ app.include_router(admin_users_router, prefix=f"{api_router_prefix}/admin", tags
 @app.get("/")
 def read_root():
     return {
-        "message": "Welcome to the AssetWize API",
+        "message": "Welcome to the FactoryWize Asset Digital Twin API",
         "docs": "/docs",
         "status": "healthy"
     }

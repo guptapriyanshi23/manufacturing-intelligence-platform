@@ -12,17 +12,11 @@ import {
   MenuItem,
   Button,
   Typography,
-  Divider,
   Alert,
   CircularProgress,
   Tabs,
   Tab,
-  Step,
-  Stepper,
-  StepLabel,
   Stack,
-  ToggleButtonGroup,
-  ToggleButton,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -30,20 +24,17 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
   Chip,
   Checkbox,
-  IconButton,
 } from '@mui/material';
-import { Save as SaveIcon, AddCircle as AddIcon, Delete as DeleteIcon, ChevronRight as ChevronRightIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
+import { Save as SaveIcon, AddCircle as AddIcon, Delete as DeleteIcon, } from '@mui/icons-material';
 import { PageContainer } from '../../components/Cards/PageContainer';
 import { PageHeader } from '../../components/Cards/PageHeader';
 import { api } from '../../api/client';
 import type { HierarchyNode, NodeType } from '../../types/hierarchy';
-import { getSeverityColor, getSeverityBgColor, getSeverityLevelFull } from '../../constants/severity';
-import { SeverityLevel, AlertStatus, NodeType as NodeTypeEnum } from '../../types/enums';
+import { NodeType as NodeTypeEnum } from '../../types/enums';
 import './Admin.scss'
 
 // ─── Hierarchy constants ────────────────────────────────────────────────────
@@ -89,29 +80,9 @@ const schema = z.object({
   sort_order: z.number().default(0),
   plant_metadata: z.object({ use_case: z.string().optional(), location: z.string().optional(), description: z.string().optional() }).optional(),
   asset_metadata: z.object({ asset_id: z.string().optional(), manufacturer: z.string().optional(), model: z.string().optional() }).optional(),
-  sensor_metadata: z.object({ sensor_id: z.string().optional(), unit: z.string().optional(), sampling_rate: z.number().optional(), safe_limit: z.number().default(0), threshold: z.number().default(0), }).optional(),
+  sensor_metadata: z.object({ sensor_id: z.string().optional(), unit: z.string().optional(), sampling_rate: z.number().optional(), alarm_limit: z.number().default(0), trip_limit: z.number().default(0), }).optional(),
 });
 type FormValues = z.infer<typeof schema>;
-
-// ─── Alert wizard types ──────────────────────────────────────────────────────
-const ALERT_STEPS = ['Description', 'Condition', 'Action'];
-const CONDITION_TYPES = ['Basic', 'Advanced'];
-const ALERT_TYPES = ['Greater than', 'Less than', 'Greater than or equal', 'Less than or equal', 'Equal to'];
-const PENDING_PERIODS = ['None', '1m', '2m', '3m', '4m', '5m'];
-const KEEP_FIRING = ['None', '1m', '2m', '3m', '4m', '5m'];
-
-interface AlertForm {
-  name: string; description: string; severity: string;
-  assetId: string;
-  conditionType: string; trigger: string; alertType: string; value: string; delay: string;
-  pendingPeriod: string; keepFiring: string; notifyEmail: string;
-}
-
-const defaultAlertForm: AlertForm = {
-  name: '', description: '', severity: 'warning', assetId: '',
-  conditionType: 'Basic', trigger: '', alertType: 'Greater than', value: '', delay: '',
-  pendingPeriod: '1m', keepFiring: 'None', notifyEmail: '',
-};
 
 const permissionGroups = [
   {
@@ -241,21 +212,6 @@ export const Admin: React.FC = () => {
   const [flatNodes, setFlatNodes] = useState<HierarchyNode[]>([]);
   const [parentSelections, setParentSelections] = useState<Record<string, number | ''>>({});
 
-  // Alert wizard state
-  const [alertStep, setAlertStep] = useState(0);
-  const [alertForm, setAlertForm] = useState<AlertForm>(defaultAlertForm);
-  const [alertSaved, setAlertSaved] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [expandedNodeIds, setExpandedNodeIds] = useState<Record<number, boolean>>({});
-  const [selectedRuleDetails, setSelectedRuleDetails] = useState<any | null>(null);
-  const [editingRuleId, setEditingRuleId] = useState<number | null>(null);
-
-
-  const DEMO_RULES = [
-    { id: 1, name: 'High Temperature Alert', asset: 'Compressor A', trigger: 'temp_sensor_01', condition: 'Greater than 85°C', severity: 'critical', pendingPeriod: '2m', status: 'Active' },
-  ];
-  const [alertRules, setAlertRules] = useState<any[]>(DEMO_RULES);
-
   // User permissions management state
   const [users, setUsers] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
@@ -270,7 +226,7 @@ export const Admin: React.FC = () => {
       parent_id: null, node_type: NodeTypeEnum.SITE, name: '', display_name: '', description: '', sort_order: 0,
       plant_metadata: { use_case: '', location: '', description: '' },
       asset_metadata: { asset_id: '', manufacturer: '', model: '' },
-      sensor_metadata: { sensor_id: '', unit: '', sampling_rate: 1, safe_limit: 0, threshold: 0 },
+      sensor_metadata: { sensor_id: '', unit: '', sampling_rate: 1, alarm_limit: 0, trip_limit: 0 },
     },
   });
   const nodeType = watch('node_type');
@@ -279,13 +235,8 @@ export const Admin: React.FC = () => {
     api.hierarchy.list(true).then(setFlatNodes).catch(() => setFlatNodes([]));
   };
 
-  const loadAlertRules = () => {
-    api.alerts.listRules().then(setAlertRules).catch(() => setAlertRules([]));
-  };
-
   useEffect(() => {
     loadFlatNodes();
-    loadAlertRules();
   }, [saveSuccess, deleteSuccess]);
 
   useEffect(() => {
@@ -298,7 +249,7 @@ export const Admin: React.FC = () => {
           sort_order: node.sort_order,
           plant_metadata: node.plant_metadata || { use_case: '', location: '', description: '' },
           asset_metadata: node.asset_metadata || { asset_id: '', manufacturer: '', model: '' },
-          sensor_metadata: node.sensor_metadata || { sensor_id: '', unit: '', sampling_rate: 1, safe_limit: 0, threshold: 0 },
+          sensor_metadata: node.sensor_metadata || { sensor_id: '', unit: '', sampling_rate: 1, alarm_limit: 0, trip_limit: 0 },
         });
         const initialSelections: Record<string, number | ''> = {};
         LEVELS.forEach(lvl => { initialSelections[lvl] = ''; });
@@ -344,9 +295,7 @@ export const Admin: React.FC = () => {
   };
 
   useEffect(() => {
-    if (activeTab === 1) {
-      loadAlertRules();
-    } else if (activeTab === 2) {
+    if (activeTab === 2) {
       loadUsersAndPermissions();
     }
   }, [activeTab]);
@@ -378,7 +327,7 @@ export const Admin: React.FC = () => {
       parent_id: null, node_type: NodeTypeEnum.SITE, name: '', display_name: '', description: '', sort_order: 0,
       plant_metadata: { use_case: '', location: '', description: '' },
       asset_metadata: { asset_id: '', manufacturer: '', model: '' },
-      sensor_metadata: { sensor_id: '', unit: '', sampling_rate: 1, safe_limit: 0, threshold: 0, },
+      sensor_metadata: { sensor_id: '', unit: '', sampling_rate: 1, alarm_limit: 0, trip_limit: 0, },
     });
     setParentSelections({}); setSaveSuccess(false); setDeleteSuccess(false); setApiError(null);
   };
@@ -406,364 +355,6 @@ export const Admin: React.FC = () => {
     });
   };
 
-  // ─── Alert wizard helpers ──────────────────────────────────────────────────
-  const af = (field: keyof AlertForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-    setAlertForm(prev => ({ ...prev, [field]: e.target.value }));
-
-
-  const getSensorsForAsset = (assetId: string | number): HierarchyNode[] => {
-    if (!assetId) return [];
-    const targetId = Number(assetId);
-    const sensors: HierarchyNode[] = [];
-    const queue = [targetId];
-    while (queue.length > 0) {
-      const currentId = queue.shift()!;
-      flatNodes.filter(n => n.parent_id === currentId).forEach(child => {
-        if (child.node_type === NodeTypeEnum.SENSOR) {
-          sensors.push(child);
-        } else {
-          queue.push(child.id);
-        }
-      });
-    }
-    return sensors;
-  };
-
-  const getTreeOrderedNodes = (nodes: HierarchyNode[]): { node: HierarchyNode; depth: number }[] => {
-    const result: { node: HierarchyNode; depth: number }[] = [];
-
-    // Roots are nodes of type 'site'
-    let roots = nodes.filter(n => n.node_type === NodeTypeEnum.SITE);
-    if (roots.length === 0) {
-      roots = nodes.filter(n => !n.parent_id && n.node_type !== NodeTypeEnum.SENSOR);
-    }
-
-    const traverse = (node: HierarchyNode, depth: number) => {
-      result.push({ node, depth });
-      if (expandedNodeIds[node.id]) {
-        const children = nodes.filter(n => n.parent_id === node.id && n.node_type !== NodeTypeEnum.SENSOR);
-        children.sort((a, b) => a.sort_order - b.sort_order);
-        children.forEach(child => traverse(child, depth + 1));
-      }
-    };
-
-    roots.sort((a, b) => a.sort_order - b.sort_order);
-    roots.forEach(r => traverse(r, 0));
-    return result;
-  };
-
-  const toggleNodeExpand = (nodeId: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setExpandedNodeIds(prev => ({ ...prev, [nodeId]: !prev[nodeId] }));
-  };
-
-  const handleAssetSelect = (assetId: string) => {
-    const assetNode = flatNodes.find(n => String(n.id) === assetId);
-    const assetName = assetNode ? assetNode.display_name : '';
-    setAlertForm(prev => ({
-      ...prev,
-      assetId,
-      name: assetName ? `${assetName} Alert` : '',
-      description: assetName ? `Alert rule for monitoring ${assetName}` : '',
-    }));
-  };
-
-  const handleSensorSelect = (sensorId: string) => {
-    const sensorNode = flatNodes.find(n => String(n.id) === sensorId);
-    const sensorName = sensorNode ? sensorNode.display_name : '';
-    const assetNode = flatNodes.find(n => String(n.id) === alertForm.assetId);
-    const assetName = assetNode ? assetNode.display_name : '';
-    setAlertForm(prev => ({
-      ...prev,
-      trigger: sensorId,
-      name: assetName && sensorName ? `${assetName} ${sensorName} Alert` : prev.name,
-    }));
-  };
-
-  const handleAlertSubmit = () => {
-    const SEVERITY_LEVEL_MAP_TO_NUM: Record<string, number> = {
-      critical: 1,
-      high: 2,
-      warning: 3,
-      low: 4,
-      info: 5,
-    };
-
-    const payload = {
-      name: alertForm.name,
-      description: alertForm.description || null,
-      severity: (SEVERITY_LEVEL_MAP_TO_NUM[alertForm.severity] || Number(alertForm.severity) || 5) as SeverityLevel,
-      node_id: Number(alertForm.assetId),
-      condition_type: alertForm.conditionType || null,
-      sensor_id: alertForm.trigger || null,
-      alert_type: alertForm.alertType || null,
-      threshold: alertForm.value ? Number(alertForm.value) : null,
-      delay: alertForm.delay ? Number(alertForm.delay) : null,
-      pending_period: alertForm.pendingPeriod || null,
-      keep_firing: alertForm.keepFiring || null,
-      notify_email: alertForm.notifyEmail || null,
-      status: AlertStatus.ACTIVE,
-    };
-
-    const action = editingRuleId
-      ? api.alerts.updateRule(editingRuleId, payload)
-      : api.alerts.createRule(payload);
-
-    action
-      .then(() => {
-        loadAlertRules();
-        setAlertSaved(true);
-        setAlertForm(defaultAlertForm);
-        setAlertStep(0);
-        setEditingRuleId(null);
-        setDrawerOpen(false);
-      })
-      .catch((err) => {
-        console.error('Failed to save alert rule:', err);
-        alert('Failed to save alert rule: ' + err.message);
-      });
-  };
-
-  const handleEditRuleClick = (rule: any) => {
-    setSelectedRuleDetails(null);
-    setEditingRuleId(rule.id);
-    setAlertForm({
-      name: rule.name,
-      description: rule.description || '',
-      severity: rule.severity,
-      assetId: String(rule.node_id),
-      conditionType: rule.condition_type || 'Threshold',
-      trigger: rule.sensor_id || '',
-      alertType: rule.alert_type || 'Greater than',
-      value: rule.value !== null && rule.value !== undefined ? String(rule.value) : '',
-      delay: rule.delay !== null && rule.delay !== undefined ? String(rule.delay) : '0',
-      pendingPeriod: rule.pending_period || 'None',
-      keepFiring: rule.keep_firing || 'Yes',
-      notifyEmail: rule.notify_email || '',
-    });
-    setAlertStep(0);
-    setDrawerOpen(true);
-  };
-
-  const handleDeleteRuleClick = (ruleId: number) => {
-    if (!confirm('Are you sure you want to delete this alert rule?')) return;
-    api.alerts.deleteRule(ruleId)
-      .then(() => {
-        loadAlertRules();
-        setSelectedRuleDetails(null);
-      })
-      .catch((err) => {
-        console.error('Failed to delete rule:', err);
-        alert('Failed to delete rule: ' + err.message);
-      });
-  };
-
-  const openDrawer = () => {
-    setAlertForm(defaultAlertForm);
-    setAlertStep(0);
-    setEditingRuleId(null);
-    setDrawerOpen(true);
-  };
-
-  const closeDrawer = () => {
-    setAlertForm(defaultAlertForm);
-    setAlertStep(0);
-    setEditingRuleId(null);
-    setDrawerOpen(false);
-  };
-
-  const renderAlertStep = () => {
-    const treeOrderedNodes = getTreeOrderedNodes(flatNodes);
-    const assetSensors = getSensorsForAsset(alertForm.assetId);
-
-    switch (alertStep) {
-      case 0:
-        return (
-          <Stack spacing={3}>
-            <Typography variant="subtitle2" color="text.secondary">
-              Provide a name and description for this alert rule, and select the target asset and severity.
-            </Typography>
-
-            <TextField select label="Asset" size="small" fullWidth value={alertForm.assetId}
-              onChange={(e) => handleAssetSelect(e.target.value)}
-              slotProps={{
-                select: {
-                  renderValue: (val: any) => {
-                    if (!val) return <em>Select Asset</em>;
-                    const found = flatNodes.find(n => String(n.id) === val);
-                    return found ? found.display_name : String(val);
-                  }
-                }
-              }}
-            >
-              {treeOrderedNodes.map(({ node, depth }) => {
-                const isAsset = node.node_type === NodeTypeEnum.ASSET;
-                const hasChildren = flatNodes.some(n => n.parent_id === node.id && n.node_type !== NodeTypeEnum.SENSOR);
-                const isExpanded = !!expandedNodeIds[node.id];
-
-                if (!isAsset) {
-                  return (
-                    <Box
-                      key={node.id}
-                      onClick={(e) => toggleNodeExpand(node.id, e)}
-                      sx={{
-                        pl: depth * 2.5 + 2,
-                        pr: 2,
-                        py: 0.75,
-                        fontWeight: 500,
-                        color: 'text.secondary',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        cursor: 'pointer',
-                        userSelect: 'none',
-                        '&:hover': {
-                          backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                        },
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        {depth > 0 && <Typography component="span" color="text.disabled" sx={{ fontSize: 12, mr: 0.5 }}>└</Typography>}
-                        {node.display_name} <Typography component="span" sx={{ fontSize: 11, ml: 0.5, opacity: 0.7 }}>({node.node_type})</Typography>
-                      </Box>
-                      {hasChildren && (
-                        <IconButton
-                          size="small"
-                          onClick={(e) => toggleNodeExpand(node.id, e)}
-                          sx={{ p: 0.25, color: 'text.secondary' }}
-                        >
-                          {isExpanded ? <ExpandMoreIcon fontSize="small" /> : <ChevronRightIcon fontSize="small" />}
-                        </IconButton>
-                      )}
-                    </Box>
-                  );
-                }
-
-                return (
-                  <MenuItem
-                    key={node.id}
-                    value={String(node.id)}
-                    sx={{
-                      pl: depth * 2.5 + 2,
-                      fontWeight: 600,
-                      color: 'text.primary',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      {depth > 0 && <Typography component="span" color="text.disabled" sx={{ fontSize: 12, mr: 0.5 }}>└</Typography>}
-                      {node.display_name}
-                    </Box>
-                  </MenuItem>
-                );
-              })}
-            </TextField>
-
-            <TextField select label="Severity" size="small" fullWidth value={alertForm.severity}
-              onChange={(e) => setAlertForm(p => ({ ...p, severity: e.target.value }))}
-            >
-              <MenuItem value="critical">Critical</MenuItem>
-              <MenuItem value="warning">Warning</MenuItem>
-              <MenuItem value="info">Info</MenuItem>
-            </TextField>
-
-            <TextField label="Alert Name" size="small" fullWidth value={alertForm.name} onChange={af('name')} />
-            <TextField label="Description" size="small" fullWidth multiline rows={3} value={alertForm.description} onChange={af('description')} />
-          </Stack>
-        );
-      case 1:
-        return (
-          <Stack spacing={3}>
-            <Typography variant="subtitle2" color="text.secondary">
-              Define the condition that triggers this alert.
-            </Typography>
-            <TextField select label="Condition Type" size="small" fullWidth value={alertForm.conditionType}
-              onChange={(e) => setAlertForm(p => ({ ...p, conditionType: e.target.value }))}
-            >
-              {CONDITION_TYPES.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
-            </TextField>
-            <TextField select label="Trigger (Sensor / Tag)" size="small" fullWidth value={alertForm.trigger}
-              onChange={(e) => handleSensorSelect(e.target.value)}
-              disabled={!alertForm.assetId}
-            >
-              <MenuItem value=""><em>Select Sensor</em></MenuItem>
-              {assetSensors.map(s => <MenuItem key={s.id} value={String(s.id)}>{s.display_name}</MenuItem>)}
-              {alertForm.assetId && assetSensors.length === 0 && (
-                <MenuItem disabled value=""><em>No sensors found under this asset</em></MenuItem>
-              )}
-            </TextField>
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField select label="Alert Type" size="small" fullWidth value={alertForm.alertType}
-                  onChange={(e) => setAlertForm(p => ({ ...p, alertType: e.target.value }))}
-                >
-                  {ALERT_TYPES.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
-                </TextField>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField label="Value" size="small" fullWidth type="number" value={alertForm.value} onChange={af('value')} />
-              </Grid>
-            </Grid>
-            <TextField label="Delay (min)" size="small" sx={{ maxWidth: 200 }} type="number" value={alertForm.delay} onChange={af('delay')} />
-          </Stack>
-        );
-      case 2:
-        return (
-          <Stack spacing={4}>
-            <Typography variant="subtitle2" color="text.secondary">
-              Configure evaluation behavior and notification actions.
-            </Typography>
-
-            {/* Pending period */}
-            <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>Pending Period</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                Period during which the threshold condition must be met to trigger an alert. "None" triggers immediately.
-              </Typography>
-              <ToggleButtonGroup
-                value={alertForm.pendingPeriod}
-                exclusive
-                onChange={(_, val) => val && setAlertForm(p => ({ ...p, pendingPeriod: val }))}
-                size="small"
-              >
-                {PENDING_PERIODS.map(p => (
-                  <ToggleButton key={p} value={p} sx={{
-                    fontWeight: 600, px: 2, textTransform: 'none',
-                    '&.Mui-selected': { backgroundColor: 'primary.main', color: 'white', '&:hover': { backgroundColor: 'primary.dark' } }
-                  }}>{p}</ToggleButton>
-                ))}
-              </ToggleButtonGroup>
-            </Box>
-
-            <Divider />
-
-            {/* Keep firing */}
-            <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>Keep Firing For</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-                Period during which the alert continues firing even after the condition is no longer breached. "None" resets immediately.
-              </Typography>
-              <ToggleButtonGroup
-                value={alertForm.keepFiring}
-                exclusive
-                onChange={(_, val) => val && setAlertForm(p => ({ ...p, keepFiring: val }))}
-                size="small"
-              >
-                {KEEP_FIRING.map(p => (
-                  <ToggleButton key={p} value={p} sx={{
-                    fontWeight: 600, px: 2, textTransform: 'none',
-                    '&.Mui-selected': { backgroundColor: 'primary.main', color: 'white', '&:hover': { backgroundColor: 'primary.dark' } }
-                  }}>{p}</ToggleButton>
-                ))}
-              </ToggleButtonGroup>
-            </Box>
-          </Stack>
-        );
-    }
-  };
-
   return (
     <PageContainer>
       <PageHeader
@@ -774,7 +365,6 @@ export const Admin: React.FC = () => {
 
       <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} className="admin-page__tabs">
         <Tab label="Asset Hierarchy" />
-        {/* <Tab label="Alert Rule" /> */}
         <Tab label="Severity Thresholds" />
         <Tab label="Permissions" />
       </Tabs>
@@ -842,19 +432,19 @@ export const Admin: React.FC = () => {
                     )} />
 
                     {nodeType === NodeTypeEnum.SENSOR && (<>
-                      <Controller name="sensor_metadata.safe_limit" control={control} render={({ field }) => (
-                        <TextField {...field} type="number" fullWidth label="Safe Limit" size="small"
+                      <Controller name="sensor_metadata.alarm_limit" control={control} render={({ field }) => (
+                        <TextField {...field} type="number" fullWidth label="Alarm Limit" size="small"
                           slotProps={{ htmlInput: { step: 'any' } }}
                           value={field.value} onChange={(e) => field.onChange(Number(e.target.value))}
-                        // error={!!errors.sensor_metadata.safe_limit} helperText={errors.sensor_metadata.safe_limit?.message} 
+                        // error={!!errors.sensor_metadata.alarm_limit} helperText={errors.sensor_metadata.alarm_limit?.message} 
                         />
                       )} />
 
-                      <Controller name="sensor_metadata.threshold" control={control} render={({ field }) => (
-                        <TextField {...field} type="number" fullWidth label="Threshold" size="small"
+                      <Controller name="sensor_metadata.trip_limit" control={control} render={({ field }) => (
+                        <TextField {...field} type="number" fullWidth label="Trip Limit" size="small"
                           slotProps={{ htmlInput: { step: 'any' } }}
                           value={field.value} onChange={(e) => field.onChange(Number(e.target.value))}
-                        // error={!!errors.sensor_metadata.threshold} helperText={errors.sensor_metadata.threshold?.message} 
+                        // error={!!errors.sensor_metadata.trip_limit} helperText={errors.sensor_metadata.trip_limit?.message} 
                         />
                       )} />
 
@@ -896,16 +486,7 @@ export const Admin: React.FC = () => {
                 <div className="chart-subtitle">Severity one is the highest priority, 5 is the lowest - defined on deviation between twin (reference) and actual value.</div>
 
               </Box>
-              {/* <Button variant="outlined" color="primary" startIcon={<AddIcon />} onClick={openDrawer}>
-                Create
-              </Button> */}
             </Box>
-
-            {alertSaved && (
-              <Alert severity="success" sx={{ mb: 1 }} onClose={() => setAlertSaved(false)}>
-                Threshold saved successfully.
-              </Alert>
-            )}
 
             <Box className="admin-table-wrap">
               <Table size="small">
@@ -932,45 +513,6 @@ export const Admin: React.FC = () => {
                     </TableRow>
                   ))}
                 </TableBody>
-
-                {/* <TableBody>
-                  {alertRules.map(rule => {
-                    const assetNode = flatNodes.find(n => n.id === rule.node_id);
-                    const sensorNode = flatNodes.find(n => String(n.id) === rule.sensor_id);
-                    const assetName = assetNode ? assetNode.display_name : (rule.asset || `Asset #${rule.node_id}`);
-                    const triggerName = sensorNode ? sensorNode.display_name : (rule.trigger || rule.sensor_id || 'None');
-                    const conditionText = rule.alert_type && rule.value !== null && rule.value !== undefined
-                      ? `${rule.alert_type} ${rule.value}`
-                      : (rule.condition || 'None');
-                    const pendingText = rule.pending_period || rule.pendingPeriod || 'None';
-
-                    return (
-                      <TableRow
-                        key={rule.id}
-                        hover
-                        onClick={() => setSelectedRuleDetails(rule)}
-                        sx={{ cursor: 'pointer' }}
-                      >
-                        <TableCell>{rule.id}</TableCell>
-                        <TableCell>{rule.name}</TableCell>
-                        <TableCell>{assetName}</TableCell>
-                        <TableCell sx={{ color: 'text.secondary', fontSize: 12 }}>{triggerName}</TableCell>
-                        <TableCell>{conditionText}</TableCell>
-                        <TableCell>
-                          <Chip label={getSeverityLevelFull(rule.severity).toUpperCase()} size="small"
-                            sx={{ backgroundColor: getSeverityBgColor(rule.severity), color: getSeverityColor(rule.severity), fontWeight: 600, fontSize: 11, borderRadius: '4px' }}
-                          />
-                        </TableCell>
-                        <TableCell>{pendingText}</TableCell>
-                        <TableCell>
-                          <Chip label={rule.status} size="small"
-                            sx={{ backgroundColor: rule.status === 'Active' ? '#e8f5e9' : '#f5f5f5', color: rule.status === 'Active' ? '#2e7d32' : '#757575', fontWeight: 600, fontSize: 11, borderRadius: '4px' }}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody> */}
               </Table>
             </Box>
           </CardContent>
@@ -1040,47 +582,6 @@ export const Admin: React.FC = () => {
           </CardContent>
         )}
       </Card>
-
-      {/* ── Create Rule Dialog ── */}
-      <Dialog open={drawerOpen} onClose={closeDrawer} maxWidth="sm" fullWidth
-        slotProps={{ paper: { sx: { border: '1px solid #ccc', borderRadius: 2 } } }}
-      >
-        <DialogTitle sx={{ borderBottom: '1px solid #e2e8f0', pb: 2 }}>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>Create Alert Rule</Typography>
-        </DialogTitle>
-
-        <DialogContent sx={{ p: 3 }}>
-          <Stepper activeStep={alertStep} sx={{ my: 3, '& .MuiStepConnector-line': { borderColor: 'secondary.main' } }}>
-            {ALERT_STEPS.map((label, index) => (
-              <Step key={label} completed={index < alertStep}>
-                <StepLabel
-                // StepIconProps={{
-                //   sx: {
-                //     '&.Mui-completed': { color: 'secondary.main' },
-                //     '&.Mui-active': { color: 'secondary.main' },
-                //   }
-                // } as StepIconProps}
-                >{label}</StepLabel>
-              </Step>
-            ))}
-          </Stepper>
-          <Box sx={{ minHeight: 280 }}>
-            {renderAlertStep()}
-          </Box>
-        </DialogContent>
-
-        <DialogActions sx={{ borderTop: '1px solid #e2e8f0', px: 3, py: 2 }}>
-          {alertStep > 0 && (
-            <Button variant="outlined" color="secondary" onClick={() => setAlertStep(s => s - 1)}>Previous</Button>
-          )}
-          <Button variant="outlined" color="inherit" onClick={closeDrawer}>Cancel</Button>
-          {alertStep < ALERT_STEPS.length - 1 ? (
-            <Button variant="contained" color="secondary" onClick={() => setAlertStep(s => s + 1)}>Next</Button>
-          ) : (
-            <Button variant="contained" color="primary" onClick={handleAlertSubmit}>Save Rule</Button>
-          )}
-        </DialogActions>
-      </Dialog>
 
       {/* Edit Permissions Dialog */}
       <Dialog open={userPermissionsOpen} onClose={() => setUserPermissionsOpen(false)} fullWidth>
@@ -1195,106 +696,6 @@ export const Admin: React.FC = () => {
           >
             Save Changes
           </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Alert Rule Details Dialog */}
-      <Dialog open={!!selectedRuleDetails} onClose={() => setSelectedRuleDetails(null)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ borderBottom: '1px solid #e2e8f0', pb: 2 }}>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>Alert Rule Details</Typography>
-        </DialogTitle>
-        <DialogContent sx={{ p: 3 }}>
-          {selectedRuleDetails && (() => {
-            const assetNode = flatNodes.find(n => n.id === selectedRuleDetails.node_id);
-            const sensorNode = flatNodes.find(n => String(n.id) === selectedRuleDetails.sensor_id);
-            const assetName = assetNode ? assetNode.display_name : (selectedRuleDetails.asset || `Asset #${selectedRuleDetails.node_id}`);
-            const triggerName = sensorNode ? sensorNode.display_name : (selectedRuleDetails.trigger || selectedRuleDetails.sensor_id || 'None');
-
-            return (
-              <Stack spacing={2} sx={{ mt: 1 }}>
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>Rule Name</Typography>
-                  <Typography variant="body1" sx={{ fontWeight: 600 }}>{selectedRuleDetails.name}</Typography>
-                </Box>
-
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>Description</Typography>
-                  <Typography variant="body2">{selectedRuleDetails.description || 'No description provided'}</Typography>
-                </Box>
-
-                <Grid container spacing={2}>
-                  <Grid size={{ xs: 6 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>Target Asset</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>{assetName}</Typography>
-                  </Grid>
-                  <Grid size={{ xs: 6 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>Trigger Sensor</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>{triggerName}</Typography>
-                  </Grid>
-
-                  <Grid size={{ xs: 6 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>Condition Type</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>{selectedRuleDetails.condition_type || 'Threshold'}</Typography>
-                  </Grid>
-                  <Grid size={{ xs: 6 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>Condition Value</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      {selectedRuleDetails.alert_type} {selectedRuleDetails.value}
-                    </Typography>
-                  </Grid>
-
-                  <Grid size={{ xs: 6 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>Severity</Typography>
-                    <Box sx={{ mt: 0.5 }}>
-                      <Chip label={getSeverityLevelFull(selectedRuleDetails.severity).toUpperCase()} size="small"
-                        sx={{ backgroundColor: getSeverityBgColor(selectedRuleDetails.severity), color: getSeverityColor(selectedRuleDetails.severity), fontWeight: 600, fontSize: 11, borderRadius: '4px' }}
-                      />
-                    </Box>
-                  </Grid>
-                  <Grid size={{ xs: 6 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>Pending Period</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      {selectedRuleDetails.pending_period || selectedRuleDetails.pendingPeriod || 'None'}
-                    </Typography>
-                  </Grid>
-
-                  <Grid size={{ xs: 6 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>Status</Typography>
-                    <Box sx={{ mt: 0.5 }}>
-                      <Chip label={selectedRuleDetails.status} size="small"
-                        sx={{ backgroundColor: selectedRuleDetails.status === 'Active' ? '#e8f5e9' : '#f5f5f5', color: selectedRuleDetails.status === 'Active' ? '#2e7d32' : '#757575', fontWeight: 600, fontSize: 11 }}
-                      />
-                    </Box>
-                  </Grid>
-                  <Grid size={{ xs: 6 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>Notification Email</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      {selectedRuleDetails.notify_email || 'None'}
-                    </Typography>
-                  </Grid>
-                </Grid>
-              </Stack>
-            );
-          })()}
-        </DialogContent>
-        <DialogActions sx={{ borderTop: '1px solid #e2e8f0', px: 3, py: 2, display: 'flex', justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button
-              variant="contained"
-              color="error"
-              onClick={() => handleDeleteRuleClick(selectedRuleDetails.id)}
-            >
-              Delete
-            </Button>
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={() => handleEditRuleClick(selectedRuleDetails)}
-            >
-              Edit
-            </Button>
-          </Box>
-          <Button variant="outlined" onClick={() => setSelectedRuleDetails(null)}>Close</Button>
         </DialogActions>
       </Dialog>
     </PageContainer>

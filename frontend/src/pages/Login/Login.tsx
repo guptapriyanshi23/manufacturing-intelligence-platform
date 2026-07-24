@@ -103,7 +103,7 @@ export const Login: React.FC = () => {
             />
             <span className="login-left__divider" aria-hidden="true" />
             <Typography className="login-left__project-name">
-              AssetWize
+              FactoryWize Asset Digital Twin
             </Typography>
           </Box>
         </Box>

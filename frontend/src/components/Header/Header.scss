@@ -16,26 +16,26 @@
 .header-left {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
+  gap: 1.2rem;
 }
 
 .header-logo {
-  height: 16px;
+  height: 17px;
   width: auto;
   display: block;
 }
 
 .header-left__divider {
   width: 1px;
-  height: 18px;
-  background: rgba(255, 255, 255, 0.38);
+	height: 28px;
+	background: rgba(255, 255, 255, 0.4);
 }
 
 .header-left__project {
-  color: #e2e8f0;
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-size: 1rem;
+	font-weight: 600;
+	color: #ffffff;
+	letter-spacing: 0.02em;
 }
 
 .header-right {
