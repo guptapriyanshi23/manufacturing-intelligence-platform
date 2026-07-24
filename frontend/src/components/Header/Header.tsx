@@ -82,6 +82,8 @@ const Header: React.FC<HeaderProps> = () => {
   const handleLogout = () => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user_profile');
+    localStorage.clear();
+    
     navigate('/login');
   };
 
