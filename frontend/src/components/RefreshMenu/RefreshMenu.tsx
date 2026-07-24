@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, MenuItem, Button, ButtonGroup, Menu, Typography, } from '@mui/material';
+import { useLocation } from 'react-router-dom';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import { fmtFullTime } from '../../constants/datetimefmt';
@@ -34,10 +35,27 @@ export const RefreshMenu: React.FC<RefreshMenuProps> = ({ lastRefreshTime, setLa
     onIntervalChange, onRefresh }) => {
     const intervalMs = REFRESH_INTERVALS[refreshInterval];
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const location = useLocation();
+
+    const pageKey = location.pathname === '/' ? 'alert' : location.pathname.replace(/\//g, '_');
+
+    const refreshStorageKey = `refresh_interval_${pageKey}`;
 
     const nextRefreshAt = new Date(
         lastRefreshTime.getTime() + intervalMs
     );
+
+    useEffect(() => {
+        const storedValue = localStorage.getItem(refreshStorageKey);
+
+        if (storedValue && storedValue in REFRESH_INTERVALS) {
+            onIntervalChange(storedValue as RefreshInterval);
+        }
+    }, [refreshStorageKey]);
+
+    useEffect(() => {
+        localStorage.setItem(refreshStorageKey, refreshInterval);
+    }, [refreshInterval, refreshStorageKey]);
 
     useEffect(() => {
         const intervalMs = REFRESH_INTERVALS[refreshInterval];
@@ -74,6 +92,7 @@ export const RefreshMenu: React.FC<RefreshMenuProps> = ({ lastRefreshTime, setLa
                 {Object.keys(REFRESH_INTERVALS).map((interval) => (
                     <MenuItem key={interval} selected={interval === refreshInterval}
                         onClick={() => {
+                            localStorage.setItem(refreshStorageKey, interval);
                             onIntervalChange(interval as RefreshInterval);
                             setAnchorEl(null);
                         }}>
