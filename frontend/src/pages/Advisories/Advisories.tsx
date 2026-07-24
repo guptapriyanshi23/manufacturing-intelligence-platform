@@ -39,6 +39,7 @@ import '../Alerts/Alerts.scss';
 import { fmtDate, fmtTime } from '../../constants/datetimefmt';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
+import { RefreshMenu, type RefreshInterval } from '../../components/RefreshMenu/RefreshMenu';
 
 const InboxIcon = () => (
   <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5v-3h3.56c.69 1.19 1.97 2 3.45 2s2.75-.81 3.45-2H19v3zm0-5h-4.99c0 1.1-.9 1.99-2 1.99S10 15.1 10 14H5V5h14v9z" /></svg>
@@ -128,6 +129,8 @@ export const Advisories: React.FC = () => {
   }, [treeNodeId, flatNodes]);
 
   const [breadcrumbs, setBreadcrumbs] = useState<string[]>([]);
+  const [refreshInterval, setRefreshInterval] = useState<RefreshInterval>('5m');
+  const [lastRefreshTime, setLastRefreshTime] = useState(new Date());
 
   useEffect(() => {
     if (treeNodeId && flatNodes.length > 0) {
@@ -613,7 +616,12 @@ export const Advisories: React.FC = () => {
       </div>
 
       <Card className="advisory-summary__grid-card">
+
         <Box className="advisory-summary__export-actions">
+          <RefreshMenu lastRefreshTime={lastRefreshTime} setLastRefreshTime={setLastRefreshTime}
+            refreshInterval={refreshInterval} onIntervalChange={setRefreshInterval} 
+            onRefresh={handleView} />
+        
           <button type="button" className="advisory-export-btn advisory-export-btn--xlsx"
             onClick={exportToXlsx} disabled={(paginatedRows?.length === 0) || loading}>
             <DownloadOutlinedIcon className="advisory-export-btn__icon" />
@@ -774,17 +782,20 @@ export const Advisories: React.FC = () => {
             <DialogActions sx={{ borderTop: '1px solid #e2e8f0', px: 3, py: 2 }}>
               {selectedAdvisory.status === AdvisoryStatus.OPEN && (
                 <Button
-                  variant="contained"
-                  color="primary"
+                  variant="outlined"
                   disabled={!canAcknowledge}
                   onClick={() => handleAcknowledgeFromDetails(selectedAdvisory.id)}
                   sx={{
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    '&.Mui-disabled': {
-                      backgroundColor: '#e2e8f0',
-                      color: '#94a3b8',
-                    }
+                    borderColor: '#93c5fd',
+                    backgroundColor: '#dbeafe',
+                    color: '#1e40af',
+                    '&:disabled': {
+                      backgroundColor: '#ffff',
+                    },
+                    '&:hover': {
+                      backgroundColor: '#bfdbfe',
+                      borderColor: '#60a5fa',
+                    },
                   }}
                 >
                   Acknowledge

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Box, Button } from '@mui/material';
 import './Header.scss';
 import { api } from '../../api/client';
@@ -31,6 +31,7 @@ const navItems = [
 ];
 
 const Header: React.FC<HeaderProps> = () => {
+  const location = useLocation();
   const navigate = useNavigate();
 
   const [activeAlerts, setActiveAlerts] = useState(0);
@@ -106,7 +107,7 @@ const Header: React.FC<HeaderProps> = () => {
                 key={item.path}
                 className={`header-nav__item${location.pathname === item.path ? ' header-nav__item--active' : ''}`}
                 type="button"
-                onClick={() => navigate(item.path)}
+                onClick={() => navigate(item.path, { state: {...location.state,},})}
               >
                 {item.label}
                 {item.path === '/' && activeAlerts > 0 && (

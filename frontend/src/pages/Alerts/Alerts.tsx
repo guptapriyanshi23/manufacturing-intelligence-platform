@@ -27,6 +27,7 @@ import { AlertStatus, NodeType } from '../../types/enums';
 import BreadCrumsBar from '../../components/BreadCrumsBar/BreadCrumsBar';
 import { fmtDate, fmtTime } from '../../constants/datetimefmt';
 import './Alerts.scss';
+import { RefreshMenu, type RefreshInterval } from '../../components/RefreshMenu/RefreshMenu';
 
 const InboxIcon = () => (
   <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5v-3h3.56c.69 1.19 1.97 2 3.45 2s2.75-.81 3.45-2H19v3zm0-5h-4.99c0 1.1-.9 1.99-2 1.99S10 15.1 10 14H5V5h14v9z" /></svg>
@@ -94,6 +95,8 @@ export const Alerts: React.FC = () => {
   }, []);
 
   const [breadcrumbs, setBreadcrumbs] = useState<string[]>([]);
+  const [refreshInterval, setRefreshInterval] = useState<RefreshInterval>('5m');
+  const [lastRefreshTime, setLastRefreshTime] = useState(new Date());
 
   useEffect(() => {
     if (selectedNodeId && flatNodes.length > 0) {
@@ -184,29 +187,29 @@ export const Alerts: React.FC = () => {
 
   // Sensor/Tag dropdown options
   const availableSensors = useMemo(() => {
-  // Asset selected in sidebar
-  if (isAssetSelected) {
-    return getDescendantNodes(Number(selectedNodeId))
-      .filter(n => n.node_type === NodeType.SENSOR);
-  }
+    // Asset selected in sidebar
+    if (isAssetSelected) {
+      return getDescendantNodes(Number(selectedNodeId))
+        .filter(n => n.node_type === NodeType.SENSOR);
+    }
 
-  // Specific Asset selected in dropdown
-  if (Number(selectedAssetId)) {
-    return getDescendantNodes(Number(selectedAssetId))
-      .filter(n => n.node_type === NodeType.SENSOR);
-  }
+    // Specific Asset selected in dropdown
+    if (Number(selectedAssetId)) {
+      return getDescendantNodes(Number(selectedAssetId))
+        .filter(n => n.node_type === NodeType.SENSOR);
+    }
 
-  // All sensors under current hierarchy
-  return descendantsOfSidePanel.filter(
-    n => n.node_type === NodeType.SENSOR
-  );
-}, [
-  isAssetSelected,
-  selectedAssetId,
-  selectedNodeId,
-  descendantsOfSidePanel,
-  getDescendantNodes,
-]);
+    // All sensors under current hierarchy
+    return descendantsOfSidePanel.filter(
+      n => n.node_type === NodeType.SENSOR
+    );
+  }, [
+    isAssetSelected,
+    selectedAssetId,
+    selectedNodeId,
+    descendantsOfSidePanel,
+    getDescendantNodes,
+  ]);
 
   // Autopopulate and sync dropdown selections based on the side panel hierarchy node selection
   useEffect(() => {
@@ -445,16 +448,16 @@ export const Alerts: React.FC = () => {
         </div>
 
         <div className="alerts-table-filters">
-          <FormControl size="small" className="alerts-table-filters__field" 
+          <FormControl size="small" className="alerts-table-filters__field"
             disabled={(availableAssets?.length === 0) || isAssetSelected}>
             <InputLabel id="alerts-asset-filter-label">Asset</InputLabel>
             <Select
               labelId="alerts-asset-filter-label"
               label="Asset"
-              value={selectedAssetId == '' ? 'all': selectedAssetId}
+              value={selectedAssetId == '' ? 'all' : selectedAssetId}
               onChange={(e) => setSelectedAssetId(e.target.value as number | '')}
             >
-              <MenuItem value="all">{availableAssets?.length ? 'All': 'No Assets'}</MenuItem>
+              <MenuItem value="all">{availableAssets?.length ? 'All' : 'No Assets'}</MenuItem>
               {availableAssets.map(s => (
                 <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
               ))}
@@ -468,10 +471,10 @@ export const Alerts: React.FC = () => {
             <Select
               labelId="alerts-tag-filter-label"
               label="Sensor/Tag"
-              value={selectedSensorId == ''? 'all' : selectedSensorId}
+              value={selectedSensorId == '' ? 'all' : selectedSensorId}
               onChange={(e) => setSelectedSensorId(e.target.value as number | '')}
             >
-              <MenuItem value="all">{availableSensors?.length ? 'All': 'No Sensors/Tags'}</MenuItem>
+              <MenuItem value="all">{availableSensors?.length ? 'All' : 'No Sensors/Tags'}</MenuItem>
               {availableSensors.map(s => (
                 <MenuItem key={s.id} value={s.id}>{s.display_name}</MenuItem>
               ))}
@@ -500,29 +503,34 @@ export const Alerts: React.FC = () => {
             Total Selected : {selectedIds?.length}
           </Typography>
 
-          {(selectableAlerts?.length !== 0) &&
-            <Button
-              variant="outlined"
-              size="small"
-              disabled={selectedIds.length === 0}
-              onClick={handleAcknowledge}
-              sx={{
-                my: 0.5,
-                borderColor: '#93c5fd',
-                backgroundColor: '#dbeafe',
-                color: '#1e40af',
-                '&:disabled': {
-                  backgroundColor: '#ffff',
-                },
-                '&:hover': {
-                  backgroundColor: '#bfdbfe',
-                  borderColor: '#60a5fa',
-                },
-              }}
-            >
-              Acknowledge
-            </Button>
-          }
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', }}>
+            <RefreshMenu lastRefreshTime={lastRefreshTime} setLastRefreshTime={setLastRefreshTime}
+              refreshInterval={refreshInterval} onIntervalChange={setRefreshInterval}
+              onRefresh={handleViewClick} />
+
+            {(selectableAlerts?.length !== 0) &&
+              <Button
+                variant="outlined"
+                size="small"
+                disabled={selectedIds.length === 0}
+                onClick={handleAcknowledge}
+                sx={{
+                  borderColor: '#93c5fd',
+                  backgroundColor: '#dbeafe',
+                  color: '#1e40af',
+                  '&:disabled': {
+                    backgroundColor: '#ffff',
+                  },
+                  '&:hover': {
+                    backgroundColor: '#bfdbfe',
+                    borderColor: '#60a5fa',
+                  },
+                }}
+              >
+                Acknowledge
+              </Button>
+            }
+          </Box>
         </Box>
 
         {loading ? (
@@ -582,17 +590,17 @@ export const Alerts: React.FC = () => {
                         }}
                       >
                         <TableCell padding="checkbox" >
-                            <Checkbox disabled={row?.status !== 1} checked={selectedIds.includes(row.id)} 
-                              onClick={(e) => e.stopPropagation()}
-                              onChange={() => handleSelectRow(row.id)}
-                              sx={{
-                                '&.Mui-checked': {
-                                  color: '#60a5fa',
-                                },
-                                '& .MuiSvgIcon-root': {
-                                  fontSize: 18,
-                                },
-                              }} />
+                          <Checkbox disabled={row?.status !== 1} checked={selectedIds.includes(row.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={() => handleSelectRow(row.id)}
+                            sx={{
+                              '&.Mui-checked': {
+                                color: '#60a5fa',
+                              },
+                              '& .MuiSvgIcon-root': {
+                                fontSize: 18,
+                              },
+                            }} />
                         </TableCell>
                         <TableCell>
                           <span className={badgeClsName}>{getSeverityLevelFull(row.severity)}</span>
