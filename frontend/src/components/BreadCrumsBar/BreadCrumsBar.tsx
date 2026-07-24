@@ -27,6 +27,9 @@ const BreadCrumsBar: React.FC<BreadCrumbsProps> = ({ breadcrumbsData }) => {
     return (
         <div className="breadcrumb-bar">
             <div className="breadcrumb-bar__crumbs">
+                {breadcrumbsData?.length === 0 ? (
+                    <span className='breadcrumb-bar__item'>...</span>
+                ) : <>
                 {breadcrumbsData?.map((crumb, i) => (
                     <React.Fragment key={i}>
                         {i > 0 && <span className="breadcrumb-bar__sep"><NavigateNextIcon fontSize="small" /></span>}
@@ -35,6 +38,7 @@ const BreadCrumsBar: React.FC<BreadCrumbsProps> = ({ breadcrumbsData }) => {
                         </span>
                     </React.Fragment>
                 ))}
+            </>}
             </div>
             <div className="breadcrumb-bar__datetime">
                 <CalendarIcon />

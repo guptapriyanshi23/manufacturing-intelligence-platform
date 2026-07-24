@@ -496,7 +496,7 @@ export const Alerts: React.FC = () => {
           justifyContent: 'space-between',
           alignItems: 'center',
         }}>
-          <Typography sx={{ fontSize: '0.9rem' }}>
+          <Typography variant='caption'>
             Total Selected : {selectedIds?.length}
           </Typography>
 
